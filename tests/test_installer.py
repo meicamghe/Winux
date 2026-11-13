@@ -131,10 +131,11 @@ class InstallerExecutionTests(unittest.TestCase):
             patch("winux.core.installer.subprocess.run",
                   return_value=SimpleNamespace(returncode=returncode)),
         ]
+        started = []
         for item in patches:
-            item.start()
+            started.append(item.start())
             self.addCleanup(item.stop)
-        return patches[-1]
+        return started[-1]
 
     def test_install_runs_wine_with_selected_prefix_and_logs_success(self):
         run_patch = self.prepare_install()
