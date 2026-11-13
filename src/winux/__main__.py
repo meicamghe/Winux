@@ -100,6 +100,19 @@ def main():
     app_run_parser.add_argument("--prefix", required=True)
     app_run_parser.add_argument("application_id")
 
+    app_uninstall_parser = app_commands.add_parser(
+        "uninstall",
+        help="Uninstall an installed Windows application"
+    )
+    app_uninstall_parser.add_argument("--prefix", required=True)
+    app_uninstall_parser.add_argument("application_id")
+    app_uninstall_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=300,
+        help="Uninstallation timeout in seconds (default: 300)"
+    )
+
     args = parser.parse_args()
 
     try:
@@ -188,6 +201,17 @@ def main():
                 print(f"PID:         {result['pid']}")
                 print(f"Executable:  {result['executable']}")
                 print(f"Log:         {result['log']}")
+
+            elif args.app_command == "uninstall":
+                result = manager.uninstall(
+                    args.prefix,
+                    args.application_id,
+                    timeout=args.timeout
+                )
+
+                print("[OK] Application uninstalled.")
+                print(f"Application: {result['application']}")
+                print(f"Prefix:      {result['prefix']}")
 
         elif args.command == "install":
             from winux.core.installer import Installer
