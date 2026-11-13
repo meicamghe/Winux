@@ -8,10 +8,10 @@ from pathlib import Path
 
 
 class PrefixManager:
+    # Winux uses 64-bit WoW64 prefixes for both x86 and x64 applications.
     ARCHITECTURES = {
-        "x86": "win32",
+        "x86": "win64",
         "x64": "win64",
-        "win32": "win32",
         "win64": "win64",
     }
 
@@ -41,7 +41,8 @@ class PrefixManager:
     def normalize_architecture(self, architecture):
         if architecture not in self.ARCHITECTURES:
             raise ValueError(
-                "Architecture must be x86, x64, win32 or win64"
+                "Architecture must be x86, x64 or win64; "
+                "Winux creates only 64-bit WoW64 prefixes"
             )
         return self.ARCHITECTURES[architecture]
 
@@ -79,7 +80,7 @@ class PrefixManager:
         except (OSError, ValueError, KeyError, TypeError) as error:
             raise ValueError("Unable to read prefix architecture") from error
 
-        if architecture not in ("win32", "win64"):
+        if architecture != "win64":
             raise ValueError("Invalid prefix architecture metadata")
 
         return architecture
