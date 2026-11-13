@@ -110,7 +110,7 @@ class InstallerExecutionTests(unittest.TestCase):
         data = bytearray(0x100)
         data[:2] = b"MZ"
         data[60:64] = (0x80).to_bytes(4, "little")
-        data[0x80:0x84] = b"PE\\x00\\x00"
+        data[0x80:0x84] = b"PE\x00\x00"
         data[0x84:0x86] = (0x8664).to_bytes(2, "little")
         data[0x98:0x9A] = (0x20B).to_bytes(2, "little")
         self.source.write_bytes(data)
