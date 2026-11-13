@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -185,6 +186,90 @@ class InstallerExecutionTests(unittest.TestCase):
         self.assertEqual(stats["total"], 1)
         self.assertEqual(stats["success"], 1)
         self.assertEqual(stats["success_rate"], 100.0)
+
+
+class InstallerBatchTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp_dir.name)
+
+        self.installer = Installer.__new__(Installer)
+
+        self.file1 = self.root / "app1.exe"
+        self.file2 = self.root / "app2.msi"
+        self.file3 = self.root / "app3.exe"
+
+        for file in (self.file1, self.file2, self.file3):
+            file.write_bytes(b"test")
+
+        self.manifest = self.root / "manifest.json"
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def write_manifest(self, applications):
+        self.manifest.write_text(
+            json.dumps({"applications": applications}),
+            encoding="utf-8"
+        )
+
+    def test_batch_continues_after_failed_install(self):
+        self.write_manifest([
+            {"file": str(self.file1)},
+            {"file": str(self.file2), "timeout": 120},
+            {"file": str(self.file3)}
+        ])
+
+        with patch.object(
+            self.installer,
+            "install",
+            side_effect=[
+                {"success": True, "install_id": "one"},
+                RuntimeError("Installation failed"),
+                {"success": True, "install_id": "three"}
+            ]
+        ) as mock_install:
+            result = self.installer.install_batch(
+                self.manifest, "test-prefix"
+            )
+
+        self.assertEqual(mock_install.call_count, 3)
+        self.assertEqual(result["total"], 3)
+        self.assertEqual(result["successful"], 2)
+        self.assertEqual(result["failed"], 1)
+        self.assertFalse(result["success"])
+        self.assertTrue(result["results"][0]["success"])
+        self.assertFalse(result["results"][1]["success"])
+        self.assertTrue(result["results"][2]["success"])
+
+    def test_batch_validates_all_files_before_installing(self):
+        self.write_manifest([
+            {"file": str(self.file1)},
+            {"file": str(self.root / "missing.exe")}
+        ])
+
+        with patch.object(self.installer, "install") as mock_install:
+            with self.assertRaisesRegex(
+                ValueError, "missing or invalid"
+            ):
+                self.installer.install_batch(
+                    self.manifest, "test-prefix"
+                )
+
+        mock_install.assert_not_called()
+
+    def test_batch_rejects_invalid_timeout(self):
+        self.write_manifest([
+            {"file": str(self.file1), "timeout": 0}
+        ])
+
+        with patch.object(self.installer, "install") as mock_install:
+            with self.assertRaisesRegex(ValueError, "invalid timeout"):
+                self.installer.install_batch(
+                    self.manifest, "test-prefix"
+                )
+
+        mock_install.assert_not_called()
 
 
 if __name__ == "__main__":

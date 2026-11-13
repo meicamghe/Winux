@@ -46,7 +46,11 @@ def main():
         "install",
         help="Install a Windows application"
     )
-    install_parser.add_argument("file")
+    install_parser.add_argument("file", nargs="?")
+    install_parser.add_argument(
+        "--manifest",
+        help="JSON manifest for batch installation"
+    )
     install_parser.add_argument("--prefix", required=True)
     install_parser.add_argument(
         "--timeout",
@@ -264,19 +268,55 @@ def main():
             from winux.core.installer import Installer
             installer = Installer()
 
-            print(f"Installer: {args.file}")
-            print(f"Target prefix: {args.prefix}")
-            print("Starting installation...")
+            if args.manifest:
+                if args.file:
+                    raise ValueError(
+                        "Use either an installer file or --manifest, not both"
+                    )
 
-            result = installer.install(
-                installer_file=args.file,
-                prefix_name=args.prefix,
-                timeout=args.timeout
-            )
+                print(f"Manifest: {args.manifest}")
+                print(f"Target prefix: {args.prefix}")
+                print("Starting batch installation...")
 
-            print("[OK] Installation process completed.")
-            print(f"Install ID: {result['install_id']}")
-            print(f"Log file: {result['log']}")
+                result = installer.install_batch(
+                    manifest_file=args.manifest,
+                    prefix_name=args.prefix
+                )
+
+                for item in result["results"]:
+                    status = "OK" if item["success"] else "FAILED"
+                    print(f"[{status}] {item['file']}")
+
+                    if not item["success"]:
+                        print(f"  Error: {item['error']}")
+
+                print("-" * 50)
+                print(f"Total:      {result['total']}")
+                print(f"Successful: {result['successful']}")
+                print(f"Failed:     {result['failed']}")
+
+                if not result["success"]:
+                    raise RuntimeError("One or more installations failed")
+
+            else:
+                if not args.file:
+                    raise ValueError(
+                        "Provide an installer file or use --manifest"
+                    )
+
+                print(f"Installer: {args.file}")
+                print(f"Target prefix: {args.prefix}")
+                print("Starting installation...")
+
+                result = installer.install(
+                    installer_file=args.file,
+                    prefix_name=args.prefix,
+                    timeout=args.timeout
+                )
+
+                print("[OK] Installation process completed.")
+                print(f"Install ID: {result['install_id']}")
+                print(f"Log file: {result['log']}")
 
         elif args.command == "history":
             from winux.core.installer import Installer

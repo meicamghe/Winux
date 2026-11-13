@@ -1,3 +1,5 @@
+import json
+import re
 import fcntl
 import os
 import shutil
@@ -432,3 +434,107 @@ class Installer:
         )
 
         return counts
+
+    def install_batch(self, manifest_file, prefix_name):
+        manifest_path = Path(manifest_file).expanduser()
+
+        if manifest_path.is_symlink():
+            raise ValueError("Manifest file must not be a symbolic link")
+
+        if not manifest_path.is_file():
+            raise FileNotFoundError(
+                f"Manifest file not found: {manifest_path}"
+            )
+
+        try:
+            with manifest_path.open("r", encoding="utf-8") as file:
+                manifest = json.load(file)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"Invalid JSON manifest: {exc}"
+            ) from exc
+
+        if not isinstance(manifest, dict):
+            raise ValueError("Manifest must be a JSON object")
+
+        applications = manifest.get("applications")
+
+        if not isinstance(applications, list) or not applications:
+            raise ValueError(
+                "Manifest must contain a non-empty applications list"
+            )
+
+        validated = []
+
+        for index, item in enumerate(applications, start=1):
+            if not isinstance(item, dict):
+                raise ValueError(
+                    f"Application #{index} must be a JSON object"
+                )
+
+            installer_file = item.get("file")
+
+            if not isinstance(installer_file, str) or not installer_file.strip():
+                raise ValueError(
+                    f"Application #{index} has an invalid file path"
+                )
+
+            timeout = item.get("timeout", 3600)
+
+            if isinstance(timeout, bool) or not isinstance(timeout, int) or timeout <= 0:
+                raise ValueError(
+                    f"Application #{index} has an invalid timeout"
+                )
+
+            source = Path(installer_file).expanduser()
+
+            if source.is_symlink() or not source.is_file():
+                raise ValueError(
+                    f"Application #{index} installer file is missing or invalid: {source}"
+                )
+
+            if source.suffix.lower() not in (".exe", ".msi"):
+                raise ValueError(
+                    f"Application #{index} has an unsupported installer type"
+                )
+
+            validated.append({
+                "file": str(source),
+                "timeout": timeout
+            })
+
+        results = []
+
+        for index, item in enumerate(validated, start=1):
+            try:
+                result = self.install(
+                    installer_file=item["file"],
+                    prefix_name=prefix_name,
+                    timeout=item["timeout"]
+                )
+
+                results.append({
+                    "index": index,
+                    "file": item["file"],
+                    "success": True,
+                    "result": result
+                })
+
+            except Exception as exc:
+                results.append({
+                    "index": index,
+                    "file": item["file"],
+                    "success": False,
+                    "error": str(exc)
+                })
+
+        successful = sum(1 for item in results if item["success"])
+
+        return {
+            "success": successful == len(results),
+            "prefix": prefix_name,
+            "total": len(results),
+            "successful": successful,
+            "failed": len(results) - successful,
+            "results": results
+        }
