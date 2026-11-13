@@ -50,46 +50,74 @@ class PrefixManagerTests(unittest.TestCase):
     def test_validate_name_accepts_supported_characters(self):
         self.manager.validate_name("app_01-Test")
 
-    def test_normalize_x64_architecture(self):
-        self.assertEqual(self.manager.normalize_architecture("x64"), "win64")
-        self.assertEqual(self.manager.normalize_architecture("win64"), "win64")
+    def test_normalize_x86_and_x64_to_win64(self):
+        for architecture in ("x86", "x64", "win64"):
+            with self.subTest(architecture=architecture):
+                self.assertEqual(
+                    self.manager.normalize_architecture(architecture),
+                    "win64",
+                )
 
-    def test_create_initializes_wine64_prefix_and_metadata(self):
+    def test_normalize_rejects_win32_prefixes(self):
+        with self.assertRaisesRegex(ValueError, "64-bit WoW64"):
+            self.manager.normalize_architecture("win32")
+
+    def test_create_initializes_win64_prefix_and_metadata(self):
         def initialize(command, env, **kwargs):
             prefix = Path(env["WINEPREFIX"])
-            (prefix / "system.reg").write_text("WINE REGISTRY\n", encoding="utf-8")
+            (prefix / "system.reg").write_text(
+                "WINE REGISTRY\n", encoding="utf-8"
+            )
             return subprocess.CompletedProcess(command, 0, "", "")
 
-        with patch("winux.core.prefix.shutil.which", return_value="/usr/bin/wineboot"), patch(
-            "winux.core.prefix.subprocess.run", side_effect=initialize
+        with patch(
+            "winux.core.prefix.shutil.which",
+            return_value="/usr/bin/wineboot",
+        ), patch(
+            "winux.core.prefix.subprocess.run",
+            side_effect=initialize,
         ) as run:
-            path = self.manager.create("fresh-prefix", architecture="x64")
+            path = self.manager.create("fresh-prefix", architecture="x86")
 
         self.assertTrue((path / "system.reg").is_file())
-        metadata = json.loads((path / ".winux-prefix.json").read_text(encoding="utf-8"))
+        metadata = json.loads(
+            (path / ".winux-prefix.json").read_text(encoding="utf-8")
+        )
         self.assertEqual(metadata["architecture"], "win64")
-        self.assertEqual(run.call_args.args[0], ["/usr/bin/wineboot", "--init"])
+        self.assertEqual(
+            run.call_args.args[0],
+            ["/usr/bin/wineboot", "--init"],
+        )
         self.assertEqual(run.call_args.kwargs["env"]["WINEARCH"], "win64")
 
     def test_create_removes_partial_prefix_after_failure(self):
         def fail_initialization(command, env, **kwargs):
             (Path(env["WINEPREFIX"]) / "partial").touch()
-            return subprocess.CompletedProcess(command, 1, "", "wineboot failed")
+            return subprocess.CompletedProcess(
+                command, 1, "", "wineboot failed"
+            )
 
-        with patch("winux.core.prefix.shutil.which", return_value="/usr/bin/wineboot"), patch(
-            "winux.core.prefix.subprocess.run", side_effect=fail_initialization
+        with patch(
+            "winux.core.prefix.shutil.which",
+            return_value="/usr/bin/wineboot",
+        ), patch(
+            "winux.core.prefix.subprocess.run",
+            side_effect=fail_initialization,
         ):
             with self.assertRaisesRegex(RuntimeError, "wineboot failed"):
                 self.manager.create("broken-prefix")
 
-        self.assertFalse((self.manager.base_dir / "broken-prefix").exists())
+        self.assertFalse(
+            (self.manager.base_dir / "broken-prefix").exists()
+        )
 
     def test_list_ignores_invalid_and_symlink_entries(self):
         self.make_prefix("valid")
         invalid = self.manager.base_dir / "invalid"
         invalid.mkdir()
         (self.manager.base_dir / "link").symlink_to(
-            self.manager.base_dir / "valid", target_is_directory=True
+            self.manager.base_dir / "valid",
+            target_is_directory=True,
         )
 
         self.assertEqual(self.manager.list(), ["valid"])
@@ -100,6 +128,12 @@ class PrefixManagerTests(unittest.TestCase):
 
         self.assertEqual(self.manager.get_architecture("modern"), "win64")
         self.assertEqual(self.manager.get_architecture("legacy"), "win64")
+
+    def test_get_architecture_rejects_win32_metadata(self):
+        self.make_prefix("invalid-architecture", "win32")
+
+        with self.assertRaisesRegex(ValueError, "Invalid prefix architecture"):
+            self.manager.get_architecture("invalid-architecture")
 
     def test_delete_requires_explicit_confirmation(self):
         self.make_prefix("to-delete")
