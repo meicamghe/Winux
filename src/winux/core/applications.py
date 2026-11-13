@@ -173,3 +173,65 @@ class ApplicationManager:
         raise LookupError(
             f"Application not found in prefix '{prefix_name}': {application_id}"
         )
+
+    def uninstall(self, prefix_name, application_id, timeout=300):
+        if not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or timeout <= 0:
+            raise ValueError("timeout must be a positive number")
+
+        application = self.info(prefix_name, application_id)
+
+        command = (
+            application.get("QuietUninstallString")
+            or application.get("UninstallString")
+        )
+
+        if not command:
+            raise ValueError(
+                f"No uninstall command registered for: "
+                f"{application.get('DisplayName', application_id)}"
+            )
+
+        import shlex
+
+        try:
+            args = shlex.split(command, posix=False)
+            args = [
+                arg[1:-1] if len(arg) >= 2 and arg[0] == arg[-1] == '"'
+                else arg
+                for arg in args
+            ]
+        except ValueError as exc:
+            raise ValueError("Invalid uninstall command") from exc
+
+        if not args:
+            raise ValueError("Invalid uninstall command")
+
+        prefix_path = self.prefix_manager.get_path(prefix_name)
+        wine = shutil.which("wine")
+
+        if not wine:
+            raise RuntimeError("Wine executable not found")
+
+        env = os.environ.copy()
+        env["WINEPREFIX"] = str(prefix_path)
+
+        result = subprocess.run(
+            [wine, *args],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Uninstaller exited with code {result.returncode}"
+            )
+
+        return {
+            "success": True,
+            "application": application.get("DisplayName", application_id),
+            "prefix": prefix_name,
+            "returncode": result.returncode,
+        }

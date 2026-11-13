@@ -110,5 +110,62 @@ HKEY_CURRENT_USER\\Software\\App\\Two
                 self.manager.info("test-prefix", "missing")
 
 
+    def test_uninstall_uses_quiet_uninstall_string_when_available(self):
+        application = {
+            "registry_id": "Example",
+            "DisplayName": "Example App",
+            "QuietUninstallString": '"C:\\\\Program Files\\\\Example\\\\uninstall.exe" /quiet',
+            "UninstallString": "fallback-uninstaller.exe",
+        }
+
+        with patch.object(self.manager, "info", return_value=application):
+            with patch("winux.core.applications.subprocess.run") as run:
+                run.return_value.returncode = 0
+                result = self.manager.uninstall("test-prefix", "Example")
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["application"], "Example App")
+        self.assertEqual(run.call_args.args[0][1], "C:\\\\Program Files\\\\Example\\\\uninstall.exe")
+        self.assertIn("/quiet", run.call_args.args[0])
+
+    def test_uninstall_falls_back_to_uninstall_string(self):
+        application = {
+            "registry_id": "Example",
+            "DisplayName": "Example App",
+            "UninstallString": "uninstaller.exe /remove",
+        }
+
+        with patch.object(self.manager, "info", return_value=application):
+            with patch("winux.core.applications.subprocess.run") as run:
+                run.return_value.returncode = 0
+                result = self.manager.uninstall("test-prefix", "Example")
+
+        self.assertTrue(result["success"])
+        self.assertIn("/remove", run.call_args.args[0])
+
+    def test_uninstall_rejects_application_without_uninstaller(self):
+        application = {
+            "registry_id": "Example",
+            "DisplayName": "Example App",
+        }
+
+        with patch.object(self.manager, "info", return_value=application):
+            with self.assertRaisesRegex(ValueError, "uninstall command"):
+                self.manager.uninstall("test-prefix", "Example")
+
+    def test_uninstall_reports_nonzero_exit_code(self):
+        application = {
+            "registry_id": "Example",
+            "DisplayName": "Example App",
+            "UninstallString": "uninstaller.exe",
+        }
+
+        with patch.object(self.manager, "info", return_value=application):
+            with patch("winux.core.applications.subprocess.run") as run:
+                run.return_value.returncode = 7
+                with self.assertRaisesRegex(RuntimeError, "exited with code 7"):
+                    self.manager.uninstall("test-prefix", "Example")
+
+
 if __name__ == "__main__":
     unittest.main()
