@@ -1,3 +1,4 @@
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -53,7 +54,7 @@ class ApplicationRunnerTests(unittest.TestCase):
         kwargs = popen.call_args.kwargs
         self.assertEqual(kwargs["cwd"], str(self.executable.parent))
         self.assertEqual(kwargs["env"]["WINEPREFIX"], str(self.prefix_path))
-        self.assertIsNone(kwargs["stdin"])
+        self.assertEqual(kwargs["stdin"], subprocess.DEVNULL)
         self.assertTrue(kwargs["start_new_session"])
 
     def test_run_fails_when_wine_is_missing(self):
