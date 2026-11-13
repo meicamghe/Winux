@@ -1,0 +1,84 @@
+# Winux — Project Handoff
+
+Last reviewed: 2026-11-13
+
+This file is the compact continuity record for future development sessions. It complements the README and architecture documents; it does not replace source code, tests, or detailed design records.
+
+## Product direction
+
+Winux is being built in stages:
+
+1. **Winux Engine:** a reusable engine that should work across supported Linux distributions.
+2. **Winux Desktop:** a graphical application manager built on top of the same engine.
+3. **Winux OS:** a later installable Linux distribution integrating the engine and desktop.
+
+The user's explicit near-term priority is to build the engine first so it can run on different Linux distributions. Do not jump prematurely into building a custom distribution or spending time on the GUI before the engine is dependable.
+
+## Binding architecture decisions
+
+- Support both 32-bit (x86) and 64-bit (x64) Windows applications/installers. A previous 64-bit-only restriction was superseded.
+- Use Wine as the current compatibility layer; actual compatibility remains application- and environment-dependent.
+- Detect installer/application architecture instead of assuming one architecture.
+- Keep installation, prefix management, application discovery, execution, platform integration, and desktop integration separated.
+- Use per-application or named Wine prefixes and keep runtime data under the user's Linux data directory.
+- The engine should be distribution-aware only where necessary; avoid hard-coding one distro's package manager or filesystem assumptions.
+- Do not run ordinary Windows applications as root.
+- A successful installer exit is not proof that the installed application works.
+
+## Current repository baseline
+
+Repository: https://github.com/meicamghe/Winux
+
+The README and `docs/architecture.md` describe an early Engine implementation. Reported capabilities include:
+
+- Wine environment detection
+- Prefix creation and management
+- EXE/MSI installation workflow
+- Installed application discovery through Wine registry data
+- Application metadata lookup
+- Launching installed applications
+- Installation and execution logs
+- Basic desktop shortcut integration
+
+Current CLI examples documented in the repository:
+
+```bash
+PYTHONPATH=src python3 -m winux --help
+PYTHONPATH=src python3 -m winux doctor
+```
+
+The architecture document describes commands for prefix lifecycle, install, history/stats, and app list/info/run. Verify actual CLI behavior against source and tests before claiming any feature is complete.
+
+## Development priorities
+
+1. Inspect the current source and test suite before changing implementation.
+2. Stabilize Wine detection and dependency checks across multiple Linux distributions.
+3. Verify prefix creation, validation, lifecycle and architecture behavior.
+4. Test EXE and MSI installers for both x86 and x64 using supported Wine/WoW64 configurations.
+5. Improve application discovery and executable resolution.
+6. Finish robust desktop launcher integration and test multiple desktop environments.
+7. Establish automated tests and repeatable CI for supported Linux distributions.
+8. Define a stable engine interface before building the GUI.
+9. Only after the engine is stable, develop Winux Desktop and then the OS image.
+
+## Important compatibility constraints
+
+- WoW64 behavior depends on the installed Wine build and distro packaging. Do not assume all 32-bit applications will work merely because architecture detection succeeds.
+- Kernel drivers, Windows-only services, specialized hardware and unsupported APIs may prevent an application from working.
+- Avoid destructive prefix deletion or migration without explicit user-visible safeguards.
+- Keep logs useful while avoiding credentials and sensitive application data.
+
+## Session start checklist
+
+At the start of each new development session:
+
+1. Read this file, `README.md`, and `docs/architecture.md`.
+2. Inspect Git status, latest commit, current branch and uncommitted changes in the user's working copy when available.
+3. Run the existing test suite before edits.
+4. Compare the latest code with the claims in documentation.
+5. Continue from the highest-priority incomplete item; do not redo completed analysis without new evidence.
+6. Update this handoff and relevant technical docs whenever a decision, interface, behavior, or milestone changes.
+
+## Known continuity gap
+
+Older project chats may contain implementation details, terminal outputs, and user test observations not reproduced here. This document consolidates the durable decisions currently recoverable; it is not a claim that every historical message has been archived. When a historical detail conflicts with this file, prefer the latest explicit user decision and record the resolution here.
