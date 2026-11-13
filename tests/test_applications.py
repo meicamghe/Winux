@@ -1,3 +1,5 @@
+import csv
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -207,6 +209,65 @@ HKEY_CURRENT_USER\\Software\\App\\Two
             result = self.manager.search("test-prefix", "missing")
 
         self.assertEqual(result, [])
+
+
+    def test_export_writes_json(self):
+        applications = [
+            {
+                "DisplayName": "Example App",
+                "DisplayVersion": "1.2",
+                "Publisher": "Example",
+                "registry_id": "Example",
+                "registry_key": "HKLM\\\\Software\\\\Example",
+            }
+        ]
+        output = Path(self.temp_dir.name) / "apps.json"
+
+        with patch.object(self.manager, "list", return_value=applications):
+            result = self.manager.export("test-prefix", output, "json")
+
+        data = json.loads(output.read_text(encoding="utf-8"))
+        self.assertEqual(result["count"], 1)
+        self.assertEqual(data[0]["DisplayName"], "Example App")
+        self.assertEqual(data[0]["registry_id"], "Example")
+
+    def test_export_writes_csv(self):
+        applications = [
+            {
+                "DisplayName": "Example App",
+                "DisplayVersion": "1.2",
+                "Publisher": "Example",
+                "registry_id": "Example",
+            }
+        ]
+        output = Path(self.temp_dir.name) / "apps.csv"
+
+        with patch.object(self.manager, "list", return_value=applications):
+            result = self.manager.export("test-prefix", output, "csv")
+
+        with output.open(encoding="utf-8", newline="") as file:
+            rows = list(csv.DictReader(file))
+
+        self.assertEqual(result["format"], "csv")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["DisplayName"], "Example App")
+
+    def test_export_creates_parent_directories(self):
+        output = Path(self.temp_dir.name) / "reports" / "nested" / "apps.json"
+
+        with patch.object(self.manager, "list", return_value=[]):
+            result = self.manager.export("test-prefix", output)
+
+        self.assertTrue(output.is_file())
+        self.assertEqual(result["count"], 0)
+
+    def test_export_rejects_invalid_format(self):
+        with self.assertRaisesRegex(ValueError, "Export format"):
+            self.manager.export("test-prefix", "apps.txt", "txt")
+
+    def test_export_rejects_directory_as_output_path(self):
+        with self.assertRaisesRegex(ValueError, "must be a file"):
+            self.manager.export("test-prefix", self.temp_dir.name, "json")
 
 
 if __name__ == "__main__":

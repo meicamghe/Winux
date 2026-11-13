@@ -72,5 +72,78 @@ class ApplicationCliTests(unittest.TestCase):
         )
 
 
+    @patch(
+        "winux.core.applications.ApplicationManager.export",
+        return_value={
+            "success": True,
+            "prefix": "test-prefix",
+            "format": "json",
+            "path": "/tmp/apps.json",
+            "count": 3,
+        },
+    )
+    def test_export_command_uses_json_by_default(self, export):
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "winux",
+                "app",
+                "export",
+                "--prefix",
+                "test-prefix",
+                "--output",
+                "/tmp/apps.json",
+            ],
+        ):
+            with patch("builtins.print") as print_mock:
+                main()
+
+        export.assert_called_once_with(
+            "test-prefix",
+            "/tmp/apps.json",
+            "json",
+        )
+        self.assertTrue(
+            any("[OK] Applications exported." in str(call)
+                for call in print_mock.call_args_list)
+        )
+
+    @patch(
+        "winux.core.applications.ApplicationManager.export",
+        return_value={
+            "success": True,
+            "prefix": "test-prefix",
+            "format": "csv",
+            "path": "/tmp/apps.csv",
+            "count": 2,
+        },
+    )
+    def test_export_command_accepts_csv_format(self, export):
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "winux",
+                "app",
+                "export",
+                "--prefix",
+                "test-prefix",
+                "--output",
+                "/tmp/apps.csv",
+                "--format",
+                "csv",
+            ],
+        ):
+            with patch("builtins.print"):
+                main()
+
+        export.assert_called_once_with(
+            "test-prefix",
+            "/tmp/apps.csv",
+            "csv",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

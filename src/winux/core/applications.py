@@ -1,3 +1,5 @@
+import csv
+import json
 import os
 import re
 import shutil
@@ -179,6 +181,56 @@ class ApplicationManager:
                 for field in ("DisplayName", "Publisher", "DisplayVersion")
             )
         ]
+
+    def export(self, prefix_name, output_path, format="json"):
+        if format not in ("json", "csv"):
+            raise ValueError("Export format must be 'json' or 'csv'")
+
+        output_path = Path(output_path).expanduser()
+
+        if output_path.exists() and output_path.is_dir():
+            raise ValueError("Output path must be a file, not a directory")
+
+        applications = self.list(prefix_name)
+
+        fields = [
+            "DisplayName",
+            "DisplayVersion",
+            "Publisher",
+            "InstallLocation",
+            "install_path",
+            "executable_path",
+            "registry_id",
+            "registry_key",
+        ]
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if format == "json":
+            with output_path.open("w", encoding="utf-8") as file:
+                json.dump(
+                    [{field: app.get(field) for field in fields} for app in applications],
+                    file,
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                file.write("\n")
+        else:
+            with output_path.open("w", encoding="utf-8", newline="") as file:
+                writer = csv.DictWriter(file, fieldnames=fields)
+                writer.writeheader()
+                writer.writerows(
+                    {field: app.get(field) for field in fields}
+                    for app in applications
+                )
+
+        return {
+            "success": True,
+            "prefix": prefix_name,
+            "format": format,
+            "path": str(output_path),
+            "count": len(applications),
+        }
 
     def info(self, prefix_name, application_id):
         applications = self.list(prefix_name)

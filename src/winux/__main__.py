@@ -93,6 +93,19 @@ def main():
     app_search_parser.add_argument("--prefix", required=True)
     app_search_parser.add_argument("query")
 
+    app_export_parser = app_commands.add_parser(
+        "export",
+        help="Export installed applications"
+    )
+    app_export_parser.add_argument("--prefix", required=True)
+    app_export_parser.add_argument("--output", required=True)
+    app_export_parser.add_argument(
+        "--format",
+        choices=("json", "csv"),
+        default="json",
+        help="Export format (default: json)"
+    )
+
     app_info_parser = app_commands.add_parser(
         "info",
         help="Show installed application details"
@@ -193,6 +206,19 @@ def main():
                     print(f"Version:     {app.get('DisplayVersion') or 'Unknown'}")
                     print(f"Publisher:   {app.get('Publisher') or 'Unknown'}")
                     print(f"Registry ID: {app.get('registry_id')}")
+
+            elif args.app_command == "export":
+                result = manager.export(
+                    args.prefix,
+                    args.output,
+                    args.format
+                )
+
+                print("[OK] Applications exported.")
+                print(f"Prefix: {result['prefix']}")
+                print(f"Format: {result['format']}")
+                print(f"Count:  {result['count']}")
+                print(f"File:   {result['path']}")
 
             elif args.app_command == "info":
                 app = manager.info(args.prefix, args.application_id)
