@@ -152,3 +152,7 @@ The project is currently in an early development stage, and its architecture may
 ## License
 
 License has not yet been selected.
+
+## Session continuity
+
+For the current project decisions, implementation boundaries, and next-session checklist, see [docs/SESSION-HANDOFF.md](docs/SESSION-HANDOFF.md).
