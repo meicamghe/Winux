@@ -167,5 +167,47 @@ HKEY_CURRENT_USER\\Software\\App\\Two
                     self.manager.uninstall("test-prefix", "Example")
 
 
+    def test_search_matches_name_case_insensitively(self):
+        applications = [
+            {"DisplayName": "Mozilla Firefox", "Publisher": "Mozilla", "DisplayVersion": "128"},
+            {"DisplayName": "Notepad++", "Publisher": "Notepad++ Team", "DisplayVersion": "8.7"},
+        ]
+
+        with patch.object(self.manager, "list", return_value=applications):
+            result = self.manager.search("test-prefix", "FIREFOX")
+
+        self.assertEqual([app["DisplayName"] for app in result], ["Mozilla Firefox"])
+
+    def test_search_matches_publisher_and_version(self):
+        applications = [
+            {"DisplayName": "Example App", "Publisher": "Example Corporation", "DisplayVersion": "2.5.1"},
+            {"DisplayName": "Another App", "Publisher": "Other", "DisplayVersion": "3.0"},
+        ]
+
+        with patch.object(self.manager, "list", return_value=applications):
+            publisher_result = self.manager.search("test-prefix", "CORPORATION")
+            version_result = self.manager.search("test-prefix", "2.5")
+
+        self.assertEqual(len(publisher_result), 1)
+        self.assertEqual(len(version_result), 1)
+        self.assertEqual(version_result[0]["DisplayName"], "Example App")
+
+    def test_search_rejects_empty_or_invalid_query(self):
+        for query in ("", "   ", None, 123):
+            with self.subTest(query=query):
+                with self.assertRaises(ValueError):
+                    self.manager.search("test-prefix", query)
+
+    def test_search_returns_empty_list_when_no_match(self):
+        applications = [
+            {"DisplayName": "Example App", "Publisher": "Example", "DisplayVersion": "1.0"},
+        ]
+
+        with patch.object(self.manager, "list", return_value=applications):
+            result = self.manager.search("test-prefix", "missing")
+
+        self.assertEqual(result, [])
+
+
 if __name__ == "__main__":
     unittest.main()

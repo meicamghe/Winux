@@ -86,6 +86,13 @@ def main():
     )
     app_list_parser.add_argument("--prefix", required=True)
 
+    app_search_parser = app_commands.add_parser(
+        "search",
+        help="Search installed applications"
+    )
+    app_search_parser.add_argument("--prefix", required=True)
+    app_search_parser.add_argument("query")
+
     app_info_parser = app_commands.add_parser(
         "info",
         help="Show installed application details"
@@ -171,6 +178,20 @@ def main():
                     print(f"Version:    {app.get('DisplayVersion') or 'Unknown'}")
                     print(f"Publisher:  {app.get('Publisher') or 'Unknown'}")
                     print(f"Executable: {app.get('executable_path') or 'Not found'}")
+                    print(f"Registry ID: {app.get('registry_id')}")
+
+            elif args.app_command == "search":
+                applications = manager.search(args.prefix, args.query)
+
+                if not applications:
+                    print("No matching applications found.")
+                    return
+
+                for app in applications:
+                    print("-" * 50)
+                    print(f"Name:        {app.get('DisplayName') or 'Unknown'}")
+                    print(f"Version:     {app.get('DisplayVersion') or 'Unknown'}")
+                    print(f"Publisher:   {app.get('Publisher') or 'Unknown'}")
                     print(f"Registry ID: {app.get('registry_id')}")
 
             elif args.app_command == "info":

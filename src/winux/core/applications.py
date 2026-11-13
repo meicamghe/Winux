@@ -163,6 +163,23 @@ class ApplicationManager:
             key=lambda item: item.get("DisplayName", "").lower(),
         )
 
+    def search(self, prefix_name, query):
+        if not isinstance(query, str) or not query.strip():
+            raise ValueError("Search query must not be empty")
+
+        query = query.strip().casefold()
+
+        applications = self.list(prefix_name)
+
+        return [
+            application
+            for application in applications
+            if any(
+                query in str(application.get(field) or "").casefold()
+                for field in ("DisplayName", "Publisher", "DisplayVersion")
+            )
+        ]
+
     def info(self, prefix_name, application_id):
         applications = self.list(prefix_name)
 
