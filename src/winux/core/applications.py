@@ -92,8 +92,15 @@ class ApplicationManager:
         if not value:
             return None
 
-        value = value.strip().strip('"')
-        value = re.sub(r",\s*\d+$", "", value)
+        value = value.strip()
+
+        if value.startswith('"'):
+            match = re.fullmatch(r'"([^"]+)"(?:,\s*-?\d+)?', value)
+            if not match:
+                return None
+            value = match.group(1)
+        else:
+            value = re.sub(r",\s*-?\d+$", "", value).strip()
 
         windows_path = PureWindowsPath(value)
 
