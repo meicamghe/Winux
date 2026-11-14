@@ -62,6 +62,58 @@ class ApplicationRunnerTests(unittest.TestCase):
         self.home_patcher.stop()
         self.temp_dir.cleanup()
 
+    def test_run_foreground_waits_for_application_exit(self):
+        process = Mock()
+        process.wait.return_value = 23
+        self.runtime.run.return_value = process
+
+        result = self.runner.run_foreground(
+            "test-prefix",
+            "Example",
+        )
+
+        self.assertEqual(result, 23)
+        self.runtime.run.assert_called_once_with(
+            self.prefix_path,
+            self.executable,
+            cwd=str(self.executable.parent),
+        )
+        process.wait.assert_called_once_with()
+        self.process_manager.register.assert_not_called()
+
+    def test_run_foreground_rejects_unavailable_runtime(self):
+        self.runtime.is_available.return_value = False
+
+        with self.assertRaisesRegex(RuntimeError, "not available"):
+            self.runner.run_foreground("test-prefix", "Example")
+
+        self.runtime.run.assert_not_called()
+
+    def test_run_foreground_rejects_missing_executable(self):
+        self.runner.application_manager.info.return_value = {
+            "DisplayName": "Missing App",
+            "executable_path": str(self.drive_c / "missing.exe"),
+        }
+
+        with self.assertRaises(FileNotFoundError):
+            self.runner.run_foreground("test-prefix", "Missing")
+
+        self.runtime.run.assert_not_called()
+
+    def test_run_foreground_rejects_executable_outside_prefix(self):
+        outside = self.home / "outside.exe"
+        outside.write_bytes(b"MZ")
+
+        self.runner.application_manager.info.return_value = {
+            "DisplayName": "Outside App",
+            "executable_path": str(outside),
+        }
+
+        with self.assertRaisesRegex(ValueError, "outside the runtime prefix"):
+            self.runner.run_foreground("test-prefix", "Outside")
+
+        self.runtime.run.assert_not_called()
+
     def test_run_launches_application_with_correct_runtime(self):
         result = self.runner.run("test-prefix", "Example")
 

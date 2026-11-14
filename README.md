@@ -156,3 +156,27 @@ License has not yet been selected.
 ## Session continuity
 
 For the current project decisions, implementation boundaries, and next-session checklist, see [docs/SESSION-HANDOFF.md](docs/SESSION-HANDOFF.md).
+
+## Managed Services and Process Management
+
+Winux includes an initial managed-service subsystem for running Windows
+applications in the background through Wine.
+
+Implemented capabilities:
+- Create and manage Winux service definitions.
+- Start, stop, restart, enable, disable, and delete managed services.
+- systemd user-service backend.
+- Configurable restart policies: `no`, `on-failure`, and `always`.
+- Foreground service runner for systemd lifecycle management.
+- Process listing, inspection, stopping, and cleanup.
+- Service metadata stored separately from systemd unit files.
+
+Creating a service does not automatically start or enable it.
+Enabling a service configures it for the user's systemd session.
+
+**Important:** Winux managed services are Linux services that launch Windows
+applications through Wine. This does not mean that Windows Service Control
+Manager services are fully supported by Wine.
+
+The service subsystem is an initial implementation. Actual compatibility
+with specific Windows services and applications must be tested separately.

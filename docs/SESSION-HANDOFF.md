@@ -1,6 +1,6 @@
 # Winux — Project Handoff
 
-Last reviewed: 2026-11-13
+Last reviewed: 2026-11-14
 
 This file is the compact continuity record for future development sessions. It complements the README and architecture documents; it does not replace source code, tests, or detailed design records.
 
@@ -82,3 +82,40 @@ At the start of each new development session:
 ## Known continuity gap
 
 Older project chats may contain implementation details, terminal outputs, and user test observations not reproduced here. This document consolidates the durable decisions currently recoverable; it is not a claim that every historical message has been archived. When a historical detail conflicts with this file, prefer the latest explicit user decision and record the resolution here.
+
+## 2026-11-14 - Managed Services Implementation
+
+### Implemented
+
+- Added `ServiceManager` for managed-service definitions and lifecycle actions.
+- Added a systemd user-service backend.
+- Added a foreground service runner.
+- Added CLI commands:
+  `service create`, `list`, `status`, `start`, `stop`, `restart`,
+  `enable`, `disable`, and `delete`.
+- Added service metadata persistence and validation.
+- Added service and service-runner tests.
+- Kept Winux-managed Linux services distinct from genuine Windows services.
+
+### Verification baseline
+
+Latest verified test result: 176 tests passed.
+The 49 service-specific tests also passed.
+`compileall` and `git diff --check` passed.
+
+The version 0.5.0 wheel built successfully and was verified to contain
+the service manager, systemd backend, and service runner modules.
+The wheel was installed into an isolated temporary virtual environment.
+The installed CLI help commands and imports for all service modules passed.
+
+No real managed service was started or enabled during these checks.
+
+### Important limitations and next steps
+
+- Do not assume that genuine Windows services work under Wine.
+- Do not launch Windows applications or services as root.
+- Do not enable or run real services as part of documentation verification.
+- Test service creation, unit generation, lifecycle handling, and failure
+  recovery with isolated fixtures.
+- Review source-checkout and installed-package behavior of the service runner.
+- Keep documentation synchronized with implementation and tests.

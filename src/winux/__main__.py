@@ -186,6 +186,41 @@ def main():
         help="Remove inactive process records",
     )
 
+
+    service_parser = commands.add_parser(
+        "service",
+        help="Manage background Windows applications",
+    )
+    service_commands = service_parser.add_subparsers(
+        dest="service_command",
+        required=True,
+    )
+
+    create_service_parser = service_commands.add_parser(
+        "create",
+        help="Create a managed service definition",
+    )
+    create_service_parser.add_argument("--name", required=True)
+    create_service_parser.add_argument("--prefix", required=True)
+    create_service_parser.add_argument("--application", required=True)
+    create_service_parser.add_argument(
+        "--restart",
+        choices=("no", "on-failure", "always"),
+        default="on-failure",
+    )
+
+    service_commands.add_parser("list", help="List managed services")
+
+    for action in (
+        "status", "start", "stop", "restart",
+        "enable", "disable", "delete",
+    ):
+        action_parser = service_commands.add_parser(
+            action,
+            help=f"{action.title()} a managed service",
+        )
+        action_parser.add_argument("service_id")
+
     args = parser.parse_args()
 
     try:
@@ -378,6 +413,92 @@ def main():
                 print("[OK] Process records cleaned.")
                 print(f"Removed:   {result['removed']}")
                 print(f"Remaining: {result['remaining']}")
+
+        elif args.command == "service":
+            from winux.core.services import ServiceManager
+            manager = ServiceManager()
+
+            if args.service_command == "create":
+                record = manager.create(
+                    name=args.name,
+                    prefix_name=args.prefix,
+                    application_id=args.application,
+                    restart=args.restart,
+                )
+                print("[OK] Service definition created.")
+                print(f"Name:        {record['name']}")
+                print(f"Service ID:  {record['id']}")
+                print(f"Prefix:      {record['prefix']}")
+                print(f"Application: {record['application']}")
+                print(f"Restart:     {record['restart']}")
+                print("State:       inactive (not started or enabled)")
+
+            elif args.service_command == "list":
+                records = manager.list()
+                if not records:
+                    print("No managed services found.")
+                    return
+
+                for record in records:
+                    status = record.get("status", {})
+                    print("-" * 60)
+                    print(f"Name:        {record.get('name')}")
+                    print(f"Service ID:  {record.get('id')}")
+                    print(f"Application: {record.get('application')}")
+                    print(f"Prefix:      {record.get('prefix')}")
+                    print(
+                        f"Active:      {status.get('active_state', 'unknown')}"
+                    )
+                    print(
+                        f"Enabled:     {status.get('unit_file_state', 'unknown')}"
+                    )
+
+            elif args.service_command == "status":
+                record = manager.get(args.service_id)
+                status = record.get("status", {})
+                print("Service Status")
+                print("-" * 40)
+                print(f"Name:        {record.get('name')}")
+                print(f"Service ID:  {record.get('id')}")
+                print(f"Application: {record.get('application')}")
+                print(f"Prefix:      {record.get('prefix')}")
+                print(f"Load state:  {status.get('load_state', 'unknown')}")
+                print(f"Active:      {status.get('active_state', 'unknown')}")
+                print(f"Sub-state:   {status.get('sub_state', 'unknown')}")
+                print(
+                    f"Enabled:     {status.get('unit_file_state', 'unknown')}"
+                )
+
+            elif args.service_command in (
+                "start", "stop", "restart", "enable", "disable"
+            ):
+                result = getattr(
+                    manager, args.service_command
+                )(args.service_id)
+
+                print(
+                    f"[OK] Service {args.service_command} command completed."
+                )
+                print(f"Name:        {result.get('name')}")
+                print(f"Service ID:  {result.get('id')}")
+
+                status = result.get("status", {})
+                print(
+                    f"Active:      {status.get('active_state', 'unknown')}"
+                )
+                print(
+                    f"Enabled:     {status.get('unit_file_state', 'unknown')}"
+                )
+
+                if args.service_command == "disable":
+                    print(
+                        "Note: disabling does not stop a running service."
+                    )
+
+            elif args.service_command == "delete":
+                record = manager.delete(args.service_id)
+                print(f"[OK] Service deleted: {record['name']}")
+                print(f"Service ID: {record['id']}")
 
         elif args.command == "install":
             from winux.core.installer import Installer

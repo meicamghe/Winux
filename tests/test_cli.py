@@ -314,3 +314,175 @@ class InstallerCliTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ServiceCliTests(unittest.TestCase):
+
+    SERVICE_ID = "a" * 32
+
+    def run_cli(self, arguments):
+        from unittest.mock import patch
+
+        with patch(
+            "winux.core.services.ServiceManager"
+        ) as manager_class:
+            manager = manager_class.return_value
+
+            with patch.object(sys, "argv", ["winux", *arguments]):
+                with patch("builtins.print") as output:
+                    main()
+
+            return manager, output
+
+    def test_service_create(self):
+        from unittest.mock import patch
+
+        record = {
+            "id": self.SERVICE_ID,
+            "name": "Example",
+            "prefix": "test-prefix",
+            "application": "Example App",
+            "restart": "on-failure",
+        }
+
+        with patch(
+            "winux.core.services.ServiceManager"
+        ) as manager_class:
+            manager = manager_class.return_value
+            manager.create.return_value = record
+
+            with patch.object(
+                sys,
+                "argv",
+                [
+                    "winux", "service", "create",
+                    "--name", "Example",
+                    "--prefix", "test-prefix",
+                    "--application", "example-id",
+                ],
+            ):
+                with patch("builtins.print") as output:
+                    main()
+
+        manager.create.assert_called_once_with(
+            name="Example",
+            prefix_name="test-prefix",
+            application_id="example-id",
+            restart="on-failure",
+        )
+        self.assertIn(
+            "not started or enabled",
+            str(output.call_args_list),
+        )
+
+    def test_service_list(self):
+        from unittest.mock import patch
+
+        record = {
+            "id": self.SERVICE_ID,
+            "name": "Example",
+            "application": "Example App",
+            "prefix": "test-prefix",
+            "status": {
+                "active_state": "active",
+                "unit_file_state": "enabled",
+            },
+        }
+
+        with patch(
+            "winux.core.services.ServiceManager"
+        ) as manager_class:
+            manager = manager_class.return_value
+            manager.list.return_value = [record]
+
+            with patch.object(
+                sys, "argv", ["winux", "service", "list"]
+            ):
+                with patch("builtins.print") as output:
+                    main()
+
+        manager.list.assert_called_once_with()
+        self.assertIn("Example", str(output.call_args_list))
+        self.assertIn("active", str(output.call_args_list))
+
+    def test_service_status(self):
+        from unittest.mock import patch
+
+        record = {
+            "id": self.SERVICE_ID,
+            "name": "Example",
+            "application": "Example App",
+            "prefix": "test-prefix",
+            "status": {
+                "load_state": "loaded",
+                "active_state": "inactive",
+                "sub_state": "dead",
+                "unit_file_state": "disabled",
+            },
+        }
+
+        with patch(
+            "winux.core.services.ServiceManager"
+        ) as manager_class:
+            manager = manager_class.return_value
+            manager.get.return_value = record
+
+            with patch.object(
+                sys,
+                "argv",
+                ["winux", "service", "status", self.SERVICE_ID],
+            ):
+                with patch("builtins.print") as output:
+                    main()
+
+        manager.get.assert_called_once_with(self.SERVICE_ID)
+        self.assertIn("inactive", str(output.call_args_list))
+
+    def test_service_lifecycle_commands(self):
+        from unittest.mock import patch
+
+        record = {
+            "id": self.SERVICE_ID,
+            "name": "Example",
+            "status": {
+                "active_state": "inactive",
+                "unit_file_state": "disabled",
+            },
+        }
+
+        actions = (
+            "start", "stop", "restart", "enable", "disable", "delete"
+        )
+
+        for action in actions:
+            with self.subTest(action=action):
+                with patch(
+                    "winux.core.services.ServiceManager"
+                ) as manager_class:
+                    manager = manager_class.return_value
+
+                    if action == "delete":
+                        manager.delete.return_value = record
+                    else:
+                        getattr(manager, action).return_value = record
+
+                    with patch.object(
+                        sys,
+                        "argv",
+                        [
+                            "winux", "service", action,
+                            self.SERVICE_ID,
+                        ],
+                    ):
+                        with patch("builtins.print") as output:
+                            main()
+
+                    getattr(manager, action).assert_called_once_with(
+                        self.SERVICE_ID
+                    )
+
+                    if action == "disable":
+                        self.assertIn(
+                            "does not stop",
+                            str(output.call_args_list),
+                        )

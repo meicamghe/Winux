@@ -193,3 +193,48 @@ The OS layer should consume the same engine and desktop components used during d
 ## 10. Documentation status
 
 This document describes the current source structure and the intended direction of the project. It should be updated when module responsibilities, runtime paths, supported workflows, or the product architecture change.
+
+## Managed Services and Process Management
+
+### Winux Managed Services
+
+Winux Managed Services provide lifecycle management for Windows applications
+running through Wine in the background.
+
+The current implementation includes:
+- `ServiceManager` in `winux/core/services.py`.
+- `SystemdUserBackend` in `winux/platform/service_backend.py`.
+- Internal foreground entry point in `winux/service_runner.py`.
+- CLI commands for create, list, status, start, stop, restart, enable,
+  disable, and delete.
+- Configurable restart policies: `no`, `on-failure`, and `always`.
+
+Service definitions are stored in the Winux user data directory.
+systemd user units are stored under `~/.config/systemd/user/`.
+The service manager and backend do not require root privileges.
+
+Service creation installs a unit and stores its definition. It does not
+automatically start or enable the service. Starting and enabling are separate
+operations.
+
+The systemd user manager controls the lifecycle of the foreground runner.
+The runner launches the configured Windows application through Wine.
+Winux's general ProcessManager remains a separate facility for processes
+launched through the normal application-run workflow.
+
+### Windows Service Compatibility
+
+Winux Managed Services must not be confused with Windows services.
+A Winux-managed service is a Linux user service that launches a Windows
+application. Running a genuine Windows service that depends on Windows
+Service Control Manager APIs is a separate compatibility problem and is
+not guaranteed by the current implementation.
+
+### Security and Reliability
+
+- Windows applications must never be launched as root.
+- Service definitions and unit files are written using atomic file updates.
+- Service IDs and service commands are validated.
+- systemd is invoked without a shell.
+- Service lifecycle errors must not be silently ignored.
+- Actual service execution must be tested separately from unit creation.
