@@ -325,9 +325,19 @@ class Installer:
                             )
 
                         log.write("\nStatus: SUCCESS\n")
+                        log.write("Process Status: SUCCESS\n")
+                        log.write("Verification Status: PENDING\n")
+                        log.write(
+                            "Verification Details: No verification profile configured\n"
+                        )
 
                         return {
                             "success": True,
+                            "process_status": "SUCCESS",
+                            "verification_status": "PENDING",
+                            "verification_details": (
+                                "No verification profile configured"
+                            ),
                             "install_id": install_id,
                             "file": str(source),
                             "installer_architecture": installer_architecture,
@@ -393,6 +403,16 @@ class Installer:
                 "application_executable": fields.get("Application Executable", "Unknown"),
                 "prefix": fields.get("Prefix", "Unknown"),
                 "status": statuses[-1] if statuses else "UNKNOWN",
+                "process_status": fields.get(
+                    "Process Status",
+                    statuses[-1] if statuses else "UNKNOWN"
+                ),
+                "verification_status": fields.get(
+                    "Verification Status", "UNKNOWN"
+                ),
+                "verification_details": fields.get(
+                    "Verification Details", "Not available"
+                ),
                 "log": str(log_file)
             })
 
@@ -409,7 +429,11 @@ class Installer:
             "success": 0,
             "failed": 0,
             "timeout": 0,
-            "unknown": 0
+            "unknown": 0,
+            "verified": 0,
+            "verification_pending": 0,
+            "verification_failed": 0,
+            "verification_unknown": 0
         }
 
         for record in records:
@@ -423,6 +447,16 @@ class Installer:
                 counts["timeout"] += 1
             else:
                 counts["unknown"] += 1
+
+            verification = record["verification_status"].upper()
+            if verification == "VERIFIED":
+                counts["verified"] += 1
+            elif verification == "PENDING":
+                counts["verification_pending"] += 1
+            elif verification == "FAILED":
+                counts["verification_failed"] += 1
+            else:
+                counts["verification_unknown"] += 1
 
         counts["success_rate"] = (
             round(counts["success"] / counts["total"] * 100, 2)

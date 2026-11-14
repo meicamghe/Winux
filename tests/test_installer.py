@@ -154,6 +154,8 @@ class InstallerExecutionTests(unittest.TestCase):
         result = self.installer.install(self.source, "test-prefix")
 
         self.assertTrue(result["success"])
+        self.assertEqual(result["process_status"], "SUCCESS")
+        self.assertEqual(result["verification_status"], "PENDING")
         self.assertEqual(result["installer_architecture"], "x64")
         self.assertEqual(result["prefix"], "test-prefix")
         self.assertEqual(
@@ -163,6 +165,8 @@ class InstallerExecutionTests(unittest.TestCase):
         self.assertEqual(run_patch.call_args.kwargs["timeout"], 3600)
         log = Path(result["log"]).read_text(encoding="utf-8")
         self.assertIn("Status: SUCCESS", log)
+        self.assertIn("Process Status: SUCCESS", log)
+        self.assertIn("Verification Status: PENDING", log)
         self.assertIn("Application Architecture: unknown", log)
 
     def test_install_records_failure_when_runtime_returns_nonzero(self):
@@ -195,8 +199,12 @@ class InstallerExecutionTests(unittest.TestCase):
 
         self.assertEqual(len(history), 1)
         self.assertEqual(history[0]["status"], "SUCCESS")
+        self.assertEqual(history[0]["process_status"], "SUCCESS")
+        self.assertEqual(history[0]["verification_status"], "PENDING")
         self.assertEqual(stats["total"], 1)
         self.assertEqual(stats["success"], 1)
+        self.assertEqual(stats["verified"], 0)
+        self.assertEqual(stats["verification_pending"], 1)
         self.assertEqual(stats["success_rate"], 100.0)
 
 

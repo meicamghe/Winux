@@ -316,7 +316,16 @@ def main():
                     timeout=args.timeout
                 )
 
-                print("[OK] Installation process completed.")
+                print("[OK] Installer process completed.")
+                print(
+                    f"Process status: {result['process_status']}"
+                )
+                print(
+                    f"Verification status: {result['verification_status']}"
+                )
+                print(
+                    f"Verification details: {result['verification_details']}"
+                )
                 print(f"Install ID: {result['install_id']}")
                 print(f"Log file: {result['log']}")
 
@@ -336,6 +345,12 @@ def main():
                 print(f"Type:      {record['type']}")
                 print(f"Prefix:    {record['prefix']}")
                 print(f"Status:    {record['status']}")
+                print(
+                    f"Verification: {record['verification_status']}"
+                )
+                print(
+                    f"Verification details: {record['verification_details']}"
+                )
                 print(f"Log:       {record['log']}")
 
         elif args.command == "stats":
@@ -350,6 +365,16 @@ def main():
             print(f"Timeout:              {counts['timeout']}")
             print(f"Unknown:              {counts['unknown']}")
             print(f"Success rate:         {counts['success_rate']}%")
+            print(f"Verified:             {counts['verified']}")
+            print(
+                f"Verification pending: {counts['verification_pending']}"
+            )
+            print(
+                f"Verification failed:  {counts['verification_failed']}"
+            )
+            print(
+                f"Verification unknown: {counts['verification_unknown']}"
+            )
 
     except Exception as error:
         print(f"[ERROR] {error}", file=sys.stderr)
