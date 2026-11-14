@@ -25,8 +25,15 @@ class ApplicationRunnerTests(unittest.TestCase):
         self.runtime_manager = Mock()
         self.runtime_manager.get.return_value = self.runtime
 
+        self.process_manager = Mock()
+        self.process_manager.register.return_value = {
+            "id": "test-process-id",
+            "status": "running",
+        }
+
         self.runner = ApplicationRunner(
-            runtime_manager=self.runtime_manager
+            runtime_manager=self.runtime_manager,
+            process_manager=self.process_manager,
         )
 
         self.prefix_path = (
@@ -59,6 +66,7 @@ class ApplicationRunnerTests(unittest.TestCase):
         result = self.runner.run("test-prefix", "Example")
 
         self.assertEqual(result["pid"], 4321)
+        self.assertEqual(result["process_id"], "test-process-id")
         self.assertEqual(result["application"], "Example App")
         self.assertEqual(result["executable"], str(self.executable))
         self.assertTrue(Path(result["log"]).is_file())
@@ -71,6 +79,30 @@ class ApplicationRunnerTests(unittest.TestCase):
         self.assertEqual(kwargs["stdin"], -3)
         self.assertEqual(kwargs["stderr"], -2)
         self.assertTrue(kwargs["start_new_session"])
+
+        self.process_manager.register.assert_called_once_with(
+            pid=4321,
+            application="Example App",
+            prefix="test-prefix",
+            runtime="test-runtime",
+            executable=str(self.executable),
+            log=result["log"],
+        )
+
+    def test_run_returns_result_when_process_registration_fails(self):
+        self.process_manager.register.side_effect = OSError(
+            "state storage unavailable"
+        )
+
+        result = self.runner.run("test-prefix", "Example")
+
+        self.assertEqual(result["pid"], 4321)
+        self.assertIsNone(result["process_id"])
+        self.assertEqual(
+            result["process_registration_error"],
+            "state storage unavailable",
+        )
+        self.runtime.run.assert_called_once()
 
     def test_run_fails_when_runtime_is_unavailable(self):
         self.runtime.is_available.return_value = False

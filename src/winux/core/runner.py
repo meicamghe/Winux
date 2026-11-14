@@ -1,18 +1,22 @@
+import logging
 from datetime import datetime
 from pathlib import Path
 
 from winux.core.applications import ApplicationManager
 from winux.core.prefix import PrefixManager
+from winux.core.processes import ProcessManager
 from winux.runtime.manager import RuntimeManager
 
 
 class ApplicationRunner:
-    def __init__(self, runtime_manager=None):
+    def __init__(self, runtime_manager=None, process_manager=None):
         self.runtime_manager = runtime_manager or RuntimeManager()
+        self.process_manager = process_manager or ProcessManager()
         self.prefix_manager = PrefixManager(
             runtime_manager=self.runtime_manager
         )
         self.application_manager = ApplicationManager()
+        self.logger = logging.getLogger("winux.runner")
 
         self.log_dir = (
             Path.home() / ".local/share/winux/logs/app-runs"
@@ -55,9 +59,7 @@ class ApplicationRunner:
             ) from None
 
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-        log_file = self.log_dir / (
-            f"{prefix_name}-{timestamp}.log"
-        )
+        log_file = self.log_dir / f"{prefix_name}-{timestamp}.log"
 
         with log_file.open("ab") as output:
             process = runtime.run(
@@ -70,9 +72,36 @@ class ApplicationRunner:
                 start_new_session=True,
             )
 
-        return {
+        application_name = (
+            application.get("DisplayName") or application_id
+        )
+
+        result = {
             "pid": process.pid,
+            "process_id": None,
             "executable": str(executable),
             "log": str(log_file),
-            "application": application.get("DisplayName"),
+            "application": application_name,
         }
+
+        try:
+            record = self.process_manager.register(
+                pid=process.pid,
+                application=application_name,
+                prefix=prefix_name,
+                runtime=runtime.name,
+                executable=str(executable),
+                log=str(log_file),
+            )
+            result["process_id"] = record["id"]
+        except Exception as error:
+            self.logger.warning(
+                "Application started but process registration failed "
+                "(pid=%s, application=%s): %s",
+                process.pid,
+                application_name,
+                error,
+            )
+            result["process_registration_error"] = str(error)
+
+        return result

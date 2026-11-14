@@ -145,6 +145,47 @@ def main():
         help="Uninstallation timeout in seconds (default: 300)"
     )
 
+    process_parser = commands.add_parser(
+        "process",
+        help="Manage running Windows applications",
+    )
+    process_commands = process_parser.add_subparsers(
+        dest="process_command",
+        required=True,
+    )
+
+    process_list_parser = process_commands.add_parser(
+        "list",
+        help="List tracked processes",
+    )
+    process_list_parser.add_argument(
+        "--running-only",
+        action="store_true",
+    )
+
+    process_info_parser = process_commands.add_parser(
+        "info",
+        help="Show process details",
+    )
+    process_info_parser.add_argument("process_id")
+
+    process_stop_parser = process_commands.add_parser(
+        "stop",
+        help="Stop a tracked process",
+    )
+    process_stop_parser.add_argument("process_id")
+    process_stop_parser.add_argument(
+        "--timeout", type=float, default=5,
+    )
+    process_stop_parser.add_argument(
+        "--force", action="store_true",
+    )
+
+    process_commands.add_parser(
+        "cleanup",
+        help="Remove inactive process records",
+    )
+
     args = parser.parse_args()
 
     try:
@@ -258,6 +299,13 @@ def main():
                 print("[OK] Application started.")
                 print(f"Application: {result['application']}")
                 print(f"PID:         {result['pid']}")
+                if result.get("process_id"):
+                    print(f"Process ID:  {result['process_id']}")
+                if result.get("process_registration_error"):
+                    print(
+                        "[WARNING] Process tracking unavailable: "
+                        f"{result['process_registration_error']}"
+                    )
                 print(f"Executable:  {result['executable']}")
                 print(f"Log:         {result['log']}")
 
@@ -271,6 +319,65 @@ def main():
                 print("[OK] Application uninstalled.")
                 print(f"Application: {result['application']}")
                 print(f"Prefix:      {result['prefix']}")
+
+        elif args.command == "process":
+            from winux.core.processes import ProcessManager
+            manager = ProcessManager()
+
+            if args.process_command == "list":
+                records = manager.list(
+                    include_inactive=not args.running_only
+                )
+
+                if not records:
+                    print("No tracked processes found.")
+                    return
+
+                for record in records:
+                    print("-" * 60)
+                    print(f"ID:          {record.get('id')}")
+                    print(f"PID:         {record.get('pid')}")
+                    print(f"Application: {record.get('application')}")
+                    print(f"Prefix:      {record.get('prefix')}")
+                    print(f"Runtime:     {record.get('runtime')}")
+                    print(f"Status:      {record.get('status')}")
+
+            elif args.process_command == "info":
+                record = manager.get(args.process_id)
+
+                print("Process Information")
+                print("-" * 40)
+                for key in (
+                    "id", "pid", "status", "application",
+                    "prefix", "runtime", "executable",
+                    "command", "log", "started_at", "uid",
+                ):
+                    label = key.replace("_", " ").title()
+                    print(f"{label}: {record.get(key)}")
+
+            elif args.process_command == "stop":
+                result = manager.stop(
+                    args.process_id,
+                    timeout=args.timeout,
+                    force=args.force,
+                )
+
+                if result["stopped"]:
+                    print(f"[OK] Process stopped: {result['pid']}")
+                    if result.get("forced"):
+                        print("Termination: forced (SIGKILL)")
+                else:
+                    print(
+                        f"[WARNING] Process not stopped "
+                        f"(PID: {result.get('pid')}, "
+                        f"status: {result['status']})"
+                    )
+
+            elif args.process_command == "cleanup":
+                result = manager.cleanup()
+                print("[OK] Process records cleaned.")
+                print(f"Removed:   {result['removed']}")
+                print(f"Remaining: {result['remaining']}")
 
         elif args.command == "install":
             from winux.core.installer import Installer

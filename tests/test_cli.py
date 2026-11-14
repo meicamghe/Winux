@@ -148,6 +148,116 @@ class ApplicationCliTests(unittest.TestCase):
         )
 
 
+class ProcessCliTests(unittest.TestCase):
+
+    @patch("winux.core.processes.ProcessManager.list")
+    def test_process_list(self, list_processes):
+        list_processes.return_value = [{
+            "id": "process-123",
+            "pid": 4321,
+            "application": "Example App",
+            "prefix": "test-prefix",
+            "runtime": "wine",
+            "status": "running",
+        }]
+
+        with patch.object(
+            sys, "argv", ["winux", "process", "list"]
+        ):
+            with patch("builtins.print") as output:
+                main()
+
+        list_processes.assert_called_once_with(include_inactive=True)
+        rendered = str(output.call_args_list)
+        self.assertIn("process-123", rendered)
+        self.assertIn("Example App", rendered)
+
+    @patch("winux.core.processes.ProcessManager.list", return_value=[])
+    def test_process_list_running_only(self, list_processes):
+        with patch.object(
+            sys,
+            "argv",
+            ["winux", "process", "list", "--running-only"],
+        ):
+            with patch("builtins.print"):
+                main()
+
+        list_processes.assert_called_once_with(include_inactive=False)
+
+    @patch(
+        "winux.core.processes.ProcessManager.get",
+        return_value={
+            "id": "process-123",
+            "pid": 4321,
+            "status": "running",
+            "application": "Example App",
+            "prefix": "test-prefix",
+            "runtime": "wine",
+            "executable": "/prefix/app.exe",
+            "command": "wine app.exe",
+            "log": "/tmp/app.log",
+            "started_at": "2026-11-14T12:00:00+00:00",
+            "uid": 1000,
+        },
+    )
+    def test_process_info(self, get_process):
+        with patch.object(
+            sys,
+            "argv",
+            ["winux", "process", "info", "process-123"],
+        ):
+            with patch("builtins.print") as output:
+                main()
+
+        get_process.assert_called_once_with("process-123")
+        self.assertIn("Example App", str(output.call_args_list))
+
+    @patch(
+        "winux.core.processes.ProcessManager.stop",
+        return_value={
+            "id": "process-123",
+            "pid": 4321,
+            "status": "exited",
+            "stopped": True,
+            "forced": True,
+        },
+    )
+    def test_process_stop(self, stop_process):
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "winux", "process", "stop", "process-123",
+                "--timeout", "2.5", "--force",
+            ],
+        ):
+            with patch("builtins.print") as output:
+                main()
+
+        stop_process.assert_called_once_with(
+            "process-123",
+            timeout=2.5,
+            force=True,
+        )
+        self.assertIn("SIGKILL", str(output.call_args_list))
+
+    @patch(
+        "winux.core.processes.ProcessManager.cleanup",
+        return_value={"removed": 3, "remaining": 1},
+    )
+    def test_process_cleanup(self, cleanup):
+        with patch.object(
+            sys, "argv", ["winux", "process", "cleanup"]
+        ):
+            with patch("builtins.print") as output:
+                main()
+
+        cleanup.assert_called_once_with()
+        rendered = str(output.call_args_list)
+        self.assertIn("3", rendered)
+        self.assertIn("1", rendered)
+
+
 class InstallerCliTests(unittest.TestCase):
 
     def test_install_command_loads_and_forwards_verification_profile(self):

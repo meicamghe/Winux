@@ -1,0 +1,157 @@
+import json
+import os
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from winux.core.processes import ProcessManager
+
+
+class ProcessManagerTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.state_file = Path(self.temp_dir.name) / "processes.json"
+        self.manager = ProcessManager(state_file=self.state_file)
+
+    def start_process(self):
+        process = subprocess.Popen(["sleep", "60"])
+        self.addCleanup(self.cleanup_process, process)
+        return process
+
+    @staticmethod
+    def cleanup_process(process):
+        if process.poll() is None:
+            process.kill()
+        process.wait()
+
+    def register_process(self, process):
+        return self.manager.register(
+            pid=process.pid,
+            application="Test Application",
+            prefix="test-prefix",
+            runtime="test-runtime",
+            executable="/test/app.exe",
+            log="/tmp/test.log",
+        )
+
+    def test_register_persists_process_metadata(self):
+        process = self.start_process()
+
+        record = self.register_process(process)
+
+        self.assertEqual(record["pid"], process.pid)
+        self.assertEqual(record["status"], "running")
+        self.assertEqual(record["application"], "Test Application")
+        self.assertEqual(record["prefix"], "test-prefix")
+        self.assertTrue(self.state_file.is_file())
+
+        stored = json.loads(self.state_file.read_text())
+        self.assertEqual(len(stored), 1)
+        self.assertEqual(stored[0]["id"], record["id"])
+        self.assertEqual(
+            self.state_file.stat().st_mode & 0o777,
+            0o600,
+        )
+
+    def test_list_reports_running_process(self):
+        process = self.start_process()
+
+        record = self.register_process(process)
+
+        records = self.manager.list()
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["id"], record["id"])
+        self.assertEqual(records[0]["status"], "running")
+
+    def test_stop_terminates_registered_process(self):
+        process = self.start_process()
+        record = self.register_process(process)
+
+        result = self.manager.stop(
+            record["id"],
+            timeout=2,
+        )
+
+        process.wait(timeout=3)
+
+        self.assertTrue(result["stopped"])
+        self.assertEqual(result["status"], "exited")
+
+    def test_stop_rejects_invalid_timeouts(self):
+        process = self.start_process()
+        record = self.register_process(process)
+
+        for timeout in (float("nan"), float("inf"), float("-inf"), -1, True):
+            with self.subTest(timeout=timeout):
+                with self.assertRaises(ValueError):
+                    self.manager.stop(record["id"], timeout=timeout)
+
+        self.assertIsNone(process.poll())
+
+    def test_pid_reuse_is_detected_as_stale(self):
+        process = self.start_process()
+
+        record = self.register_process(process)
+
+        with patch.object(
+            self.manager,
+            "_process_start_time",
+            return_value="different-start-time",
+        ):
+            self.assertEqual(
+                self.manager.get(record["id"])["status"],
+                "stale",
+            )
+
+            result = self.manager.stop(record["id"], timeout=0)
+            self.assertEqual(result["status"], "stale")
+            self.assertFalse(result["stopped"])
+
+        self.assertIsNone(process.poll())
+
+    def test_cleanup_removes_stale_records(self):
+        process = self.start_process()
+
+        self.register_process(process)
+
+        with patch.object(
+            self.manager,
+            "_process_start_time",
+            return_value="different-start-time",
+        ):
+            result = self.manager.cleanup()
+
+        self.assertEqual(result["removed"], 1)
+        self.assertEqual(result["remaining"], 0)
+        self.assertEqual(self.manager.list(), [])
+
+    def test_register_rejects_nonexistent_process(self):
+        with self.assertRaises(ProcessLookupError):
+            self.manager.register(
+                pid=999999999,
+                application="Missing",
+                prefix="test",
+                runtime="test",
+                executable="/missing.exe",
+            )
+
+    def test_get_rejects_unknown_process_id(self):
+        with self.assertRaises(KeyError):
+            self.manager.get("unknown")
+
+    def test_state_file_must_not_be_a_symlink(self):
+        target = Path(self.temp_dir.name) / "target.json"
+        target.write_text("[]", encoding="utf-8")
+
+        self.state_file.symlink_to(target)
+
+        with self.assertRaisesRegex(ValueError, "symbolic link"):
+            self.manager.list()
+
+
+if __name__ == "__main__":
+    unittest.main()
