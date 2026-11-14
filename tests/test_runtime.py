@@ -35,6 +35,26 @@ class RuntimeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             manager.register(WineRuntime())
 
+    def test_manager_rejects_runtime_missing_required_methods(self):
+        manager = RuntimeManager()
+
+        class IncompleteRuntime:
+            name = "incomplete"
+
+            def is_available(self):
+                return True
+
+        with self.assertRaisesRegex(TypeError, "missing required methods"):
+            manager.register(IncompleteRuntime())
+
+    def test_manager_rejects_runtime_name_with_whitespace(self):
+        manager = RuntimeManager()
+        runtime = Mock(spec=Runtime)
+        runtime.name = " invalid "
+
+        with self.assertRaisesRegex(ValueError, "surrounding whitespace"):
+            manager.register(runtime)
+
     def test_manager_can_register_another_runtime(self):
         manager = RuntimeManager()
         runtime = Mock(spec=Runtime)

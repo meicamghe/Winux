@@ -14,11 +14,34 @@ class RuntimePluginIntegrationTests(unittest.TestCase):
 
             (root / "test_runtime_plugin.py").write_text(
                 """
+from pathlib import Path
+
 class TestRuntime:
     name = "test-runtime"
 
     def is_available(self):
         return True
+
+    def version(self):
+        return "1.0"
+
+    def validate_prefix(self, prefix_path: Path) -> bool:
+        return True
+
+    def create_prefix(self, prefix_path: Path, architecture: str):
+        return None
+
+    def run(self, prefix_path: Path, executable: Path, args=None, **kwargs):
+        return None
+
+    def install(self, prefix_path: Path, installer: Path, **kwargs):
+        return None
+
+    def query_registry(self, prefix_path: Path, key: str, **kwargs):
+        return None
+
+    def uninstall(self, prefix_path: Path, command, **kwargs):
+        return None
 """
             )
 

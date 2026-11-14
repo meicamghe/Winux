@@ -7,6 +7,16 @@ class RuntimeManager:
     """Discover, register and select compatibility runtimes."""
 
     ENTRY_POINT_GROUP = "winux.runtimes"
+    REQUIRED_METHODS = (
+        "is_available",
+        "version",
+        "validate_prefix",
+        "create_prefix",
+        "run",
+        "install",
+        "query_registry",
+        "uninstall",
+    )
 
     def __init__(self, default_runtime="wine", discover=True):
         self._runtimes = {}
@@ -25,6 +35,20 @@ class RuntimeManager:
 
         if not isinstance(name, str) or not name.strip():
             raise ValueError("Runtime must have a valid name")
+
+        if name != name.strip():
+            raise ValueError("Runtime name cannot contain surrounding whitespace")
+
+        missing = [
+            method
+            for method in self.REQUIRED_METHODS
+            if not callable(getattr(runtime, method, None))
+        ]
+        if missing:
+            raise TypeError(
+                f"Runtime '{name}' is missing required methods: "
+                + ", ".join(missing)
+            )
 
         if name in self._runtimes:
             raise ValueError(f"Runtime already registered: {name}")
