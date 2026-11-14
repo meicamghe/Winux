@@ -1,5 +1,8 @@
+import json
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from winux.__main__ import main
@@ -143,6 +146,60 @@ class ApplicationCliTests(unittest.TestCase):
             "/tmp/apps.csv",
             "csv",
         )
+
+
+class InstallerCliTests(unittest.TestCase):
+
+    def test_install_command_loads_and_forwards_verification_profile(self):
+        profile = {
+            "checks": [{
+                "type": "file",
+                "path": r"Program Files\\Example\\app.exe",
+            }]
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            profile_path = Path(directory) / "profile.json"
+            profile_path.write_text(
+                json.dumps(profile),
+                encoding="utf-8",
+            )
+
+            with patch("winux.core.installer.Installer") as installer_class:
+                installer = installer_class.return_value
+                installer.install.return_value = {
+                    "process_status": "SUCCESS",
+                    "verification_status": "VERIFIED",
+                    "verification_details": "file found",
+                    "install_id": "test-install",
+                    "log": "/tmp/test.log",
+                }
+
+                with patch.object(
+                    sys,
+                    "argv",
+                    [
+                        "winux",
+                        "install",
+                        "example.exe",
+                        "--prefix",
+                        "test-prefix",
+                        "--verification-profile",
+                        str(profile_path),
+                    ],
+                ):
+                    with patch("builtins.print"):
+                        main()
+
+                installer.verification_manager.validate_profile.assert_called_once_with(
+                    profile
+                )
+                installer.install.assert_called_once_with(
+                    installer_file="example.exe",
+                    prefix_name="test-prefix",
+                    timeout=3600,
+                    verification_profile=profile,
+                )
 
 
 if __name__ == "__main__":

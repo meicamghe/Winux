@@ -11,12 +11,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from winux.core.prefix import PrefixManager
+from winux.core.verification import VerificationManager
 from winux.runtime.manager import RuntimeManager
 
 
 class Installer:
-    def __init__(self, runtime_manager=None):
+    def __init__(self, runtime_manager=None, verification_manager=None):
         self.runtime_manager = runtime_manager or RuntimeManager()
+        self.verification_manager = (
+            verification_manager or VerificationManager()
+        )
         self.prefix_manager = PrefixManager(
             runtime_manager=self.runtime_manager
         )
@@ -223,7 +227,18 @@ class Installer:
 
         raise ValueError("Unsupported installer format")
 
-    def install(self, installer_file, prefix_name, timeout=3600):
+    def install(
+        self,
+        installer_file,
+        prefix_name,
+        timeout=3600,
+        verification_profile=None,
+    ):
+        if verification_profile is not None:
+            self.verification_manager.validate_profile(
+                verification_profile
+            )
+
         source = Path(installer_file).expanduser()
 
         if source.is_symlink():
@@ -324,20 +339,48 @@ class Installer:
                                 f"Installer exited with code {result.returncode}"
                             )
 
+                        verification_status = "PENDING"
+                        verification_details = (
+                            "No verification profile configured"
+                        )
+
+                        if verification_profile is not None:
+                            try:
+                                verification = self.verification_manager.verify(
+                                    verification_profile,
+                                    prefix_path,
+                                    runtime=runtime,
+                                )
+                                verification_status = verification["status"]
+                                verification_details = verification["details"]
+
+                                for check_result in verification.get("checks", []):
+                                    log.write(
+                                        "Verification Check: "
+                                        f"{check_result['type']} | "
+                                        f"{'PASS' if check_result['passed'] else 'FAIL'} | "
+                                        f"{check_result['details']}\n"
+                                    )
+                            except Exception as error:
+                                verification_status = "FAILED"
+                                verification_details = (
+                                    f"Verification error: {error}"
+                                )
+
                         log.write("\nStatus: SUCCESS\n")
                         log.write("Process Status: SUCCESS\n")
-                        log.write("Verification Status: PENDING\n")
                         log.write(
-                            "Verification Details: No verification profile configured\n"
+                            f"Verification Status: {verification_status}\n"
+                        )
+                        log.write(
+                            f"Verification Details: {verification_details}\n"
                         )
 
                         return {
                             "success": True,
                             "process_status": "SUCCESS",
-                            "verification_status": "PENDING",
-                            "verification_details": (
-                                "No verification profile configured"
-                            ),
+                            "verification_status": verification_status,
+                            "verification_details": verification_details,
                             "install_id": install_id,
                             "file": str(source),
                             "installer_architecture": installer_architecture,
@@ -528,9 +571,23 @@ class Installer:
                     f"Application #{index} has an unsupported installer type"
                 )
 
+            verification_profile = item.get("verification_profile")
+
+            if verification_profile is not None:
+                try:
+                    self.verification_manager.validate_profile(
+                        verification_profile
+                    )
+                except (TypeError, ValueError) as error:
+                    raise ValueError(
+                        f"Application #{index} has an invalid "
+                        f"verification_profile: {error}"
+                    ) from error
+
             validated.append({
                 "file": str(source),
-                "timeout": timeout
+                "timeout": timeout,
+                "verification_profile": verification_profile,
             })
 
         results = []
@@ -540,7 +597,8 @@ class Installer:
                 result = self.install(
                     installer_file=item["file"],
                     prefix_name=prefix_name,
-                    timeout=item["timeout"]
+                    timeout=item["timeout"],
+                    verification_profile=item["verification_profile"],
                 )
 
                 results.append({

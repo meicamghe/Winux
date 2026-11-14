@@ -1,5 +1,7 @@
 import argparse
+import json
 import sys
+from pathlib import Path
 
 from winux import __version__
 
@@ -54,6 +56,10 @@ def main():
         help="JSON manifest for batch installation"
     )
     install_parser.add_argument("--prefix", required=True)
+    install_parser.add_argument(
+        "--verification-profile",
+        help="JSON file containing post-installation verification checks"
+    )
     install_parser.add_argument(
         "--timeout",
         type=int,
@@ -268,13 +274,20 @@ def main():
 
         elif args.command == "install":
             from winux.core.installer import Installer
-            installer = Installer()
 
             if args.manifest:
                 if args.file:
                     raise ValueError(
                         "Use either an installer file or --manifest, not both"
                     )
+
+                if args.verification_profile:
+                    raise ValueError(
+                        "--verification-profile cannot be used with --manifest; "
+                        "define profiles inside the manifest instead"
+                    )
+
+                installer = Installer()
 
                 print(f"Manifest: {args.manifest}")
                 print(f"Target prefix: {args.prefix}")
@@ -306,6 +319,40 @@ def main():
                         "Provide an installer file or use --manifest"
                     )
 
+                verification_profile = None
+
+                if args.verification_profile:
+                    profile_path = Path(
+                        args.verification_profile
+                    ).expanduser()
+
+                    if profile_path.is_symlink():
+                        raise ValueError(
+                            "Verification profile must not be a symbolic link"
+                        )
+
+                    if not profile_path.is_file():
+                        raise FileNotFoundError(
+                            f"Verification profile not found: {profile_path}"
+                        )
+
+                    try:
+                        with profile_path.open(
+                            "r", encoding="utf-8"
+                        ) as file:
+                            verification_profile = json.load(file)
+                    except json.JSONDecodeError as error:
+                        raise ValueError(
+                            f"Invalid verification profile JSON: {error}"
+                        ) from error
+
+                installer = Installer()
+
+                if verification_profile is not None:
+                    installer.verification_manager.validate_profile(
+                        verification_profile
+                    )
+
                 print(f"Installer: {args.file}")
                 print(f"Target prefix: {args.prefix}")
                 print("Starting installation...")
@@ -313,13 +360,12 @@ def main():
                 result = installer.install(
                     installer_file=args.file,
                     prefix_name=args.prefix,
-                    timeout=args.timeout
+                    timeout=args.timeout,
+                    verification_profile=verification_profile,
                 )
 
                 print("[OK] Installer process completed.")
-                print(
-                    f"Process status: {result['process_status']}"
-                )
+                print(f"Process status: {result['process_status']}")
                 print(
                     f"Verification status: {result['verification_status']}"
                 )

@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 from types import SimpleNamespace
 
 from winux.core.installer import Installer
+from winux.core.verification import VerificationManager
 
 
 class InstallerArchitectureTests(unittest.TestCase):
@@ -190,6 +191,126 @@ class InstallerExecutionTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Timeout must be positive"):
                 self.installer.install(self.source, "test-prefix", timeout=0)
 
+    def test_install_verifies_application_when_profile_is_configured(self):
+        self.prepare_install()
+        profile = {"checks": [{"type": "file", "path": "Program Files/App/app.exe"}]}
+
+        with patch.object(
+            self.installer.verification_manager,
+            "verify",
+            return_value={
+                "status": "VERIFIED",
+                "details": "file: application executable found",
+                "checks": [
+                    {
+                        "type": "file",
+                        "passed": True,
+                        "details": "application executable found",
+                    }
+                ],
+            },
+        ) as verify:
+            result = self.installer.install(
+                self.source, "test-prefix",
+                verification_profile=profile,
+            )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["process_status"], "SUCCESS")
+        self.assertEqual(result["verification_status"], "VERIFIED")
+        self.assertEqual(
+            result["verification_details"],
+            "file: application executable found",
+        )
+        verify.assert_called_once_with(
+            profile, self.prefix_path, runtime=self.runtime
+        )
+
+        log = Path(result["log"]).read_text(encoding="utf-8")
+        self.assertIn("Verification Status: VERIFIED", log)
+        self.assertIn(
+            "Verification Check: file | PASS | application executable found",
+            log,
+        )
+
+    def test_verification_failure_does_not_fail_successful_installation(self):
+        self.prepare_install()
+        profile = {"checks": [{"type": "file", "path": "App/missing.exe"}]}
+
+        with patch.object(
+            self.installer.verification_manager,
+            "verify",
+            return_value={
+                "status": "FAILED",
+                "details": "file: App/missing.exe not found",
+                "checks": [
+                    {
+                        "type": "file",
+                        "passed": False,
+                        "details": "App/missing.exe not found",
+                    }
+                ],
+            },
+        ):
+            result = self.installer.install(
+                self.source, "test-prefix",
+                verification_profile=profile,
+            )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["process_status"], "SUCCESS")
+        self.assertEqual(result["verification_status"], "FAILED")
+        self.assertIn("not found", result["verification_details"])
+
+        log = Path(result["log"]).read_text(encoding="utf-8")
+        self.assertIn("Status: SUCCESS", log)
+        self.assertIn("Process Status: SUCCESS", log)
+        self.assertIn("Verification Status: FAILED", log)
+        self.assertIn("Verification Check: file | FAIL", log)
+
+    def test_install_without_profile_does_not_call_verification(self):
+        self.prepare_install()
+
+        with patch.object(
+            self.installer.verification_manager, "verify"
+        ) as verify:
+            result = self.installer.install(self.source, "test-prefix")
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["process_status"], "SUCCESS")
+        self.assertEqual(result["verification_status"], "PENDING")
+        verify.assert_not_called()
+
+    def test_verification_exception_does_not_fail_successful_installation(self):
+        self.prepare_install()
+        profile = {"checks": [{"type": "registry", "key": "Software\\Example"}]}
+
+        with patch.object(
+            self.installer.verification_manager,
+            "verify",
+            side_effect=RuntimeError("registry query failed"),
+        ):
+            result = self.installer.install(
+                self.source, "test-prefix",
+                verification_profile=profile,
+            )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["process_status"], "SUCCESS")
+        self.assertEqual(result["verification_status"], "FAILED")
+        self.assertIn(
+            "Verification error: registry query failed",
+            result["verification_details"],
+        )
+
+        log = Path(result["log"]).read_text(encoding="utf-8")
+        self.assertIn("Status: SUCCESS", log)
+        self.assertIn("Verification Status: FAILED", log)
+        self.assertIn(
+            "Verification Details: Verification error: registry query failed",
+            log,
+        )
+
     def test_history_and_stats_report_install_results(self):
         self.prepare_install()
         self.installer.install(self.source, "test-prefix")
@@ -214,6 +335,7 @@ class InstallerBatchTests(unittest.TestCase):
         self.root = Path(self.temp_dir.name)
 
         self.installer = Installer.__new__(Installer)
+        self.installer.verification_manager = VerificationManager()
 
         self.file1 = self.root / "app1.exe"
         self.file2 = self.root / "app2.msi"
@@ -277,6 +399,61 @@ class InstallerBatchTests(unittest.TestCase):
                 )
 
         mock_install.assert_not_called()
+
+    def test_batch_rejects_invalid_profile_before_any_install(self):
+        self.write_manifest([
+            {"file": str(self.file1)},
+            {
+                "file": str(self.file2),
+                "verification_profile": {
+                    "checks": [{"type": "unsupported"}]
+                },
+            },
+        ])
+
+        with patch.object(self.installer, "install") as mock_install:
+            with self.assertRaisesRegex(
+                ValueError, "invalid verification_profile"
+            ):
+                self.installer.install_batch(
+                    self.manifest, "test-prefix"
+                )
+
+        mock_install.assert_not_called()
+
+    def test_batch_passes_valid_profiles_to_install(self):
+        profile = {
+            "checks": [{
+                "type": "file",
+                "path": r"Program Files\\Example\\app.exe",
+            }]
+        }
+        self.write_manifest([
+            {
+                "file": str(self.file1),
+                "verification_profile": profile,
+            },
+            {"file": str(self.file2)},
+        ])
+
+        with patch.object(
+            self.installer,
+            "install",
+            return_value={"success": True, "install_id": "test"},
+        ) as mock_install:
+            result = self.installer.install_batch(
+                self.manifest, "test-prefix"
+            )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(mock_install.call_count, 2)
+        self.assertEqual(
+            mock_install.call_args_list[0].kwargs["verification_profile"],
+            profile,
+        )
+        self.assertIsNone(
+            mock_install.call_args_list[1].kwargs["verification_profile"]
+        )
 
     def test_batch_rejects_invalid_timeout(self):
         self.write_manifest([
