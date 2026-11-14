@@ -90,8 +90,9 @@ class RuntimeTests(unittest.TestCase):
 
         self.assertIs(manager.get("external-runtime"), runtime)
 
-    def test_manager_ignores_broken_runtime_plugins(self):
+    def test_manager_records_plugin_load_errors(self):
         broken_plugin = Mock()
+        broken_plugin.name = "broken-runtime"
         broken_plugin.load.side_effect = RuntimeError("plugin failed")
 
         with patch("winux.runtime.manager.entry_points", return_value=[broken_plugin]):
@@ -99,6 +100,54 @@ class RuntimeTests(unittest.TestCase):
 
         self.assertIn("wine", manager.list())
         self.assertEqual(len(manager.list()), 1)
+
+        errors = manager.plugin_errors()
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0]["plugin"], "broken-runtime")
+        self.assertEqual(errors[0]["stage"], "load")
+        self.assertIn("plugin failed", errors[0]["error"])
+
+    def test_manager_records_plugin_registration_errors(self):
+        plugin = Mock()
+        plugin.name = "invalid-runtime"
+        plugin.load.return_value = lambda: object()
+
+        with patch("winux.runtime.manager.entry_points", return_value=[plugin]):
+            manager = RuntimeManager()
+
+        errors = manager.plugin_errors()
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0]["plugin"], "invalid-runtime")
+        self.assertEqual(errors[0]["stage"], "registration")
+        self.assertIn("valid name", errors[0]["error"])
+
+    def test_manager_records_discovery_errors(self):
+        with patch(
+            "winux.runtime.manager.entry_points",
+            side_effect=RuntimeError("discovery failed"),
+        ):
+            manager = RuntimeManager()
+
+        errors = manager.plugin_errors()
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0]["stage"], "discovery")
+        self.assertIn("discovery failed", errors[0]["error"])
+
+    def test_plugin_errors_returns_independent_snapshot(self):
+        plugin = Mock()
+        plugin.name = "broken-runtime"
+        plugin.load.side_effect = RuntimeError("plugin failed")
+
+        with patch("winux.runtime.manager.entry_points", return_value=[plugin]):
+            manager = RuntimeManager()
+
+        errors = manager.plugin_errors()
+        errors[0]["plugin"] = "modified"
+        errors.append({"plugin": "injected"})
+
+        stored_errors = manager.plugin_errors()
+        self.assertEqual(len(stored_errors), 1)
+        self.assertEqual(stored_errors[0]["plugin"], "broken-runtime")
 
     def test_manager_rejects_unavailable_default_runtime(self):
         manager = RuntimeManager()
