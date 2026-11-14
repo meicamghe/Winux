@@ -1,10 +1,10 @@
 import json
 import logging
-import os
 import re
 import shutil
-import subprocess
 from pathlib import Path
+
+from winux.runtime.manager import RuntimeManager
 
 
 class PrefixManager:
@@ -17,7 +17,8 @@ class PrefixManager:
 
     LEGACY_ARCHITECTURE = "win64"
 
-    def __init__(self):
+    def __init__(self, runtime_manager=None):
+        self.runtime_manager = runtime_manager or RuntimeManager()
         self.base_dir = Path.home() / ".local/share/winux/prefixes"
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.base_dir = self.base_dir.resolve()
@@ -53,9 +54,16 @@ class PrefixManager:
         if path.is_symlink() or not path.is_dir():
             raise FileNotFoundError(name)
 
-        registry = path / "system.reg"
+        metadata = self._read_metadata(path)
+        runtime_name = metadata.get(
+            "runtime", self.runtime_manager.get_default_name()
+        )
 
-        if registry.is_symlink() or not registry.is_file():
+        if not isinstance(runtime_name, str) or not runtime_name.strip():
+            raise ValueError("Invalid prefix runtime metadata")
+
+        runtime = self.runtime_manager.get(runtime_name)
+        if not runtime.validate_prefix(path):
             raise ValueError("Invalid Winux prefix")
 
         if path.resolve().parent != self.base_dir:
@@ -63,22 +71,46 @@ class PrefixManager:
 
         return path
 
-    def get_architecture(self, name):
-        path = self._get_valid_path(name)
+    def _read_metadata(self, path):
         metadata = path / ".winux-prefix.json"
 
-        # Prefixes created by Winux Alpha 0.5 were all win64.
         if not metadata.exists():
-            return self.LEGACY_ARCHITECTURE
+            return {
+                "name": path.name,
+                "architecture": self.LEGACY_ARCHITECTURE,
+                "runtime": self.runtime_manager.get_default_name(),
+                "format_version": 1,
+            }
 
         if metadata.is_symlink() or not metadata.is_file():
             raise ValueError("Invalid prefix metadata")
 
         try:
             data = json.loads(metadata.read_text(encoding="utf-8"))
-            architecture = data["architecture"]
-        except (OSError, ValueError, KeyError, TypeError) as error:
-            raise ValueError("Unable to read prefix architecture") from error
+        except (OSError, ValueError, TypeError) as error:
+            raise ValueError("Unable to read prefix metadata") from error
+
+        if not isinstance(data, dict):
+            raise ValueError("Invalid prefix metadata")
+
+        return data
+
+    def get_runtime(self, name):
+        path = self._get_valid_path(name)
+        metadata = self._read_metadata(path)
+        runtime_name = metadata.get(
+            "runtime", self.runtime_manager.get_default_name()
+        )
+
+        if not isinstance(runtime_name, str) or not runtime_name.strip():
+            raise ValueError("Invalid prefix runtime metadata")
+
+        return self.runtime_manager.get(runtime_name)
+
+    def get_architecture(self, name):
+        path = self._get_valid_path(name)
+        data = self._read_metadata(path)
+        architecture = data.get("architecture")
 
         if architecture != "win64":
             raise ValueError("Invalid prefix architecture metadata")
@@ -89,9 +121,12 @@ class PrefixManager:
         self.validate_name(name)
         architecture = self.normalize_architecture(architecture)
 
-        wineboot = shutil.which("wineboot")
-        if not wineboot:
-            raise RuntimeError("wineboot not found")
+        runtime = self.runtime_manager.get()
+
+        if not runtime.is_available():
+            raise RuntimeError(
+                f"Runtime is not available: {self.runtime_manager.get_default_name()}"
+            )
 
         path = self.base_dir / name
 
@@ -100,30 +135,21 @@ class PrefixManager:
 
         path.mkdir(mode=0o700)
 
-        env = os.environ.copy()
-        env["WINEPREFIX"] = str(path)
-        env["WINEARCH"] = architecture
-
         try:
-            result = subprocess.run(
-                [wineboot, "--init"],
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=180
-            )
+            result = runtime.create_prefix(path, architecture)
 
             if result.returncode != 0:
                 raise RuntimeError(
-                    result.stderr.strip() or "Wine initialization failed"
+                    result.stderr.strip() or "Runtime prefix initialization failed"
                 )
 
-            if not (path / "system.reg").is_file():
-                raise RuntimeError("Invalid Wine prefix")
+            if not runtime.validate_prefix(path):
+                raise RuntimeError("Runtime created an invalid prefix")
 
             metadata = {
                 "name": name,
                 "architecture": architecture,
+                "runtime": runtime.name,
                 "format_version": 1
             }
 
@@ -146,13 +172,31 @@ class PrefixManager:
             raise
 
     def list(self):
-        return sorted(
-            p.name for p in self.base_dir.iterdir()
-            if not p.is_symlink()
-            and p.is_dir()
-            and (p / "system.reg").is_file()
-            and not (p / "system.reg").is_symlink()
-        )
+        prefixes = []
+
+        for path in self.base_dir.iterdir():
+            if path.is_symlink() or not path.is_dir():
+                continue
+
+            try:
+                metadata = self._read_metadata(path)
+                runtime_name = metadata.get(
+                    "runtime", self.runtime_manager.get_default_name()
+                )
+
+                if not isinstance(runtime_name, str) or not runtime_name.strip():
+                    raise ValueError("Invalid prefix runtime metadata")
+
+                runtime = self.runtime_manager.get(runtime_name)
+
+                if runtime.validate_prefix(path):
+                    prefixes.append(path.name)
+            except Exception:
+                self.logger.exception(
+                    "Prefix validation failed: %s", path.name
+                )
+
+        return sorted(prefixes)
 
     def get_path(self, name):
         return self._get_valid_path(name)

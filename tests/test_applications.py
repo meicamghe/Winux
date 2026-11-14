@@ -13,9 +13,22 @@ class ApplicationManagerTests(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.prefix_path = Path(self.temp_dir.name) / "prefix"
         (self.prefix_path / "drive_c").mkdir(parents=True)
+        self.runtime = Mock()
+        self.runtime.name = "test-runtime"
+        self.runtime.is_available.return_value = True
+        self.runtime.query_registry.return_value = Mock(
+            returncode=0, stdout="", stderr=""
+        )
+        self.runtime.uninstall.return_value = Mock(returncode=0)
+
+        self.runtime_manager = Mock()
+        self.runtime_manager.get.return_value = self.runtime
+
         self.manager = object.__new__(ApplicationManager)
+        self.manager.runtime_manager = self.runtime_manager
         self.manager.prefix_manager = Mock()
         self.manager.prefix_manager.get_path.return_value = self.prefix_path
+        self.manager.prefix_manager.get_runtime.return_value = self.runtime
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -121,14 +134,15 @@ HKEY_CURRENT_USER\\Software\\App\\Two
         }
 
         with patch.object(self.manager, "info", return_value=application):
-            with patch("winux.core.applications.subprocess.run") as run:
+            with patch.object(self.runtime, "uninstall") as run:
                 run.return_value.returncode = 0
                 result = self.manager.uninstall("test-prefix", "Example")
 
         self.assertTrue(result["success"])
         self.assertEqual(result["application"], "Example App")
-        self.assertEqual(run.call_args.args[0][1], "C:\\\\Program Files\\\\Example\\\\uninstall.exe")
-        self.assertIn("/quiet", run.call_args.args[0])
+        self.assertEqual(run.call_args.args[0], self.prefix_path)
+        self.assertEqual(run.call_args.args[1][0], "C:\\\\Program Files\\\\Example\\\\uninstall.exe")
+        self.assertIn("/quiet", run.call_args.args[1])
 
     def test_uninstall_falls_back_to_uninstall_string(self):
         application = {
@@ -138,12 +152,12 @@ HKEY_CURRENT_USER\\Software\\App\\Two
         }
 
         with patch.object(self.manager, "info", return_value=application):
-            with patch("winux.core.applications.subprocess.run") as run:
+            with patch.object(self.runtime, "uninstall") as run:
                 run.return_value.returncode = 0
                 result = self.manager.uninstall("test-prefix", "Example")
 
         self.assertTrue(result["success"])
-        self.assertIn("/remove", run.call_args.args[0])
+        self.assertIn("/remove", run.call_args.args[1])
 
     def test_uninstall_rejects_application_without_uninstaller(self):
         application = {
@@ -163,7 +177,7 @@ HKEY_CURRENT_USER\\Software\\App\\Two
         }
 
         with patch.object(self.manager, "info", return_value=application):
-            with patch("winux.core.applications.subprocess.run") as run:
+            with patch.object(self.runtime, "uninstall") as run:
                 run.return_value.returncode = 7
                 with self.assertRaisesRegex(RuntimeError, "exited with code 7"):
                     self.manager.uninstall("test-prefix", "Example")

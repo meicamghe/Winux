@@ -11,11 +11,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from winux.core.prefix import PrefixManager
+from winux.runtime.manager import RuntimeManager
 
 
 class Installer:
-    def __init__(self):
-        self.prefix_manager = PrefixManager()
+    def __init__(self, runtime_manager=None):
+        self.runtime_manager = runtime_manager or RuntimeManager()
+        self.prefix_manager = PrefixManager(
+            runtime_manager=self.runtime_manager
+        )
 
         self.data_dir = Path.home() / ".local/share/winux"
         self.log_dir = self.data_dir / "logs" / "installations"
@@ -255,18 +259,11 @@ class Installer:
 
         prefix_path = self.prefix_manager.get_path(prefix_name)
 
-        if extension == ".exe":
-            executable = shutil.which("wine")
-            command = [executable, str(source)]
-        else:
-            executable = shutil.which("msiexec")
-            command = [executable, "/i", str(source)]
+        runtime = self.prefix_manager.get_runtime(prefix_name)
 
-        if not executable:
-            raise RuntimeError("Required Wine component not found")
+        if not runtime.is_available():
+            raise RuntimeError(f"Runtime is not available: {runtime.name}")
 
-        env = os.environ.copy()
-        env["WINEPREFIX"] = str(prefix_path)
         prefix_architecture = self.prefix_manager.get_architecture(prefix_name)
 
         install_id = uuid.uuid4().hex[:12]
@@ -287,7 +284,7 @@ class Installer:
             if inspection_warning:
                 log.write(f"Inspection Warning: {inspection_warning}\n")
             log.write(f"Prefix: {prefix_name}\n")
-            log.write(f"Command: {command!r}\n")
+            log.write(f"Runtime: {runtime.name}\n")
             log.write("=" * 60 + "\n")
             log.flush()
 
@@ -314,13 +311,12 @@ class Installer:
                     log.flush()
 
                     try:
-                        result = subprocess.run(
-                            command,
-                            env=env,
+                        result = runtime.install(
+                            prefix_path,
+                            source,
                             stdout=log,
                             stderr=subprocess.STDOUT,
                             timeout=timeout,
-                            check=False
                         )
 
                         if result.returncode != 0:

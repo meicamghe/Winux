@@ -1,6 +1,8 @@
 import argparse
 import sys
 
+from winux import __version__
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -11,7 +13,7 @@ def main():
     parser.add_argument(
         "--version",
         action="version",
-        version="Winux Alpha 0.5"
+        version=f"Winux Alpha {__version__}"
     )
 
     commands = parser.add_subparsers(dest="command", required=True)
@@ -141,8 +143,8 @@ def main():
 
     try:
         if args.command == "doctor":
-            from winux.platform.wine import check_wine
-            check_wine()
+            from winux.platform.runtime import check_runtime
+            check_runtime()
 
         elif args.command == "prefix":
             from winux.core.prefix import PrefixManager

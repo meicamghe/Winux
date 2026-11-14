@@ -1,12 +1,10 @@
 import csv
 import json
-import os
 import re
-import shutil
-import subprocess
 from pathlib import Path, PureWindowsPath
 
 from winux.core.prefix import PrefixManager
+from winux.runtime.manager import RuntimeManager
 
 
 class ApplicationManager:
@@ -27,24 +25,24 @@ class ApplicationManager:
         "URLInfoAbout",
     }
 
-    def __init__(self):
-        self.prefix_manager = PrefixManager()
+    def __init__(self, runtime_manager=None):
+        self.runtime_manager = runtime_manager or RuntimeManager()
+        self.prefix_manager = PrefixManager(
+            runtime_manager=self.runtime_manager
+        )
 
-    def _query_registry(self, prefix_path, key):
-        wine = shutil.which("wine")
-        if not wine:
-            raise RuntimeError("Wine executable not found")
+    def _query_registry(self, prefix_path, key, runtime=None):
+        runtime = runtime or self.runtime_manager.get()
 
-        env = os.environ.copy()
-        env["WINEPREFIX"] = str(prefix_path)
+        if not runtime.is_available():
+            raise RuntimeError("Selected runtime is not available")
 
-        result = subprocess.run(
-            [wine, "reg", "query", key, "/s"],
-            env=env,
+        result = runtime.query_registry(
+            prefix_path,
+            key,
             capture_output=True,
             text=True,
             timeout=60,
-            check=False,
         )
 
         if result.returncode != 0 and not result.stdout.strip():
@@ -118,11 +116,12 @@ class ApplicationManager:
 
     def list(self, prefix_name):
         prefix_path = self.prefix_manager.get_path(prefix_name)
+        runtime = self.prefix_manager.get_runtime(prefix_name)
 
         found = {}
 
         for key in self.UNINSTALL_KEYS:
-            records = self._query_registry(prefix_path, key)
+            records = self._query_registry(prefix_path, key, runtime=runtime)
 
             for record in records:
                 name = record.get("DisplayName")
@@ -276,21 +275,17 @@ class ApplicationManager:
             raise ValueError("Invalid uninstall command")
 
         prefix_path = self.prefix_manager.get_path(prefix_name)
-        wine = shutil.which("wine")
+        runtime = self.prefix_manager.get_runtime(prefix_name)
 
-        if not wine:
-            raise RuntimeError("Wine executable not found")
+        if not runtime.is_available():
+            raise RuntimeError(f"Runtime is not available: {runtime.name}")
 
-        env = os.environ.copy()
-        env["WINEPREFIX"] = str(prefix_path)
-
-        result = subprocess.run(
-            [wine, *args],
-            env=env,
+        result = runtime.uninstall(
+            prefix_path,
+            args,
             capture_output=True,
             text=True,
             timeout=timeout,
-            check=False,
         )
 
         if result.returncode != 0:

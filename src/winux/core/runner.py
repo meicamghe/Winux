@@ -1,16 +1,17 @@
-import os
-import shutil
-import subprocess
 from datetime import datetime
 from pathlib import Path
 
 from winux.core.applications import ApplicationManager
 from winux.core.prefix import PrefixManager
+from winux.runtime.manager import RuntimeManager
 
 
 class ApplicationRunner:
-    def __init__(self):
-        self.prefix_manager = PrefixManager()
+    def __init__(self, runtime_manager=None):
+        self.runtime_manager = runtime_manager or RuntimeManager()
+        self.prefix_manager = PrefixManager(
+            runtime_manager=self.runtime_manager
+        )
         self.application_manager = ApplicationManager()
 
         self.log_dir = (
@@ -19,11 +20,13 @@ class ApplicationRunner:
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
     def run(self, prefix_name, application_id):
-        wine = shutil.which("wine")
-        if not wine:
-            raise RuntimeError("Wine executable not found")
-
         prefix_path = self.prefix_manager.get_path(prefix_name)
+        runtime = self.prefix_manager.get_runtime(prefix_name)
+
+        if not runtime.is_available():
+            raise RuntimeError(
+                f"Runtime is not available: {runtime.name}"
+            )
 
         application = self.application_manager.info(
             prefix_name,
@@ -48,25 +51,22 @@ class ApplicationRunner:
             executable.relative_to(drive_c)
         except ValueError:
             raise ValueError(
-                "Application executable is outside the Wine prefix"
-            )
+                "Application executable is outside the runtime prefix"
+            ) from None
 
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         log_file = self.log_dir / (
             f"{prefix_name}-{timestamp}.log"
         )
 
-        env = os.environ.copy()
-        env["WINEPREFIX"] = str(prefix_path)
-
         with log_file.open("ab") as output:
-            process = subprocess.Popen(
-                [wine, str(executable)],
+            process = runtime.run(
+                prefix_path,
+                executable,
                 cwd=str(executable.parent),
-                env=env,
-                stdin=subprocess.DEVNULL,
+                stdin=-3,
                 stdout=output,
-                stderr=subprocess.STDOUT,
+                stderr=-2,
                 start_new_session=True,
             )
 

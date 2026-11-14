@@ -2,7 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from types import SimpleNamespace
 
 from winux.core.installer import Installer
@@ -103,7 +103,16 @@ class InstallerExecutionTests(unittest.TestCase):
         self.home = Path(self.temp_dir.name)
         self.home_patcher = patch.object(Path, "home", return_value=self.home)
         self.home_patcher.start()
-        self.installer = Installer()
+        self.runtime = Mock()
+        self.runtime.name = "test-runtime"
+        self.runtime.is_available.return_value = True
+        self.runtime.install.return_value = SimpleNamespace(returncode=0)
+
+        self.runtime_manager = Mock()
+        self.runtime_manager.get.return_value = self.runtime
+        self.runtime_manager.get_default_name.return_value = "test-runtime"
+
+        self.installer = Installer(runtime_manager=self.runtime_manager)
         self.prefix_path = self.home / ".local/share/winux/prefixes/test-prefix"
         self.prefix_path.mkdir(parents=True)
 
@@ -128,9 +137,11 @@ class InstallerExecutionTests(unittest.TestCase):
                          return_value=self.prefix_path),
             patch.object(self.installer.prefix_manager, "get_architecture",
                          return_value="win64"),
-            patch("winux.core.installer.shutil.which", return_value="/usr/bin/wine"),
-            patch("winux.core.installer.subprocess.run",
-                  return_value=SimpleNamespace(returncode=returncode)),
+            patch.object(
+                self.runtime,
+                "install",
+                return_value=SimpleNamespace(returncode=returncode),
+            ),
         ]
         started = []
         for item in patches:
@@ -138,22 +149,23 @@ class InstallerExecutionTests(unittest.TestCase):
             self.addCleanup(item.stop)
         return started[-1]
 
-    def test_install_runs_wine_with_selected_prefix_and_logs_success(self):
+    def test_install_uses_runtime_with_selected_prefix_and_logs_success(self):
         run_patch = self.prepare_install()
         result = self.installer.install(self.source, "test-prefix")
 
         self.assertTrue(result["success"])
         self.assertEqual(result["installer_architecture"], "x64")
         self.assertEqual(result["prefix"], "test-prefix")
-        self.assertEqual(run_patch.call_args.args[0],
-                         ["/usr/bin/wine", str(self.source)])
-        self.assertEqual(run_patch.call_args.kwargs["env"]["WINEPREFIX"],
-                         str(self.prefix_path))
+        self.assertEqual(
+            run_patch.call_args.args,
+            (self.prefix_path, self.source),
+        )
+        self.assertEqual(run_patch.call_args.kwargs["timeout"], 3600)
         log = Path(result["log"]).read_text(encoding="utf-8")
         self.assertIn("Status: SUCCESS", log)
         self.assertIn("Application Architecture: unknown", log)
 
-    def test_install_records_failure_when_wine_returns_nonzero(self):
+    def test_install_records_failure_when_runtime_returns_nonzero(self):
         self.prepare_install(returncode=7)
         with self.assertRaisesRegex(RuntimeError, "exited with code 7"):
             self.installer.install(self.source, "test-prefix")

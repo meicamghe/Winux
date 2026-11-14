@@ -7,7 +7,7 @@ from pathlib import Path
 class DesktopManager:
     def __init__(self):
         self.applications_dir = (
-            Path.home() / ".local/share/applications/wine/Programs"
+            Path.home() / ".local/share/applications/winux/Programs"
         )
         self.desktop_dir = self._get_desktop_dir()
 
@@ -37,7 +37,7 @@ class DesktopManager:
         if not self.applications_dir.is_dir():
             return {
                 "integrated": integrated,
-                "errors": ["Wine applications directory not found"],
+                "errors": ["Runtime applications directory not found"],
             }
 
         for entry in self.applications_dir.rglob("*.desktop"):
