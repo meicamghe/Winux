@@ -822,3 +822,20 @@ inventing EMWAT-specific protocol behavior.
     https://github.com/meicamghe/Winux/actions/runs/43720221901
 - These checks improve crash durability of state updates; they do not replace
   the need for recovery tests against abrupt power loss or filesystem faults.
+
+## 2026-11-15 - LocalBridge correlation and diagnostic redaction
+
+- Added a random 32-character request ID to each accepted HTTP request.
+  Adapters receive it on `LocalBridgeRequest.request_id`, and responses carry
+  `X-Winux-Request-ID`.
+- Structured diagnostics record request ID, method, path, status, and elapsed
+  time. Query strings and request bodies are not logged.
+- Changed adapter exception logging to omit exception messages and tracebacks,
+  preventing accidental disclosure of document text or credentials embedded
+  in exception messages. Clients receive only a generic 500 response.
+- Added a test verifying that a secret exception message is absent from both
+  the HTTP response and captured logs.
+- Hosted CI run `43720531599` passed **290 unit tests**, packaging, installed
+  CLI smoke test, and imports of the packaged bridge and service-runner
+  modules:
+  https://github.com/meicamghe/Winux/actions/runs/43720531599
