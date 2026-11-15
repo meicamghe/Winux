@@ -245,7 +245,7 @@ not guaranteed by the current implementation.
 
 ## Runtime diagnostics
 
-The winux doctor command performs read-only checks of the selected runtime and reports the host architecture plus required and optional Wine tools. Wine and wineboot are treated as core requirements for the current Engine workflows. msiexec, wineserver, and winepath are reported as optional capability checks; their absence should not be confused with full application compatibility. Runtime plugin discovery failures are surfaced as warnings. Diagnostics do not create prefixes, install applications, or start services.
+The winux doctor command performs read-only checks of the selected runtime and reports the host architecture plus required and optional Wine tools. Wine and wineboot are treated as core requirements for the current Engine workflows. msiexec, wineserver, winepath, msiinfo, and 7z are reported as optional capability checks; their absence should not be confused with full application compatibility. Runtime plugin discovery failures are surfaced as warnings. Diagnostics do not create prefixes, install applications, or start services.
 
 ## Application compatibility profiles
 
