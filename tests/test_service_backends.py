@@ -1,0 +1,62 @@
+import unittest
+from unittest.mock import patch
+
+from winux.platform.service_backends import ServiceBackendManager
+
+
+class FakeBackend:
+    def install(self, *args, **kwargs): pass
+    def unit_exists(self, *args, **kwargs): return True
+    def reload(self, *args, **kwargs): pass
+    def start(self, *args, **kwargs): pass
+    def stop(self, *args, **kwargs): pass
+    def restart(self, *args, **kwargs): pass
+    def enable(self, *args, **kwargs): pass
+    def disable(self, *args, **kwargs): pass
+    def status(self, *args, **kwargs): return {}
+    def remove(self, *args, **kwargs): return True
+
+
+class ServiceBackendManagerTests(unittest.TestCase):
+    def test_systemd_is_registered_as_default(self):
+        manager = ServiceBackendManager(discover=False)
+        self.assertEqual(manager.get_default_name(), "systemd")
+        self.assertEqual(type(manager.get()).__name__, "SystemdUserBackend")
+
+    def test_register_and_select_custom_backend(self):
+        manager = ServiceBackendManager(discover=False)
+        manager.register("fake", FakeBackend)
+        self.assertIsInstance(manager.get("fake"), FakeBackend)
+        manager.set_default("fake")
+        self.assertIsInstance(manager.get(), FakeBackend)
+
+    def test_rejects_duplicate_and_invalid_backends(self):
+        manager = ServiceBackendManager(discover=False)
+        with self.assertRaisesRegex(ValueError, "already registered"):
+            manager.register("systemd", FakeBackend)
+        with self.assertRaisesRegex(TypeError, "service contract"):
+            manager.register("invalid", object())
+
+    def test_discovery_records_plugin_load_errors(self):
+        class BrokenEntryPoint:
+            name = "broken"
+            def load(self):
+                raise ImportError("broken plugin")
+
+        manager = ServiceBackendManager(discover=False)
+        with patch(
+            "winux.platform.service_backends.entry_points",
+            return_value=[BrokenEntryPoint()],
+        ):
+            manager.discover()
+        self.assertEqual(manager.plugin_errors()[0]["plugin"], "broken")
+        self.assertEqual(manager.plugin_errors()[0]["stage"], "registration")
+
+    def test_unknown_backend_is_rejected(self):
+        manager = ServiceBackendManager(discover=False)
+        with self.assertRaisesRegex(ValueError, "Unknown service backend"):
+            manager.get("missing")
+
+
+if __name__ == "__main__":
+    unittest.main()
