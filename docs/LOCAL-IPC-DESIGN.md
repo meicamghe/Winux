@@ -182,3 +182,11 @@ Host/Origin rejection, exact CORS, Bearer authentication, bounded bodies,
 Transfer-Encoding rejection, route isolation, preflight, response-header
 injection, concurrency, port conflicts, and bounded shutdown. This verifies the generic transport
 contract, not an EMWAT end-to-end workflow.
+
+## Application adapter contract
+
+The route-level contract is documented in
+[LOCAL-IPC-ADAPTER-CONTRACT.md](LOCAL-IPC-ADAPTER-CONTRACT.md). It keeps query
+parsing, payload schemas, sessions, application authorization, and business
+operations outside the generic transport. The EMWAT evidence mapping is
+documented there without treating opaque init/invoke payloads as decoded.
