@@ -793,3 +793,18 @@ inventing EMWAT-specific protocol behavior.
 - The initial raw-socket test needed to read the full HTTP response rather
   than a single TCP chunk; the test was corrected and the complete suite now
   passes.
+
+## 2026-11-15 - Service lifecycle serialization
+
+- Serialized ServiceManager list/get/start/stop/restart/enable/disable
+  operations with the same per-state-file advisory lock already used by
+  create/delete. This prevents lifecycle actions from racing with service
+  removal or definition creation.
+- Kept the service runner's `get_definition` lookup lock-free: it reads the
+  atomically replaced JSON file, avoiding a deadlock where systemd stop waits
+  for a service runner that is blocked on the manager's lock.
+- Added a regression test proving a start operation waits while another
+  manager instance holds the state lock.
+- Hosted CI run `43720095250` passed **287 unit tests**, wheel/sdist builds,
+  installed-wheel CLI smoke test, and LocalBridge module imports:
+  https://github.com/meicamghe/Winux/actions/runs/43720095250
