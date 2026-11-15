@@ -217,7 +217,9 @@ class ServiceManager:
         try:
             os.fchmod(descriptor, 0o600)
 
-            with os.fdopen(descriptor, "w", encoding="utf-8") as file:
+            file_handle = os.fdopen(descriptor, "w", encoding="utf-8")
+            descriptor = -1
+            with file_handle as file:
                 json.dump(records, file, ensure_ascii=False, indent=2)
                 file.write("\n")
                 file.flush()
@@ -226,6 +228,8 @@ class ServiceManager:
             temporary.replace(self.state_file)
             self._fsync_directory(self.state_file.parent)
         finally:
+            if descriptor >= 0:
+                os.close(descriptor)
             if temporary.exists():
                 temporary.unlink()
 
