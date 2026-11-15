@@ -33,6 +33,23 @@ class Installer:
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.lock_dir.mkdir(parents=True, exist_ok=True)
 
+    @staticmethod
+    def _validate_timeout(timeout):
+        try:
+            finite_timeout = math.isfinite(timeout)
+        except (OverflowError, TypeError):
+            finite_timeout = False
+
+        if (
+            isinstance(timeout, bool)
+            or not isinstance(timeout, (int, float))
+            or not finite_timeout
+            or timeout <= 0
+        ):
+            raise ValueError("Timeout must be a finite positive number")
+
+        return timeout
+
     def _get_msi_architecture(self, source):
         msiinfo = shutil.which("msiinfo")
 
@@ -241,18 +258,7 @@ class Installer:
         timeout=3600,
         verification_profile=None,
     ):
-        try:
-            finite_timeout = math.isfinite(timeout)
-        except (OverflowError, TypeError):
-            finite_timeout = False
-
-        if (
-            isinstance(timeout, bool)
-            or not isinstance(timeout, (int, float))
-            or not finite_timeout
-            or timeout <= 0
-        ):
-            raise ValueError("Timeout must be a finite positive number")
+        self._validate_timeout(timeout)
 
         if verification_profile is not None:
             self.verification_manager.validate_profile(
@@ -571,10 +577,12 @@ class Installer:
 
             timeout = item.get("timeout", 3600)
 
-            if isinstance(timeout, bool) or not isinstance(timeout, int) or timeout <= 0:
+            try:
+                self._validate_timeout(timeout)
+            except ValueError as error:
                 raise ValueError(
-                    f"Application #{index} has an invalid timeout"
-                )
+                    f"Application #{index} has an invalid timeout: {error}"
+                ) from error
 
             source = Path(installer_file).expanduser()
 
