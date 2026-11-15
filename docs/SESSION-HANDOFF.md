@@ -981,3 +981,16 @@ inventing EMWAT-specific protocol behavior.
   passed all 313 unit tests, wheel and source-distribution builds, and the
   installed-wheel CLI smoke test.
 - Verification is from hosted GitHub Actions, not a local checkout.
+
+## 2026-11-15 - Application log directory replacement protection
+
+- ApplicationRunner now revalidates the log directory's path components each
+  time it creates a run log, not only during manager construction.
+- Log creation opens the parent directory with directory/no-follow flags and
+  creates the file relative to that pinned directory descriptor. This blocks
+  a replaced final log-directory symlink from redirecting log creation.
+- Added a regression test that replaces the log directory with a symlink
+  after runner construction and verifies that no file is created outside
+  Winux and the Windows application is not launched.
+- Hosted CI run is pending for this change; do not count this regression as
+  passing until the workflow completes.
