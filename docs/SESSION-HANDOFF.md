@@ -644,3 +644,43 @@ inventing EMWAT-specific protocol behavior.
    security guarantees and avoids needless abstraction.
 3. Begin the generic LocalBridge transport and its security tests as a Winux
    Engine capability.
+
+## 2026-11-15 - LocalBridge security policy primitives
+
+### Implemented
+
+- Added `src/winux/core/local_bridge.py` with reusable policy primitives:
+  - numeric IPv4/IPv6 loopback-only bind validation;
+  - exact normalized HTTP(S) Origin allowlists;
+  - exact loopback Host and listener-port validation;
+  - explicit policy for requests without Origin;
+  - optional per-session token comparison using constant-time comparison;
+  - strict Content-Length parsing and maximum-body-size enforcement;
+  - validation for positive finite request timeouts and concurrency limits.
+- Added `tests/test_local_bridge.py` covering invalid bind addresses, Origin
+  confusion, Host mismatches, IPv6 authorities, authentication, and body-size
+  limits.
+- Updated LocalBridge and compatibility documentation to distinguish
+  implemented policy primitives from the not-yet-implemented HTTP transport.
+- ServiceManager now also serializes create/delete operations using a private
+  per-state-file lock, preventing concurrent duplicate service creation.
+
+### Verification
+
+- CI run `43719219780` passed for the LocalBridge source module:
+  https://github.com/meicamghe/Winux/actions/runs/43719219780
+- CI run `43719222360` passed with **263 unit tests**, packaging, and installed
+  wheel smoke checks:
+  https://github.com/meicamghe/Winux/actions/runs/43719222360
+- The 263-test run includes ServiceManager concurrent-create and lock-symlink
+  tests, plus LocalBridge policy tests.
+- HTTP listener, request dispatch, concurrency enforcement, request deadlines,
+  graceful shutdown, and EMWAT-specific protocol handling are still pending.
+
+### Next engineering steps
+
+1. Implement the LocalBridge HTTP transport against these policy primitives.
+2. Test request dispatch, body reads, timeout behavior, concurrency limits,
+   and graceful shutdown before connecting any application adapter.
+3. Continue crash-consistency review for process/service state writes.
+4. Keep Word automation and printing as separate host adapters.
