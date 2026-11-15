@@ -55,6 +55,29 @@ class LocalBridgeServerTests(unittest.TestCase):
         self.assertEqual(body, b"ok")
         self.assertEqual(headers["Content-Type"], "text/plain")
 
+    def test_ipv6_loopback_listener_when_available(self):
+        try:
+            bridge = LocalBridge(
+                routes={
+                    ("GET", "/health"): lambda request: LocalBridgeResponse(
+                        body=b"ipv6"
+                    )
+                },
+                policy=LocalBridgePolicy(
+                    bind_address="::1",
+                    allow_missing_origin=True,
+                ),
+            )
+            bridge.start()
+        except OSError as error:
+            self.skipTest(f"IPv6 loopback is unavailable: {error}")
+
+        self.addCleanup(bridge.shutdown)
+        status, body, _ = self.request(bridge)
+
+        self.assertEqual(status, 200)
+        self.assertEqual(body, b"ipv6")
+
     def test_rejects_invalid_host_and_port_before_dispatch(self):
         called = []
         bridge = self.make_bridge(
