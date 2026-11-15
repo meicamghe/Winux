@@ -1,6 +1,6 @@
 # Winux — Project Handoff
 
-Last reviewed: 2026-11-14
+Last reviewed: 2026-11-15
 
 This file is the compact continuity record for future development sessions. It complements the README and architecture documents; it does not replace source code, tests, or detailed design records.
 
@@ -139,3 +139,17 @@ No real managed service was started or enabled during these checks.
 ### Verification status
 
 The source and tests were committed to GitHub. The doctor CLI now exits with status 1 when required runtime diagnostics fail; CLI regression tests cover both failure and success. The new test suite has not yet been executed in the user's Linux working copy; do not report it as passing until it is run. No real Wine prefix or Windows application was created or launched during this documentation/code update.
+## 2026-11-15 - Prefix and process-state hardening
+
+### Implemented
+
+- Prefix metadata is now validated against its directory name and supported architecture.
+- Prefix metadata format versions are checked; unsupported versions are rejected.
+- Dangling metadata symlinks are rejected instead of being mistaken for legacy prefixes.
+- Persisted process records now validate required fields, UUID-like IDs, positive non-boolean PIDs, non-negative UIDs, numeric Linux process start times, and field types before status or signal operations.
+- Added regression tests for each of these validation cases.
+- Updated README and architecture source trees to match the current runtime, process, service, and service-runner modules.
+
+### Verification status
+
+These changes and tests are committed to the main repository. They have not been executed in a local checkout in this session; do not mark them as passing until the complete test suite is run. No live processes were signaled and no Wine prefixes were created or deleted during this update.
