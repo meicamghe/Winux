@@ -302,3 +302,26 @@ Source, test, packaging metadata, and documentation were fetched again from
 GitHub and inspected for the expected changes. Tests have not been executed
 in a local checkout, and the repository currently reports no GitHub Actions
 workflow runs. No actual systemd service was created or modified.
+
+## 2026-11-15 - Runtime and service backend input validation
+
+### Implemented
+
+- Runtime and service backend selection now reject empty and non-string names
+  with explicit `ValueError` messages rather than leaking dictionary-key
+  `TypeError` exceptions.
+- Default runtime/backend names are validated before registry membership
+  checks.
+- Service backend registration now distinguishes an already-instantiated
+  object satisfying the protocol from a callable factory. This prevents a
+  callable backend instance from being invoked accidentally.
+- Registry diagnostics identify callable backend instances as loaded objects,
+  not factories.
+- Added regression tests for callable backend instances and malformed
+  selection names.
+
+### Verification status
+
+The changed source and test files were fetched again from GitHub for review.
+Tests have not been executed in a local checkout. No runtime, service, or
+systemd operations were performed.
