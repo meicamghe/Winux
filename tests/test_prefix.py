@@ -246,6 +246,14 @@ class PrefixManagerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Invalid prefix architecture"):
             self.manager.get_architecture("invalid-architecture")
 
+    def test_older_metadata_without_name_or_architecture_remains_compatible(self):
+        path = self.make_prefix("older-metadata")
+        metadata = path / ".winux-prefix.json"
+        metadata.write_text(json.dumps({"runtime": "test-runtime"}), encoding="utf-8")
+
+        self.assertEqual(self.manager.get_architecture("older-metadata"), "win64")
+        self.assertEqual(self.manager.get_path("older-metadata"), path)
+
     def test_metadata_name_must_match_prefix_directory(self):
         path = self.make_prefix("metadata-name", "win64")
         metadata = path / ".winux-prefix.json"
