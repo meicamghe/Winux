@@ -128,6 +128,9 @@ class ServiceManager:
         if not self.state_file.exists():
             return []
 
+        if not self.state_file.is_file():
+            raise ValueError("Service state path must be a regular file")
+
         try:
             records = json.loads(
                 self.state_file.read_text(encoding="utf-8")
