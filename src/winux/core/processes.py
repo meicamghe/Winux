@@ -68,6 +68,17 @@ class ProcessManager:
                 os.close(descriptor)
 
     @staticmethod
+    def _fsync_directory(path):
+        descriptor = os.open(
+            path,
+            os.O_RDONLY | getattr(os, "O_DIRECTORY", 0),
+        )
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+
+    @staticmethod
     def _reject_symlink_components(path):
         """Reject symbolic links in existing components of the state path."""
         path = Path(os.path.abspath(path))
@@ -222,6 +233,7 @@ class ProcessManager:
 
             os.replace(temporary_name, self.state_file)
             os.chmod(self.state_file, 0o600)
+            self._fsync_directory(self.state_file.parent)
         except Exception:
             try:
                 os.unlink(temporary_name)
