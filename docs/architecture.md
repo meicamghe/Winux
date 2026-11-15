@@ -250,11 +250,13 @@ not guaranteed by the current implementation.
 - Service IDs and service commands are validated.
 - systemd is invoked without a shell.
 - Service lifecycle errors must not be silently ignored.
+- Service deletion is refused when the backend reports an error or cannot determine active/enabled state; the manager must not remove unit files based on unknown status.
 - Actual service execution must be tested separately from unit creation.
 
 ## Runtime diagnostics
 
 The winux doctor command performs read-only checks of the selected runtime and reports the host architecture plus required and optional Wine tools. Wine and wineboot are treated as core requirements for the current Engine workflows. msiexec, wineserver, winepath, msiinfo, and 7z are reported as optional capability checks; their absence should not be confused with full application compatibility. Runtime plugin discovery failures are surfaced as warnings. Diagnostics do not create prefixes, install applications, or start services.
+Runtime selection uses the default only when no runtime name is supplied; an explicitly empty name is rejected rather than silently falling back to Wine.
 
 ## Application compatibility profiles
 
