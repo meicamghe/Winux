@@ -503,6 +503,56 @@ class ServiceManagerTests(unittest.TestCase):
 
         self.assertEqual(fsync.call_count, 2)
 
+    def test_state_write_restores_previous_file_when_directory_fsync_fails(self):
+        original = [{"id": "previous"}]
+        self.state_file.write_text(
+            json.dumps(original),
+            encoding="utf-8",
+        )
+
+        with patch(
+            "winux.core.services.os.fsync",
+            side_effect=[
+                None,
+                OSError("directory fsync failed"),
+                None,
+                None,
+            ],
+        ):
+            with self.assertRaisesRegex(OSError, "directory fsync failed"):
+                self.manager._write([])
+
+        self.assertEqual(
+            json.loads(self.state_file.read_text(encoding="utf-8")),
+            original,
+        )
+        self.assertEqual(
+            list(self.state_file.parent.glob(".services-*.tmp")),
+            [],
+        )
+        self.assertEqual(
+            list(self.state_file.parent.glob(".services-rollback-*.tmp")),
+            [],
+        )
+
+    def test_state_write_removes_new_file_when_directory_fsync_fails(self):
+        with patch(
+            "winux.core.services.os.fsync",
+            side_effect=[
+                None,
+                OSError("directory fsync failed"),
+                None,
+            ],
+        ):
+            with self.assertRaisesRegex(OSError, "directory fsync failed"):
+                self.manager._write([])
+
+        self.assertFalse(self.state_file.exists())
+        self.assertEqual(
+            list(self.state_file.parent.glob(".services-*.tmp")),
+            [],
+        )
+
     def test_list_returns_service_status(self):
         record = self.create_service()
 
