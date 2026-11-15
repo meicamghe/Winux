@@ -44,6 +44,13 @@ class PrefixManager:
         if self.base_dir.is_symlink() or not self.base_dir.is_dir():
             raise ValueError("Winux prefix directory is missing or unsafe")
 
+    @staticmethod
+    def _validate_drive_c(prefix_path):
+        drive_c = Path(prefix_path) / "drive_c"
+        if drive_c.is_symlink() or not drive_c.is_dir():
+            raise ValueError("Wine prefix drive_c must be a real directory")
+        return drive_c
+
     def __init__(self, runtime_manager=None):
         self.runtime_manager = (
             runtime_manager if runtime_manager is not None else RuntimeManager()
@@ -92,6 +99,7 @@ class PrefixManager:
         if path.is_symlink() or not path.is_dir():
             raise FileNotFoundError(name)
 
+        self._validate_drive_c(path)
         metadata = self._read_metadata(path)
         runtime_name = metadata.get(
             "runtime", self.runtime_manager.get_default_name()
@@ -245,6 +253,8 @@ class PrefixManager:
             if not runtime.validate_prefix(path):
                 raise RuntimeError("Runtime created an invalid prefix")
 
+            self._validate_drive_c(path)
+
             metadata = {
                 "name": name,
                 "architecture": architecture,
@@ -285,6 +295,7 @@ class PrefixManager:
                 runtime = self.runtime_manager.get(runtime_name)
 
                 if runtime.validate_prefix(path):
+                    self._validate_drive_c(path)
                     prefixes.append(path.name)
             except Exception:
                 self.logger.exception(
