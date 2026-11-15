@@ -236,7 +236,7 @@ class ServiceManager:
             descriptor = -1
             with file_handle as file:
                 json.dump(records, file, ensure_ascii=False, indent=2)
-                file.write("\\n")
+                file.write("\n")
                 file.flush()
                 os.fsync(file.fileno())
 
