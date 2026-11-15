@@ -192,6 +192,18 @@ Code and tests are committed to main. Tests were not executed in this assistant 
 ### Verification status
 
 Changes and tests are committed to main. They have not been run in a local checkout in this session. No actual service or Windows installer was launched.
+## 2026-11-15 - Runtime selection and service deletion safety
+
+### Implemented
+
+- `RuntimeManager.get` now uses the default runtime only when the caller passes `None`; an empty runtime name is rejected rather than silently selecting Wine. `set_default` inherits the same strict behavior.
+- `ServiceManager.delete` now refuses destructive operations when the backend reports an error or cannot determine active/enabled state. This prevents deleting unit files while the user service manager is unreachable.
+- Added regression tests for empty runtime names and service deletion with unknown backend state.
+
+### Verification status
+
+Source and tests are committed to main and were reviewed after writing. They have not been executed in a local checkout in this session; no real service was modified.
+
 ## 2026-11-15 - Installer validation follow-up
 
 ### Implemented
