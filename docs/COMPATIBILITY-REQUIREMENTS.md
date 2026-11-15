@@ -64,3 +64,11 @@ Winux should expose these as distinct outcomes rather than a single compatible b
 - Service state persistence closes the raw temporary descriptor when fdopen
   setup fails and removes the uncommitted temporary file.
 - Regression tests were added; hosted CI verification is pending.
+
+## 2026-11-15 - Descriptor ownership guarantees
+
+- Process and service state persistence and lock acquisition now explicitly
+  transfer raw descriptor ownership only after fdopen succeeds.
+- Failed wrapping closes the raw descriptor; failed process state writes also
+  remove their temporary file. Regression tests cover all affected paths.
+- Hosted CI verification is pending.
