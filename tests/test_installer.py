@@ -199,6 +199,50 @@ class InstallerExecutionTests(unittest.TestCase):
             self.addCleanup(item.stop)
         return started[-1]
 
+    def test_installer_storage_directories_are_private(self):
+        for directory in (
+            self.installer.data_dir,
+            self.installer.log_dir,
+            self.installer.lock_dir,
+        ):
+            with self.subTest(directory=directory):
+                self.assertEqual(directory.stat().st_mode & 0o777, 0o700)
+
+    def test_install_rejects_storage_directory_replaced_by_symlink(self):
+        log_dir = self.installer.log_dir
+        real_dir = self.home / "real-install-logs"
+        real_dir.mkdir()
+        log_dir.rename(self.home / "old-install-logs")
+        log_dir.symlink_to(real_dir, target_is_directory=True)
+
+        self.prepare_install()
+        with self.assertRaisesRegex(ValueError, "must not contain symlinks"):
+            self.installer.install(self.source, "test-prefix")
+        self.runtime.install.assert_not_called()
+
+    def test_install_lock_symlink_does_not_truncate_target(self):
+        self.prepare_install()
+        target = self.home / "outside-lock-target"
+        target.write_text("preserve", encoding="utf-8")
+        lock = self.installer.lock_dir / "test-prefix.lock"
+        lock.symlink_to(target)
+
+        with self.assertRaises(OSError):
+            self.installer.install(self.source, "test-prefix")
+
+        self.assertEqual(target.read_text(encoding="utf-8"), "preserve")
+        self.runtime.install.assert_not_called()
+
+    def test_history_ignores_symlinked_log_files(self):
+        target = self.home / "outside-history.log"
+        target.write_text(
+            "Install ID: external\\nStatus: SUCCESS\\n",
+            encoding="utf-8",
+        )
+        (self.installer.log_dir / "external.log").symlink_to(target)
+
+        self.assertEqual(self.installer.history(), [])
+
     def test_install_uses_runtime_with_selected_prefix_and_logs_success(self):
         run_patch = self.prepare_install()
         result = self.installer.install(self.source, "test-prefix")
