@@ -69,6 +69,47 @@ class PrefixManagerTests(unittest.TestCase):
 
         return path
 
+    def test_constructor_rejects_symlinked_prefix_directory(self):
+        root = self.home / ".local/share/winux"
+        real = root / "real-prefixes"
+        real.mkdir()
+        linked = root / "prefixes"
+        linked.symlink_to(real, target_is_directory=True)
+
+        with self.assertRaisesRegex(ValueError, "must not contain symlinks"):
+            PrefixManager(runtime_manager=self.runtime_manager)
+
+    def test_constructor_rejects_symlinked_prefix_parent(self):
+        local = self.home / ".local"
+        real = self.home / "real-local"
+        real.mkdir()
+        linked = local
+        linked.rename(self.home / "local-original")
+        linked.symlink_to(real, target_is_directory=True)
+
+        with self.assertRaisesRegex(ValueError, "must not contain symlinks"):
+            PrefixManager(runtime_manager=self.runtime_manager)
+
+    def test_prefix_root_is_revalidated_before_creation(self):
+        root = self.manager.base_dir
+        real = self.home / "real-prefixes"
+        root.rename(real)
+        root.symlink_to(real, target_is_directory=True)
+
+        with self.assertRaisesRegex(ValueError, "must not contain symlinks"):
+            self.manager.create("unsafe-root")
+
+        self.runtime.create_prefix.assert_not_called()
+
+    def test_prefix_root_is_revalidated_before_listing(self):
+        root = self.manager.base_dir
+        real = self.home / "real-prefixes"
+        root.rename(real)
+        root.symlink_to(real, target_is_directory=True)
+
+        with self.assertRaisesRegex(ValueError, "must not contain symlinks"):
+            self.manager.list()
+
     def test_validate_name_rejects_unsafe_names(self):
         for name in ("", "../escape", "two words", "name/child", "a" * 65):
             with self.subTest(name=name):
