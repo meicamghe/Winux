@@ -1095,3 +1095,7 @@ inventing EMWAT-specific protocol behavior.
 - If restoration also fails, the raised error reports both failures.
 - Regression tests cover existing-state restoration and cleanup when no
   prior state file existed. Hosted CI pending.
+
+- Additional lifecycle regression coverage verifies that create removes its
+  backend unit when state publication cannot be synced, and delete restores
+  the prior definition and backend state after the same failure.
