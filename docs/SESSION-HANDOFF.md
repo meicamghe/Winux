@@ -765,3 +765,17 @@ inventing EMWAT-specific protocol behavior.
 3. Keep EMWAT init/invoke, Word automation, printing, and recovery in separate
    adapters after their contracts are verified.
 4. Continue Engine state persistence crash-consistency review.
+
+## 2026-11-15 - LocalBridge IPv6 and packaged-module verification
+
+- Added an IPv6 loopback HTTP listener integration test (skipped only if the
+  host has no IPv6 loopback support).
+- Extended the installed-wheel smoke test to import both
+  `winux.platform.local_bridge` and `winux.core.local_bridge`, in addition to
+  the service runner.
+- Latest CI run `43719933763` passed **284 unit tests**, wheel/sdist builds,
+  CLI smoke test, and all three installed-module imports:
+  https://github.com/meicamghe/Winux/actions/runs/43719933763
+- The first raw-socket timeout test was nondeterministic in the hosted runner
+  and was removed; socket timeouts remain configured in the transport, while
+  the suite verifies bounded shutdown and concurrency behavior directly.
