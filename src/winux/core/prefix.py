@@ -1,7 +1,9 @@
 import json
 import logging
+import os
 import re
 import shutil
+import tempfile
 from pathlib import Path
 
 from winux.runtime.manager import RuntimeManager
@@ -144,6 +146,41 @@ class PrefixManager:
 
         return architecture
 
+    @staticmethod
+    def _write_metadata(path, metadata):
+        metadata_file = path / ".winux-prefix.json"
+        if metadata_file.is_symlink() or metadata_file.exists():
+            raise FileExistsError("Prefix metadata path already exists")
+
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix=".winux-prefix-",
+            suffix=".tmp",
+            dir=path,
+        )
+        try:
+            os.fchmod(descriptor, 0o600)
+            with os.fdopen(descriptor, "w", encoding="utf-8") as file:
+                json.dump(metadata, file, indent=2)
+                file.write("\\n")
+                file.flush()
+                os.fsync(file.fileno())
+
+            os.replace(temporary_name, metadata_file)
+            directory_fd = os.open(
+                path,
+                os.O_RDONLY | getattr(os, "O_DIRECTORY", 0),
+            )
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+        except Exception:
+            try:
+                os.unlink(temporary_name)
+            except FileNotFoundError:
+                pass
+            raise
+
     def create(self, name, architecture="win64"):
         self.validate_name(name)
         architecture = self.normalize_architecture(architecture)
@@ -180,12 +217,7 @@ class PrefixManager:
                 "format_version": 1
             }
 
-            metadata_file = path / ".winux-prefix.json"
-            metadata_file.write_text(
-                json.dumps(metadata, indent=2),
-                encoding="utf-8"
-            )
-            metadata_file.chmod(0o600)
+            self._write_metadata(path, metadata)
 
             self.logger.info(
                 "Created prefix: %s (%s)", name, architecture
