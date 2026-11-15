@@ -165,6 +165,7 @@ class InstallerExecutionTests(unittest.TestCase):
         self.installer = Installer(runtime_manager=self.runtime_manager)
         self.prefix_path = self.home / ".local/share/winux/prefixes/test-prefix"
         self.prefix_path.mkdir(parents=True)
+        (self.prefix_path / "drive_c").mkdir()
 
         self.source = self.home / "setup.exe"
         data = bytearray(0x100)
