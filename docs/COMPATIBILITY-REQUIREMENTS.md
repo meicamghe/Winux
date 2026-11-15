@@ -79,3 +79,11 @@ Prefix metadata writes use a private same-directory temporary file, fsync the
 file before atomic replacement, and fsync the containing directory. Descriptor
 ownership is transferred only after file wrapping succeeds; failures close the
 raw descriptor and remove the temporary file.
+
+
+## Systemd unit-file descriptor ownership
+
+SystemdUserBackend keeps ownership of the raw temporary unit-file descriptor
+until fdopen succeeds. A wrapping failure closes the descriptor and removes
+the temporary file. A regression test covers this path; hosted CI run
+https://github.com/meicamghe/Winux/actions/runs/43723953513 is pending.
