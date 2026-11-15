@@ -62,6 +62,23 @@ class ApplicationRunnerTests(unittest.TestCase):
         self.home_patcher.stop()
         self.temp_dir.cleanup()
 
+    def test_constructor_preserves_falsey_injected_managers(self):
+        class FalseyMock(Mock):
+            def __bool__(self):
+                return False
+
+        runtime_manager = FalseyMock()
+        process_manager = FalseyMock()
+
+        runner = ApplicationRunner(
+            runtime_manager=runtime_manager,
+            process_manager=process_manager,
+        )
+
+        self.assertIs(runner.runtime_manager, runtime_manager)
+        self.assertIs(runner.process_manager, process_manager)
+        self.assertIs(runner.prefix_manager.runtime_manager, runtime_manager)
+
     def test_run_foreground_waits_for_application_exit(self):
         process = Mock()
         process.wait.return_value = 23
