@@ -110,7 +110,7 @@ class PrefixManagerTests(unittest.TestCase):
         self.assertEqual(metadata["architecture"], "win64")
         metadata_file = path / ".winux-prefix.json"
         self.assertEqual(metadata_file.stat().st_mode & 0o777, 0o600)
-        self.assertTrue(metadata_file.read_bytes().endswith(b"\\n"))
+        self.assertTrue(metadata_file.read_bytes().endswith(b"\n"))
         self.runtime.create_prefix.assert_called_once_with(path, "win64")
 
     def test_create_rejects_unavailable_runtime(self):
