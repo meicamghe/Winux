@@ -28,7 +28,7 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
 
     @patch("winux.platform.runtime._command_status")
     def test_missing_optional_tools_are_warnings(self, command):
-        command.side_effect = lambda name: None if name in {"msiexec", "wineserver", "winepath"} else "/usr/bin/tool"
+        command.side_effect = lambda name: None if name in {"msiexec", "wineserver", "winepath", "msiinfo", "7z"} else "/usr/bin/tool"
         with patch("builtins.print"):
             self.assertTrue(check_runtime(self.manager))
 
