@@ -41,7 +41,11 @@ def check_runtime(runtime_manager=None):
     failed = False
 
     try:
-        manager = runtime_manager or RuntimeManager()
+        manager = (
+            runtime_manager
+            if runtime_manager is not None
+            else RuntimeManager()
+        )
         name = manager.get_default_name()
         runtime = manager.get(name)
 
@@ -98,6 +102,18 @@ def check_runtime(runtime_manager=None):
         for plugin_error in manager.plugin_errors():
             print(
                 "[WARN] Runtime plugin "
+                f"{plugin_error['plugin']} failed during "
+                f"{plugin_error['stage']}: {plugin_error['error']}"
+            )
+
+        # Discover optional service backend plugins for diagnostics without
+        # instantiating a backend or requiring systemd.
+        from winux.platform.service_backends import ServiceBackendManager
+
+        service_backends = ServiceBackendManager()
+        for plugin_error in service_backends.plugin_errors():
+            print(
+                "[WARN] Service backend plugin "
                 f"{plugin_error['plugin']} failed during "
                 f"{plugin_error['stage']}: {plugin_error['error']}"
             )
