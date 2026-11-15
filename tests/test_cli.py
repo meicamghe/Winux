@@ -486,3 +486,18 @@ class ServiceCliTests(unittest.TestCase):
                             "does not stop",
                             str(output.call_args_list),
                         )
+
+
+class DoctorCliTests(unittest.TestCase):
+    def test_doctor_returns_nonzero_when_diagnostics_fail(self):
+        with patch.object(sys, "argv", ["winux", "doctor"]):
+            with patch("winux.platform.runtime.check_runtime", return_value=False):
+                with self.assertRaises(SystemExit) as raised:
+                    main()
+        self.assertEqual(raised.exception.code, 1)
+
+    def test_doctor_returns_success_when_diagnostics_pass(self):
+        with patch.object(sys, "argv", ["winux", "doctor"]):
+            with patch("winux.platform.runtime.check_runtime", return_value=True) as check:
+                main()
+        check.assert_called_once_with()
