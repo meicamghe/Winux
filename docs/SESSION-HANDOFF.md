@@ -779,3 +779,17 @@ inventing EMWAT-specific protocol behavior.
 - The first raw-socket timeout test was nondeterministic in the hosted runner
   and was removed; socket timeouts remain configured in the transport, while
   the suite verifies bounded shutdown and concurrency behavior directly.
+
+## 2026-11-15 - LocalBridge slow-client and malformed-header coverage
+
+- Added integration tests proving that duplicate Content-Length headers are
+  rejected and slow/incomplete request bodies time out rather than reaching
+  application routes.
+- Added active-request shutdown-drain and concurrency-limit tests alongside
+  existing route, Host/Origin, authentication, CORS, and response-header tests.
+- Hosted CI run 43720058573 passed **286 unit tests**, wheel/sdist packaging,
+  installed-wheel CLI smoke test, and service-runner import:
+  https://github.com/meicamghe/Winux/actions/runs/43720058573
+- The initial raw-socket test needed to read the full HTTP response rather
+  than a single TCP chunk; the test was corrected and the complete suite now
+  passes.
