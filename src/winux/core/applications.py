@@ -1,7 +1,9 @@
 import csv
 import json
 import math
+import os
 import re
+import tempfile
 from pathlib import Path, PureWindowsPath
 
 from winux.core.prefix import PrefixManager
@@ -220,24 +222,60 @@ class ApplicationManager:
         ]
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix=f".{output_path.name}.",
+            suffix=".tmp",
+            dir=output_path.parent,
+        )
 
-        if format == "json":
-            with output_path.open("w", encoding="utf-8") as file:
-                json.dump(
-                    [{field: app.get(field) for field in fields} for app in applications],
-                    file,
-                    ensure_ascii=False,
-                    indent=2,
-                )
-                file.write("\n")
-        else:
-            with output_path.open("w", encoding="utf-8", newline="") as file:
-                writer = csv.DictWriter(file, fieldnames=fields)
-                writer.writeheader()
-                writer.writerows(
-                    {field: app.get(field) for field in fields}
-                    for app in applications
-                )
+        try:
+            os.fchmod(descriptor, 0o600)
+            with os.fdopen(
+                descriptor,
+                "w",
+                encoding="utf-8",
+                newline="" if format == "csv" else None,
+            ) as file:
+                if format == "json":
+                    json.dump(
+                        [
+                            {field: app.get(field) for field in fields}
+                            for app in applications
+                        ],
+                        file,
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                    file.write("\n")
+                else:
+                    writer = csv.DictWriter(file, fieldnames=fields)
+                    writer.writeheader()
+                    writer.writerows(
+                        {field: app.get(field) for field in fields}
+                        for app in applications
+                    )
+                file.flush()
+                os.fsync(file.fileno())
+
+            os.replace(temporary_name, output_path)
+            directory_fd = os.open(
+                output_path.parent,
+                os.O_RDONLY | getattr(os, "O_DIRECTORY", 0),
+            )
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+        except Exception:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+            try:
+                os.unlink(temporary_name)
+            except FileNotFoundError:
+                pass
+            raise
 
         return {
             "success": True,
