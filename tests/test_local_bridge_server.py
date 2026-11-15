@@ -1,4 +1,5 @@
 import http.client
+import re
 import socket
 import threading
 import time
@@ -262,6 +263,23 @@ class LocalBridgeServerTests(unittest.TestCase):
         self.assertEqual(status, 500)
         self.assertEqual(body, b"Internal server error")
         self.assertNotIn(b"secret document contents", body)
+
+    def test_request_has_non_sensitive_correlation_id(self):
+        observed = []
+        bridge = self.make_bridge(
+            routes={
+                ("GET", "/health"): lambda request: (
+                    observed.append(request.request_id)
+                    or LocalBridgeResponse(body=b"ok")
+                )
+            }
+        )
+        status, _, headers = self.request(bridge)
+
+        request_id = headers["X-Winux-Request-ID"]
+        self.assertEqual(status, 200)
+        self.assertEqual(request_id, observed[0])
+        self.assertRegex(request_id, r"^[0-9a-f]{32}$")
 
     def test_response_headers_reject_line_break_injection(self):
         bridge = self.make_bridge(
