@@ -18,7 +18,9 @@ class PrefixManager:
     LEGACY_ARCHITECTURE = "win64"
 
     def __init__(self, runtime_manager=None):
-        self.runtime_manager = runtime_manager or RuntimeManager()
+        self.runtime_manager = (
+            runtime_manager if runtime_manager is not None else RuntimeManager()
+        )
         self.base_dir = Path.home() / ".local/share/winux/prefixes"
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.base_dir = self.base_dir.resolve()
