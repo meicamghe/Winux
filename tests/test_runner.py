@@ -1,4 +1,5 @@
 import tempfile
+from datetime import datetime
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -131,6 +132,37 @@ class ApplicationRunnerTests(unittest.TestCase):
 
         self.runtime.run.assert_not_called()
 
+    def test_constructor_rejects_symlinked_log_directory(self):
+        log_parent = self.home / ".local/share/winux/logs"
+        log_parent.mkdir(parents=True)
+        target = self.home / "outside-logs"
+        target.mkdir()
+        (log_parent / "app-runs").symlink_to(
+            target,
+            target_is_directory=True,
+        )
+
+        with self.assertRaisesRegex(ValueError, "must not contain symlinks"):
+            ApplicationRunner(
+                runtime_manager=self.runtime_manager,
+                process_manager=self.process_manager,
+            )
+
+    def test_run_does_not_follow_existing_log_symlink(self):
+        fixed_time = datetime(2026, 11, 15, 12, 0, 0)
+        log_file = self.runner.log_dir / "test-prefix-20261115-120000-000000.log"
+        target = self.home / "outside.log"
+        target.write_text("do not overwrite", encoding="utf-8")
+        log_file.symlink_to(target)
+
+        with patch("winux.core.runner.datetime") as datetime_mock:
+            datetime_mock.now.return_value = fixed_time
+            with self.assertRaises(FileExistsError):
+                self.runner.run("test-prefix", "Example")
+
+        self.assertEqual(target.read_text(encoding="utf-8"), "do not overwrite")
+        self.runtime.run.assert_not_called()
+
     def test_run_launches_application_with_correct_runtime(self):
         result = self.runner.run("test-prefix", "Example")
 
@@ -139,6 +171,8 @@ class ApplicationRunnerTests(unittest.TestCase):
         self.assertEqual(result["application"], "Example App")
         self.assertEqual(result["executable"], str(self.executable))
         self.assertTrue(Path(result["log"]).is_file())
+        self.assertEqual(Path(result["log"]).stat().st_mode & 0o777, 0o600)
+        self.assertEqual(self.runner.log_dir.stat().st_mode & 0o777, 0o700)
 
         self.runtime.run.assert_called_once()
         args, kwargs = self.runtime.run.call_args
