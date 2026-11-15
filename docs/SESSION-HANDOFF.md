@@ -808,3 +808,17 @@ inventing EMWAT-specific protocol behavior.
 - Hosted CI run `43720095250` passed **287 unit tests**, wheel/sdist builds,
   installed-wheel CLI smoke test, and LocalBridge module imports:
   https://github.com/meicamghe/Winux/actions/runs/43720095250
+
+## 2026-11-15 - Durable process and service state writes
+
+- ProcessManager and ServiceManager now fsync the parent directory after
+  atomically replacing their JSON state files. The temporary file itself is
+  fsynced before replace, and state files retain restrictive permissions.
+- Added tests that verify both the state-file and parent-directory fsync calls.
+- Hosted CI passed:
+  - Process state fsync: 287 tests
+    https://github.com/meicamghe/Winux/actions/runs/43720212575
+  - Service state fsync: 289 tests
+    https://github.com/meicamghe/Winux/actions/runs/43720221901
+- These checks improve crash durability of state updates; they do not replace
+  the need for recovery tests against abrupt power loss or filesystem faults.
