@@ -24,10 +24,16 @@ class ServiceManager:
         state_file=None,
         prefix_manager=None,
         application_manager=None,
+        backend_name="systemd",
+        backend_manager=None,
     ):
-        self.backend = (
-            backend if backend is not None else SystemdUserBackend()
-        )
+        if backend is not None:
+            self.backend = backend
+        else:
+            from winux.platform.service_backends import ServiceBackendManager
+
+            manager = backend_manager or ServiceBackendManager()
+            self.backend = manager.get(backend_name)
         if not isinstance(self.backend, ServiceBackend):
             raise TypeError(
                 "Service backend does not implement the Winux service contract"
