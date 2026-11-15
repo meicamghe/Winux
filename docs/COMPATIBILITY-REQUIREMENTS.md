@@ -57,3 +57,10 @@ Profiles should describe requirements and test procedures. They must not contain
 - Unsupported: a required kernel driver, Windows-only service, or unavailable API blocks the workflow.
 
 Winux should expose these as distinct outcomes rather than a single compatible boolean.
+## 2026-11-15 - State-write safety follow-up
+
+- Process state persistence retains its private 0600 mode through the temporary
+  file descriptor and avoids a path-based chmod after atomic replacement.
+- Service state persistence closes the raw temporary descriptor when fdopen
+  setup fails and removes the uncommitted temporary file.
+- Regression tests were added; hosted CI verification is pending.
