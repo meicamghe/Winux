@@ -1069,3 +1069,13 @@ inventing EMWAT-specific protocol behavior.
   closing the symlink replacement window. Failed fdopen setup closes the raw
   descriptor. Added tests for descriptor cleanup and FIFO rejection.
 - Hosted CI is pending for this change.
+
+
+## 2026-11-15 - Application log descriptor cleanup
+
+- ApplicationRunner now closes the raw log-file descriptor if wrapping it
+  with fdopen fails after the parent directory has been pinned and the log
+  file has been created.
+- Added a regression test that verifies both the directory and file
+  descriptors are closed and the incomplete log file is removed.
+- Hosted CI is pending for this change.
