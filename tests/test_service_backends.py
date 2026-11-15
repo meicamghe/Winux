@@ -58,6 +58,18 @@ class ServiceBackendManagerTests(unittest.TestCase):
         self.assertEqual(manager.plugin_errors()[0]["plugin"], "broken")
         self.assertEqual(manager.plugin_errors()[0]["stage"], "load")
 
+    def test_backend_class_is_a_factory_not_a_backend_instance(self):
+        manager = ServiceBackendManager(discover=False)
+        manager.register("fake-class", FakeBackend)
+
+        entry = manager.list()["fake-class"]
+        self.assertFalse(entry["loaded"])
+        self.assertEqual(entry["backend"], "FakeBackend")
+
+        backend = manager.get("fake-class")
+        self.assertIsInstance(backend, FakeBackend)
+        self.assertNotIsInstance(backend, type)
+
     def test_callable_backend_instance_is_not_treated_as_factory(self):
         class CallableBackend(FakeBackend):
             def __call__(self):
