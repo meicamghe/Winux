@@ -228,6 +228,20 @@ class ServiceManagerTests(unittest.TestCase):
             0o600,
         )
 
+    def test_state_lock_closes_descriptor_when_fdopen_fails(self):
+        with patch(
+            "winux.core.services.os.fdopen",
+            side_effect=OSError("fdopen failure"),
+        ), patch(
+            "winux.core.services.os.close",
+            wraps=os.close,
+        ) as close:
+            with self.assertRaisesRegex(OSError, "fdopen failure"):
+                with self.manager._state_lock():
+                    self.fail("lock must not be acquired")
+
+        self.assertTrue(close.called)
+
     def test_state_write_closes_descriptor_when_fdopen_fails(self):
         with patch(
             "winux.core.services.os.fdopen",
