@@ -852,3 +852,14 @@ inventing EMWAT-specific protocol behavior.
 - Hosted CI run `43720800367` passed **291 unit tests**, wheel/sdist builds,
   and installed-wheel CLI and module-import smoke tests:
   https://github.com/meicamghe/Winux/actions/runs/43720800367
+
+## 2026-11-15 - Service state FIFO protection
+
+- ServiceManager now checks that an existing state path is a regular file
+  before reading it. This prevents a FIFO or other special file from blocking
+  the process during state loading.
+- Added a regression test that creates a FIFO at the service-state path and
+  verifies it is rejected without attempting to read from it.
+- Hosted CI run `43720913671` passed **292 unit tests**, wheel/sdist builds,
+  installed-wheel CLI smoke test, and LocalBridge/service-runner import checks:
+  https://github.com/meicamghe/Winux/actions/runs/43720913671
