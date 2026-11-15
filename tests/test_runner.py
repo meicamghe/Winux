@@ -137,6 +137,7 @@ class ApplicationRunnerTests(unittest.TestCase):
         log_parent.mkdir(parents=True)
         target = self.home / "outside-logs"
         target.mkdir()
+        self.runner.log_dir.rmdir()
         (log_parent / "app-runs").symlink_to(
             target,
             target_is_directory=True,
