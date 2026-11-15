@@ -3,8 +3,8 @@
 ## Status
 
 Security-policy primitives are implemented in src/winux/core/local_bridge.py.
-The HTTP listener, request dispatch, bounded concurrency, and application
-adapters are not implemented yet. No EMWAT-specific request handler exists.
+The generic HTTP transport is implemented in src/winux/platform/local_bridge.py.
+No EMWAT-specific route adapter or payload handler exists.
 
 ## Goal
 
@@ -132,3 +132,25 @@ The current LocalBridgePolicy implementation provides:
 These are policy primitives, not a running HTTP transport. The future server
 must invoke them before route dispatch and still implement request deadlines,
 concurrency enforcement, graceful shutdown, and redacted diagnostics.
+
+## Implemented transport
+
+The platform transport currently provides:
+
+- Explicit route registration by HTTP method and path.
+- Loopback-only listener supplied by LocalBridgePolicy, with IPv4/IPv6
+  listener selection.
+- Exact Host/Origin validation before dispatch.
+- Optional Bearer token authentication; preflight does not require the token.
+- Strict request body length limits and rejection of Transfer-Encoding.
+- Socket request timeouts and bounded concurrent request handling.
+- Exact-origin CORS responses and route-aware preflight checks.
+- Response-header validation and generic error responses that do not expose
+  handler exception details.
+- Request-line logging disabled to avoid leaking query parameters.
+- Shutdown that stops accepting new work and waits for active handlers within
+  a caller-supplied deadline.
+
+The transport is generic. Application routes and payload semantics remain
+owned by adapters. The EMWAT protocol is not implemented because its complete
+init/invoke schema and authentication policy remain unconfirmed.
