@@ -4,6 +4,7 @@ import logging
 import math
 from dataclasses import dataclass, field
 import socket
+import time
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
@@ -17,8 +18,9 @@ class _ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     block_on_close = False
     allow_reuse_address = False
 
-    def __init__(self, server_address, handler_class, semaphore):
+    def __init__(self, server_address, handler_class, semaphore, bridge):
         self._semaphore = semaphore
+        self._bridge = bridge
         super().__init__(server_address, handler_class)
 
     def process_request(self, request, client_address):
@@ -43,10 +45,15 @@ class _ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
             raise
 
     def process_request_thread(self, request, client_address):
+        with self._bridge._active_condition:
+            self._bridge._active_requests += 1
         try:
             super().process_request_thread(request, client_address)
         finally:
             self._semaphore.release()
+            with self._bridge._active_condition:
+                self._bridge._active_requests -= 1
+                self._bridge._active_condition.notify_all()
 
 
 class LocalBridge:
@@ -74,6 +81,8 @@ class LocalBridge:
             self.policy.max_concurrency
         )
         self._lock = threading.RLock()
+        self._active_condition = threading.Condition()
+        self._active_requests = 0
         self._closing = False
         self._server = None
         self._thread = None
@@ -135,6 +144,8 @@ class LocalBridge:
         with self._lock:
             if self.is_running:
                 raise RuntimeError("Local bridge is already running")
+            if self._server is not None:
+                raise RuntimeError("Local bridge is still shutting down")
 
             server_type = _ThreadingHTTPServer
             if ":" in self.policy.bind_address:
@@ -413,6 +424,7 @@ class LocalBridge:
                 (self.policy.bind_address, self.policy.port),
                 RequestHandler,
                 self._semaphore,
+                self,
             )
             self._server = server
             self._closing = False
@@ -435,6 +447,8 @@ class LocalBridge:
         ):
             raise ValueError("Shutdown timeout must be finite and non-negative")
 
+        stop_deadline = time.monotonic() + float(timeout)
+
         with self._lock:
             server = self._server
             thread = self._thread
@@ -444,10 +458,24 @@ class LocalBridge:
 
         if thread is not None and thread.is_alive():
             server.shutdown()
-            thread.join(timeout=float(timeout))
         server.server_close()
 
-        stopped = thread is None or not thread.is_alive()
+        with self._active_condition:
+            while self._active_requests:
+                remaining = stop_deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                self._active_condition.wait(timeout=remaining)
+
+        if thread is not None:
+            thread.join(
+                timeout=max(0.0, stop_deadline - __import__("time").monotonic())
+            )
+
+        stopped = (
+            (thread is None or not thread.is_alive())
+            and self._active_requests == 0
+        )
         if stopped:
             with self._lock:
                 self._server = None
