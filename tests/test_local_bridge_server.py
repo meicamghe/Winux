@@ -1,4 +1,6 @@
 import http.client
+import threading
+import time
 import unittest
 
 from winux.core.local_bridge import LocalBridgePolicy
@@ -256,6 +258,38 @@ class LocalBridgeServerTests(unittest.TestCase):
         self.assertTrue(bridge.shutdown(timeout=1))
         self.assertFalse(bridge.is_running)
         self.assertTrue(bridge.shutdown(timeout=1))
+
+    def test_shutdown_reports_inflight_handler_and_waits_for_drain(self):
+        entered = threading.Event()
+        release = threading.Event()
+
+        def wait_for_release(_request):
+            entered.set()
+            release.wait(timeout=2)
+            return LocalBridgeResponse(body=b"finished")
+
+        bridge = self.make_bridge(
+            routes={("GET", "/health"): wait_for_release}
+        )
+        result = {}
+        client = threading.Thread(
+            target=lambda: result.update(
+                response=self.request(bridge)
+            ),
+            daemon=True,
+        )
+        client.start()
+        self.assertTrue(entered.wait(timeout=1))
+
+        started = time.monotonic()
+        self.assertFalse(bridge.shutdown(timeout=0.05))
+        self.assertLess(time.monotonic() - started, 1)
+
+        release.set()
+        client.join(timeout=1)
+        self.assertFalse(client.is_alive())
+        self.assertTrue(bridge.shutdown(timeout=1))
+        self.assertEqual(result["response"][0], 200)
 
     def test_port_conflict_is_reported(self):
         first = self.make_bridge()
