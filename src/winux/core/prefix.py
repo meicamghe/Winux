@@ -73,7 +73,7 @@ class PrefixManager:
             raise ValueError("Invalid prefix name")
 
     def normalize_architecture(self, architecture):
-        if architecture not in self.ARCHITECTURES:
+        if not isinstance(architecture, str) or architecture not in self.ARCHITECTURES:
             raise ValueError(
                 "Architecture must be x86, x64 or win64; "
                 "Winux creates only 64-bit WoW64 prefixes"
