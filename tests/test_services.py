@@ -577,6 +577,13 @@ class ServiceManagerTests(unittest.TestCase):
 
 
 class SystemdUserBackendTests(unittest.TestCase):
+    def test_systemd_backend_implements_service_contract(self):
+        backend = SystemdUserBackend(
+            systemctl="/usr/bin/systemctl",
+            unit_dir=Path("/tmp/winux-test-systemd-user"),
+        )
+        self.assertIsInstance(backend, ServiceBackend)
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp_dir.cleanup)
