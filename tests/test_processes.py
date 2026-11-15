@@ -103,6 +103,15 @@ class ProcessManagerTests(unittest.TestCase):
 
         self.assertEqual(fsync.call_count, 2)
 
+    def test_state_write_does_not_chmod_replaced_path(self):
+        with patch(
+            "winux.core.processes.os.chmod",
+            side_effect=AssertionError("path-based chmod is unsafe"),
+        ):
+            self.manager._write_records([])
+
+        self.assertEqual(self.state_file.stat().st_mode & 0o777, 0o600)
+
     def test_list_reports_running_process(self):
         process = self.start_process()
 
