@@ -230,12 +230,14 @@ class ApplicationManager:
 
         try:
             os.fchmod(descriptor, 0o600)
-            with os.fdopen(
+            file_handle = os.fdopen(
                 descriptor,
                 "w",
                 encoding="utf-8",
                 newline="" if format == "csv" else None,
-            ) as file:
+            )
+            descriptor = -1
+            with file_handle as file:
                 if format == "json":
                     json.dump(
                         [
@@ -267,10 +269,8 @@ class ApplicationManager:
             finally:
                 os.close(directory_fd)
         except Exception:
-            try:
+            if descriptor >= 0:
                 os.close(descriptor)
-            except OSError:
-                pass
             try:
                 os.unlink(temporary_name)
             except FileNotFoundError:
