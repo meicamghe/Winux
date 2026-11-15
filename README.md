@@ -137,6 +137,8 @@ The following milestones represent the planned development direction:
 - [ ] System settings and configuration interface
 - [ ] Winux OS image and installer
 
+- [Application compatibility requirements and EMWAT-derived Engine gaps](docs/COMPATIBILITY-REQUIREMENTS.md)
+
 ## Compatibility
 
 Winux uses Wine as its current Windows compatibility layer.
