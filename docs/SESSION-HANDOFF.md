@@ -1035,3 +1035,16 @@ inventing EMWAT-specific protocol behavior.
   temporary metadata file is removed.
 - Added a regression test for the failure path. Hosted CI verification is
   pending.
+
+
+## 2026-11-15 - Systemd unit descriptor cleanup
+
+- SystemdUserBackend now transfers ownership of the temporary unit-file
+  descriptor only after fdopen succeeds. If wrapping fails, the raw descriptor
+  is closed and the temporary unit file is removed.
+- Added a regression test for the fdopen failure path.
+- Earlier process/service/prefix descriptor-cleanup changes passed hosted CI
+  run https://github.com/meicamghe/Winux/actions/runs/43723701625.
+- The new systemd backend regression is covered by CI run
+  https://github.com/meicamghe/Winux/actions/runs/43723953513; verify its final
+  result before treating this latest change as passing.
