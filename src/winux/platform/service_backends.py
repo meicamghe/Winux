@@ -106,7 +106,12 @@ class ServiceBackendManager:
         return {
             name: {
                 "default": name == self._default_backend,
-                "backend": type(backend).__name__,
+                "backend": (
+                    backend.__name__
+                    if callable(backend)
+                    else type(backend).__name__
+                ),
+                "loaded": isinstance(backend, ServiceBackend),
             }
             for name, backend in self._backends.items()
         }
