@@ -353,6 +353,13 @@ class ServiceManager:
         return self.get(service_id)
 
     @staticmethod
+    def _has_unknown_lifecycle_state(status):
+        return any(
+            status.get(field) in (None, "unknown")
+            for field in ("active_state", "unit_file_state")
+        )
+
+    @staticmethod
     def _is_active(status):
         return status.get("active_state") in {
             "active", "activating", "reloading", "deactivating"
@@ -394,6 +401,10 @@ class ServiceManager:
             raise RuntimeError(
                 "Service unit exists but systemd did not load it"
             )
+        if self._has_unknown_lifecycle_state(current):
+            raise RuntimeError(
+                "Service unit loaded but its active/enabled state is unknown"
+            )
 
         originally_enabled = self._is_enabled(original_status)
         currently_enabled = self._is_enabled(current)
@@ -404,6 +415,10 @@ class ServiceManager:
             self.backend.disable(service_id)
 
         current = self.backend.status(service_id)
+        if self._has_unknown_lifecycle_state(current):
+            raise RuntimeError(
+                "Service unit restored but its active/enabled state is unknown"
+            )
         originally_active = self._is_active(original_status)
         currently_active = self._is_active(current)
 
@@ -424,9 +439,9 @@ class ServiceManager:
 
         original_status = self.backend.status(service_id)
 
-        if original_status.get("error") or any(
-            original_status.get(field) == "unknown"
-            for field in ("active_state", "unit_file_state")
+        if (
+            original_status.get("error")
+            or self._has_unknown_lifecycle_state(original_status)
         ):
             detail = original_status.get("error") or (
                 "service state is incomplete"
