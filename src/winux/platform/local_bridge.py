@@ -1,6 +1,7 @@
 """HTTP server transport for Winux's local browser/desktop bridge."""
 
 import logging
+from dataclasses import dataclass, field
 import socket
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -438,4 +439,4 @@ class LocalBridgeRequest:
 class LocalBridgeResponse:
     status: int = 200
     body: bytes = b""
-    headers: dict = None
+    headers: dict = field(default_factory=dict)
