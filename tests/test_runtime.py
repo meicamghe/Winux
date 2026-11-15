@@ -23,6 +23,13 @@ class RuntimeTests(unittest.TestCase):
         self.assertIn("wine", result)
         self.assertTrue(result["wine"]["default"])
 
+    def test_manager_rejects_non_string_runtime_names(self):
+        manager = RuntimeManager(discover=False)
+        for name in ([], {}, 1, False):
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(ValueError, "Invalid runtime name"):
+                    manager.get(name)
+
     def test_manager_rejects_empty_runtime_name(self):
         manager = RuntimeManager()
 
