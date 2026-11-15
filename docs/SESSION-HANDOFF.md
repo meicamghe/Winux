@@ -434,3 +434,20 @@ https://github.com/meicamghe/Winux/actions/runs/43717620444
 The additional ProcessManager path-hardening commits were pushed after those
 successful runs and are awaiting their own CI result. They have not been
 claimed as tested yet.
+
+## 2026-11-15 - Process state path validation CI result
+
+The corrected process-state writer now emits valid JSON with a real trailing
+newline. The hosted CI run for commit `33532ba` completed successfully:
+238 unit tests passed, wheel and source distribution built, and the installed
+wheel's `winux --help` smoke test succeeded.
+
+ProcessManager now checks parent path components for symlinks on construction,
+read, and write; rejects dangling state-file symlinks and non-regular state
+paths; and uses restrictive directory/file permissions. Tests cover parent
+symlink read/write, dangling symlinks, and directory-as-state-file cases.
+
+A further ServiceManager boundary fix rejects backend classes passed as if
+they were instances and preserves explicitly injected falsey prefix and
+application managers. Its own hosted CI run is still in progress and must be
+checked before treating that last change as verified.
