@@ -235,10 +235,15 @@ class Installer:
         timeout=3600,
         verification_profile=None,
     ):
+        try:
+            finite_timeout = math.isfinite(timeout)
+        except (OverflowError, TypeError):
+            finite_timeout = False
+
         if (
             isinstance(timeout, bool)
             or not isinstance(timeout, (int, float))
-            or not math.isfinite(timeout)
+            or not finite_timeout
             or timeout <= 0
         ):
             raise ValueError("Timeout must be a finite positive number")
