@@ -77,9 +77,54 @@ class ProcessManager:
         if not isinstance(data, list):
             raise ValueError("Invalid process state format")
 
+        required_fields = {
+            "id", "pid", "process_start_time", "uid", "application",
+            "prefix", "runtime", "executable", "command", "log",
+            "started_at",
+        }
         for record in data:
-            if not isinstance(record, dict):
+            if (
+                not isinstance(record, dict)
+                or not required_fields.issubset(record)
+            ):
                 raise ValueError("Invalid process record")
+
+            process_id = record["id"]
+            if (
+                not isinstance(process_id, str)
+                or len(process_id) != 32
+                or any(char not in "0123456789abcdef" for char in process_id)
+            ):
+                raise ValueError("Invalid process record ID")
+
+            pid = record["pid"]
+            uid = record["uid"]
+            if (
+                isinstance(pid, bool)
+                or not isinstance(pid, int)
+                or pid <= 0
+                or isinstance(uid, bool)
+                or not isinstance(uid, int)
+                or uid < 0
+            ):
+                raise ValueError("Invalid process identity in state file")
+
+            start_time = record["process_start_time"]
+            if (
+                not isinstance(start_time, str)
+                or not start_time.isdigit()
+            ):
+                raise ValueError("Invalid process start time in state file")
+
+            for field in (
+                "application", "prefix", "runtime", "executable",
+                "command", "started_at",
+            ):
+                if not isinstance(record[field], str) or not record[field]:
+                    raise ValueError(f"Invalid process field: {field}")
+
+            if record["log"] is not None and not isinstance(record["log"], str):
+                raise ValueError("Invalid process log path")
         return data
 
     def _write_records(self, records):
