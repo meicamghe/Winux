@@ -114,12 +114,14 @@ Winux/
 │   │   ├── applications.py
 │   │   ├── desktop.py
 │   │   ├── installer.py
+│   │   ├── local_bridge.py
 │   │   ├── prefix.py
 │   │   ├── runner.py
 │   │   ├── processes.py
 │   │   ├── services.py
 │   │   └── service_contracts.py
 │   ├── platform/
+│   │   ├── local_bridge.py
 │   │   ├── runtime.py
 │   │   ├── service_backend.py
 │   │   └── service_backends.py
@@ -142,8 +144,11 @@ The following milestones represent the planned development direction:
 - [x] Prefix management
 - [x] Installed application discovery
 - [x] Application execution
+- [x] Generic loopback IPC transport and security policy
+- [ ] EMWAT-specific IPC adapter after protocol confirmation
+- [ ] Office automation and host printing adapters
 - [ ] Improved desktop integration
-- [ ] Automated testing framework
+- [x] Automated testing framework and GitHub Actions CI
 - [ ] Graphical application manager
 - [ ] System settings and configuration interface
 - [ ] Winux OS image and installer
@@ -169,6 +174,18 @@ License has not yet been selected.
 ## Session continuity
 
 For the current project decisions, implementation boundaries, and next-session checklist, see [docs/SESSION-HANDOFF.md](docs/SESSION-HANDOFF.md).
+
+## Local Browser-to-Desktop IPC
+
+Winux now includes a generic loopback HTTP transport with explicit routes,
+strict Host and Origin validation, optional Bearer-token authentication,
+bounded request bodies and concurrency, correlation IDs, and controlled
+shutdown.
+
+The transport is an Engine capability, not an EMWAT-specific implementation.
+Application-specific request schemas and document workflows belong in
+adapters. See [docs/LOCAL-IPC-DESIGN.md](docs/LOCAL-IPC-DESIGN.md) for the API,
+security boundaries, test coverage, and remaining integration work.
 
 ## Managed Services and Process Management
 
