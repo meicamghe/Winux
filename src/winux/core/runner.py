@@ -1,6 +1,7 @@
 import logging
 import os
 import subprocess
+import stat
 from datetime import datetime
 from pathlib import Path
 
@@ -49,12 +50,30 @@ class ApplicationRunner:
                     f"Application log path must not contain symlinks: {component}"
                 )
 
-    @staticmethod
-    def _open_log_file(path):
-        """Create a private log file without following existing symlinks."""
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-        flags |= getattr(os, "O_NOFOLLOW", 0)
-        descriptor = os.open(path, flags, 0o600)
+    @classmethod
+    def _open_log_file(cls, path):
+        """Create a private log file without following directory or file symlinks."""
+        path = Path(path)
+        cls._reject_symlink_components(path.parent)
+
+        directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+        directory_flags |= getattr(os, "O_NOFOLLOW", 0)
+        directory_fd = os.open(path.parent, directory_flags)
+        try:
+            if not stat.S_ISDIR(os.fstat(directory_fd).st_mode):
+                raise ValueError("Application log path must be a directory")
+
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+            flags |= getattr(os, "O_NOFOLLOW", 0)
+            descriptor = os.open(
+                path.name,
+                flags,
+                0o600,
+                dir_fd=directory_fd,
+            )
+        finally:
+            os.close(directory_fd)
+
         return os.fdopen(descriptor, "ab")
 
     @staticmethod
