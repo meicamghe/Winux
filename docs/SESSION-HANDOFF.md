@@ -1007,3 +1007,13 @@ inventing EMWAT-specific protocol behavior.
 - Added regression tests for symlink destinations, private permissions, and
   write-failure preservation.
 - Hosted CI verification is pending.
+
+## 2026-11-15 - Process and service state-write hardening
+
+- Process state writes no longer call path-based chmod after atomic replacement.
+  The temporary file already receives mode 0600 through its open descriptor;
+  avoiding chmod(path) prevents following a destination swapped to a symlink.
+- Service state writes now close the raw temporary-file descriptor if wrapping
+  it with fdopen fails, while still removing the temporary file.
+- Added regression tests for both conditions.
+- Hosted CI verification for these latest changes is pending.
