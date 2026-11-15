@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import shutil
+import stat
 import tempfile
 from pathlib import Path
 
@@ -73,9 +74,20 @@ class PrefixManager:
         self.logger.setLevel(logging.INFO)
 
         if not self.logger.handlers:
-            handler = logging.FileHandler(log_file)
-            os.chmod(log_file, 0o600)
-            self.logger.addHandler(handler)
+            flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
+            flags |= getattr(os, "O_NOFOLLOW", 0)
+            descriptor = os.open(log_file, flags, 0o600)
+            try:
+                if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+                    raise ValueError("Prefix log path must be a regular file")
+                os.fchmod(descriptor, 0o600)
+                log_stream = os.fdopen(descriptor, "a", encoding="utf-8")
+                descriptor = -1
+                handler = logging.StreamHandler(log_stream)
+                self.logger.addHandler(handler)
+            finally:
+                if descriptor >= 0:
+                    os.close(descriptor)
 
     def validate_name(self, name):
         if not isinstance(name, str) or not re.fullmatch(
