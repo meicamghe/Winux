@@ -161,7 +161,7 @@ class PrefixManager:
             os.fchmod(descriptor, 0o600)
             with os.fdopen(descriptor, "w", encoding="utf-8") as file:
                 json.dump(metadata, file, indent=2)
-                file.write("\\n")
+                file.write("\n")
                 file.flush()
                 os.fsync(file.fileno())
 
