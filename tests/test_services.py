@@ -211,7 +211,9 @@ class ServiceManagerTests(unittest.TestCase):
         self.assertEqual(record["executable"], str(self.executable))
         self.assertEqual(len(record["id"]), 32)
 
-        stored = json.loads(self.state_file.read_text(encoding="utf-8"))
+        state_bytes = self.state_file.read_bytes()
+        self.assertTrue(state_bytes.endswith(b"\n"))
+        stored = json.loads(state_bytes.decode("utf-8"))
         self.assertEqual(stored[0]["id"], record["id"])
 
         installation = self.backend.installed[record["id"]]
