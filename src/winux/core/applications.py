@@ -1,5 +1,6 @@
 import csv
 import json
+import math
 import re
 from pathlib import Path, PureWindowsPath
 
@@ -258,8 +259,18 @@ class ApplicationManager:
         )
 
     def uninstall(self, prefix_name, application_id, timeout=300):
-        if not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or timeout <= 0:
-            raise ValueError("timeout must be a positive number")
+        try:
+            finite_timeout = math.isfinite(timeout)
+        except (OverflowError, TypeError):
+            finite_timeout = False
+
+        if (
+            isinstance(timeout, bool)
+            or not isinstance(timeout, (int, float))
+            or not finite_timeout
+            or timeout <= 0
+        ):
+            raise ValueError("timeout must be a finite positive number")
 
         application = self.info(prefix_name, application_id)
 
@@ -273,6 +284,8 @@ class ApplicationManager:
                 f"No uninstall command registered for: "
                 f"{application.get('DisplayName', application_id)}"
             )
+        if not isinstance(command, str) or not command.strip():
+            raise ValueError("Invalid uninstall command")
 
         import shlex
 
