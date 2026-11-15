@@ -52,6 +52,31 @@ class ServiceBackendManagerTests(unittest.TestCase):
         self.assertEqual(manager.plugin_errors()[0]["plugin"], "broken")
         self.assertEqual(manager.plugin_errors()[0]["stage"], "load")
 
+    def test_backend_factory_is_created_only_when_selected(self):
+        calls = []
+
+        def factory():
+            calls.append("created")
+            return FakeBackend()
+
+        manager = ServiceBackendManager(discover=False)
+        manager.register("lazy", factory)
+        self.assertEqual(calls, [])
+        self.assertFalse(manager.list()["lazy"]["loaded"])
+        self.assertEqual(manager.list()["lazy"]["backend"], "factory")
+        backend = manager.get("lazy")
+        self.assertIsInstance(backend, FakeBackend)
+        self.assertEqual(calls, ["created"])
+        self.assertTrue(manager.list()["lazy"]["loaded"])
+        self.assertIs(manager.get("lazy"), backend)
+        self.assertEqual(calls, ["created"])
+
+    def test_invalid_factory_result_is_rejected(self):
+        manager = ServiceBackendManager(discover=False)
+        manager.register("invalid-factory", lambda: object())
+        with self.assertRaisesRegex(TypeError, "service contract"):
+            manager.get("invalid-factory")
+
     def test_unknown_backend_is_rejected(self):
         manager = ServiceBackendManager(discover=False)
         with self.assertRaisesRegex(ValueError, "Unknown service backend"):
