@@ -1,8 +1,11 @@
+import fcntl
 import json
 import os
+import stat
 import sys
 import tempfile
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 
 from winux.core.applications import ApplicationManager
@@ -48,6 +51,9 @@ class ServiceManager:
             if state_file is not None
             else Path.home() / ".local/share/winux/services.json"
         )
+        self.lock_file = self.state_file.with_name(
+            self.state_file.name + ".lock"
+        )
         self.prefix_manager = (
             prefix_manager if prefix_manager is not None else PrefixManager()
         )
@@ -67,6 +73,40 @@ class ServiceManager:
                 raise ValueError(
                     f"Service state path must not contain symlinks: {component}"
                 )
+
+    @contextmanager
+    def _state_lock(self):
+        """Serialize service-definition read/modify/write operations."""
+        self._reject_symlink_components(self.state_file.parent)
+        self.state_file.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+            mode=0o700,
+        )
+        self._reject_symlink_components(self.state_file.parent)
+
+        if self.lock_file.is_symlink():
+            raise ValueError("Service state lock must not be a symlink")
+
+        flags = os.O_RDWR | os.O_CREAT
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(self.lock_file, flags, 0o600)
+
+        try:
+            if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+                raise ValueError("Service state lock must be a regular file")
+            os.fchmod(descriptor, 0o600)
+
+            with os.fdopen(descriptor, "r+b") as lock:
+                descriptor = -1
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+                try:
+                    yield
+                finally:
+                    fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+        finally:
+            if descriptor >= 0:
+                os.close(descriptor)
 
     def _read(self):
         self._reject_symlink_components(self.state_file.parent)
@@ -193,6 +233,21 @@ class ServiceManager:
         return self.get_definition(service_id)
 
     def create(
+        self,
+        name,
+        prefix_name,
+        application_id,
+        restart="on-failure",
+    ):
+        with self._state_lock():
+            return self._create_locked(
+                name,
+                prefix_name,
+                application_id,
+                restart,
+            )
+
+    def _create_locked(
         self,
         name,
         prefix_name,
@@ -428,6 +483,10 @@ class ServiceManager:
             self.backend.stop(service_id)
 
     def delete(self, service_id):
+        with self._state_lock():
+            return self._delete_locked(service_id)
+
+    def _delete_locked(self, service_id):
         records = self._read()
         record = next(
             (item for item in records if item.get("id") == service_id),
