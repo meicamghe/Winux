@@ -230,12 +230,13 @@ launched through the normal application-run workflow.
 
 The manager depends on the platform-neutral `ServiceBackend` Protocol in
 `winux/core/service_contracts.py`, which defines the lifecycle operations,
-service ID format, and restart policies. The systemd backend is the built-in default. Service backends are resolved
-through the service-backend registry and may be extended through the
-`winux.service_backends` Python entry-point group. A future backend for another init/service manager
-can implement this contract without changing service-definition validation
-or the manager's recovery logic; this interface alone does not provide
-non-systemd support.
+service ID format, and restart policies. `ServiceBackendManager` in
+`winux/platform/service_backends.py` registers the built-in systemd backend
+and discovers optional third-party backends through the
+`winux.service_backends` Python entry-point group. Backend instances are
+created lazily when selected. The systemd user backend remains the only
+built-in implementation; plugin discovery is an extension point, not proof
+of non-systemd support.
 
 ### Windows Service Compatibility
 
