@@ -21,6 +21,22 @@ class RuntimeTests(unittest.TestCase):
             env = runtime._env("/selected/prefix")
         self.assertEqual(env["WINEPREFIX"], "/selected/prefix")
 
+    def test_wine_environment_does_not_inherit_prefix_architecture(self):
+        runtime = WineRuntime()
+        with patch.dict(os.environ, {"WINEARCH": "win32"}):
+            env = runtime._env("/selected/prefix")
+        self.assertNotIn("WINEARCH", env)
+
+    def test_wine_prefix_creation_sets_requested_architecture(self):
+        runtime = WineRuntime()
+        with patch.object(runtime, "_find", return_value="/usr/bin/wineboot"), patch(
+            "winux.runtime.wine.subprocess.run"
+        ) as run:
+            runtime.create_prefix(Path("/selected/prefix"), "win64")
+
+        self.assertEqual(run.call_args.kwargs["env"]["WINEPREFIX"], "/selected/prefix")
+        self.assertEqual(run.call_args.kwargs["env"]["WINEARCH"], "win64")
+
     def test_wine_runtime_implements_interface(self):
         runtime = WineRuntime()
         self.assertIsInstance(runtime, Runtime)
