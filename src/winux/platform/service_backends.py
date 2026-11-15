@@ -32,6 +32,10 @@ class ServiceBackendManager:
         if name in self._backends:
             raise ValueError(f"Service backend already registered: {name}")
 
+        if isinstance(backend_factory, ServiceBackend):
+            self._backends[name] = backend_factory
+            return
+
         if callable(backend_factory):
             self._backends[name] = backend_factory
             return
@@ -80,12 +84,18 @@ class ServiceBackendManager:
     def get(self, name=None):
         if name is None:
             name = self._default_backend
+        if not isinstance(name, str) or not name:
+            raise ValueError(f"Invalid service backend name: {name!r}")
         try:
             backend = self._backends[name]
         except KeyError:
             raise ValueError(f"Unknown service backend: {name}") from None
 
         if not isinstance(backend, ServiceBackend):
+            if not callable(backend):
+                raise TypeError(
+                    f"Service backend '{name}' is neither a backend nor a factory"
+                )
             backend = backend()
             if not isinstance(backend, ServiceBackend):
                 raise TypeError(
