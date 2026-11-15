@@ -1,3 +1,4 @@
+import concurrent.futures
 import json
 import subprocess
 import tempfile
@@ -225,6 +226,54 @@ class ServiceManagerTests(unittest.TestCase):
             self.state_file.stat().st_mode & 0o777,
             0o600,
         )
+
+    def test_concurrent_duplicate_service_creation_is_serialized(self):
+        managers = [
+            ServiceManager(
+                backend=self.backend,
+                state_file=self.state_file,
+                prefix_manager=self.prefix_manager,
+                application_manager=self.application_manager,
+            )
+            for _ in range(2)
+        ]
+
+        def create(manager):
+            return manager.create(
+                "Shared Service",
+                "test-prefix",
+                "example-app",
+            )
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(create, manager) for manager in managers]
+            results = []
+            errors = []
+            for future in futures:
+                try:
+                    results.append(future.result())
+                except Exception as error:
+                    errors.append(error)
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(len(errors), 1)
+        self.assertIsInstance(errors[0], FileExistsError)
+        records = json.loads(self.state_file.read_text(encoding="utf-8"))
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["name"], "Shared Service")
+        self.assertEqual(
+            self.manager.lock_file.stat().st_mode & 0o777,
+            0o600,
+        )
+
+    def test_service_state_lock_rejects_symbolic_link(self):
+        target = Path(self.temp_dir.name) / "outside-services.lock"
+        target.write_text("", encoding="utf-8")
+        self.manager.lock_file.symlink_to(target)
+
+        with self.assertRaisesRegex(ValueError, "must not be a symlink"):
+            with self.manager._state_lock():
+                pass
 
     def test_create_rejects_empty_name(self):
         with self.assertRaises(ValueError):
