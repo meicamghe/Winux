@@ -1,6 +1,7 @@
 """HTTP server transport for Winux's local browser/desktop bridge."""
 
 import logging
+import math
 from dataclasses import dataclass, field
 import socket
 import threading
@@ -245,19 +246,28 @@ class LocalBridge:
                             return
 
                     actual_port = bridge.address[1]
-                    if not bridge.policy.validate_host(
-                        self.headers.get("Host"),
+                    host_values = self.headers.get_all("Host", [])
+                    if len(host_values) != 1 or not bridge.policy.validate_host(
+                        host_values[0] if host_values else None,
                         actual_port=actual_port,
                     ):
                         self._reject(400, "Invalid Host header")
                         return
 
-                    origin = self.headers.get("Origin")
+                    origin_values = self.headers.get_all("Origin", [])
+                    if len(origin_values) > 1:
+                        self._reject(403, "Origin is not allowed")
+                        return
+                    origin = origin_values[0] if origin_values else None
                     if not bridge.policy.validate_origin(origin):
                         self._reject(403, "Origin is not allowed")
                         return
 
-                    parsed = urlsplit(self.path)
+                    try:
+                        parsed = urlsplit(self.path)
+                    except ValueError:
+                        self._reject(400, "Invalid request target", origin)
+                        return
                     if (
                         parsed.scheme
                         or parsed.netloc
@@ -308,13 +318,21 @@ class LocalBridge:
                         )
                         return
 
-                    if self.headers.get("Transfer-Encoding") is not None:
+                    transfer_encodings = self.headers.get_all(
+                        "Transfer-Encoding", []
+                    )
+                    if transfer_encodings:
                         self._reject(400, "Transfer-Encoding is not supported", origin)
+                        return
+
+                    content_lengths = self.headers.get_all("Content-Length", [])
+                    if len(content_lengths) > 1:
+                        self._reject(400, "Invalid Content-Length", origin)
                         return
 
                     try:
                         body_length = bridge.policy.validate_content_length(
-                            self.headers.get("Content-Length")
+                            content_lengths[0] if content_lengths else None
                         )
                     except ValueError as error:
                         status = 413 if "exceeds configured maximum" in str(error) else 400
@@ -322,7 +340,14 @@ class LocalBridge:
                         return
 
                     if bridge.policy.auth_token is not None:
-                        authorization = self.headers.get("Authorization", "")
+                        authorization_values = self.headers.get_all(
+                            "Authorization", []
+                        )
+                        authorization = (
+                            authorization_values[0]
+                            if len(authorization_values) == 1
+                            else ""
+                        )
                         scheme, separator, token = authorization.partition(" ")
                         supplied_token = (
                             token if separator and scheme.lower() == "bearer" else None
@@ -405,8 +430,7 @@ class LocalBridge:
         if (
             isinstance(timeout, bool)
             or not isinstance(timeout, (int, float))
-            or timeout != timeout
-            or timeout in (float("inf"), float("-inf"))
+            or not math.isfinite(timeout)
             or timeout < 0
         ):
             raise ValueError("Shutdown timeout must be finite and non-negative")
@@ -424,9 +448,10 @@ class LocalBridge:
         server.server_close()
 
         stopped = thread is None or not thread.is_alive()
-        with self._lock:
-            self._server = None
-            self._thread = None
+        if stopped:
+            with self._lock:
+                self._server = None
+                self._thread = None
         return stopped
 
 
