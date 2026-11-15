@@ -154,3 +154,15 @@ The source and tests were committed to GitHub. The doctor CLI now exits with sta
 ### Verification status
 
 These changes and tests are committed to the main repository. They have not been executed in a local checkout in this session; do not mark them as passing until the complete test suite is run. No live processes were signaled and no Wine prefixes were created or deleted during this update.
+## 2026-11-15 - Installer and managed-service hardening
+
+### Implemented
+
+- Service state loading now rejects dangling symlinks rather than interpreting them as an absent state file.
+- Installer timeout validation now rejects booleans, strings, NaN, infinities, zero, and negative values; only finite positive integers/floats are accepted.
+- Runtime diagnostics now report availability of msiinfo (MSI architecture inspection) and 7z (NSIS application inspection) as optional tools.
+- Added regression tests for dangling service-state symlinks, invalid timeout values, and optional installer inspection tools.
+
+### Verification status
+
+Changes and tests were committed to main. They have not been executed in a local checkout during this session. No systemd user service was installed, enabled, started, stopped, or deleted. No installer was run.
