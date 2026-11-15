@@ -1,5 +1,6 @@
 import logging
 import os
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -55,6 +56,20 @@ class ApplicationRunner:
         flags |= getattr(os, "O_NOFOLLOW", 0)
         descriptor = os.open(path, flags, 0o600)
         return os.fdopen(descriptor, "ab")
+
+    @staticmethod
+    def _terminate_unregistered_process(process, timeout=5):
+        """Stop a launched process if Winux cannot register its identity."""
+        try:
+            process.terminate()
+        except ProcessLookupError:
+            return
+
+        try:
+            process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
 
     def _resolve_application(self, prefix_name, application_id):
         """Resolve and validate an application before starting its process."""
@@ -154,13 +169,19 @@ class ApplicationRunner:
             )
             result["process_id"] = record["id"]
         except Exception as error:
-            self.logger.warning(
-                "Application started but process registration failed "
-                "(pid=%s, application=%s): %s",
-                process.pid,
-                application_name,
-                error,
-            )
-            result["process_registration_error"] = str(error)
+            try:
+                self._terminate_unregistered_process(process)
+            except Exception as cleanup_error:
+                raise RuntimeError(
+                    "Application process registration failed and the "
+                    "unregistered process could not be stopped. "
+                    f"PID: {process.pid}. Registration error: {error}. "
+                    f"Cleanup error: {cleanup_error}"
+                ) from error
+
+            raise RuntimeError(
+                "Application process was stopped because Winux could not "
+                f"register it (PID: {process.pid}): {error}"
+            ) from error
 
         return result
