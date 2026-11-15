@@ -100,7 +100,8 @@ class RuntimeManager:
                 self._record_plugin_error(plugin_name, "registration", error)
 
     def get(self, name=None):
-        name = name or self._default_runtime
+        if name is None:
+            name = self._default_runtime
 
         try:
             return self._runtimes[name]
