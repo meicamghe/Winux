@@ -166,3 +166,15 @@ These changes and tests are committed to the main repository. They have not been
 ### Verification status
 
 Changes and tests were committed to main. They have not been executed in a local checkout during this session. No systemd user service was installed, enabled, started, stopped, or deleted. No installer was run.
+## 2026-11-15 - Service backend failure-state handling
+
+### Implemented
+
+- systemctl execution now converts process-launch and timeout failures into actionable backend errors.
+- Service status no longer reports "not-found" when the user systemd manager is unreachable, times out, or cannot execute. It returns "unknown" with an error detail, preventing recovery logic from confusing manager failure with a genuinely missing unit.
+- `winux doctor` now probes the current user's systemd manager, not just the presence of the `systemctl` binary. An unavailable user manager is a warning because the Engine can still run applications without managed services.
+- Added regression tests for manager outage, timeout, missing systemctl, and diagnostic reporting.
+
+### Verification status
+
+Code and tests are committed to main. Tests were not executed in this assistant session. No actual systemd unit was started, stopped, enabled, disabled, or deleted.
