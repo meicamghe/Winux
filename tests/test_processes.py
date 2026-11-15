@@ -181,7 +181,8 @@ class ProcessManagerTests(unittest.TestCase):
         link = Path(self.temp_dir.name) / "linked-parent"
         link.symlink_to(real_parent, target_is_directory=True)
 
-        manager = ProcessManager(state_file=link / "processes.json")
+        manager = ProcessManager(state_file=self.state_file)
+        manager.state_file = link / "processes.json"
         with self.assertRaisesRegex(ValueError, "symlinks"):
             manager.list()
 
@@ -191,7 +192,8 @@ class ProcessManagerTests(unittest.TestCase):
         link = Path(self.temp_dir.name) / "linked-parent"
         link.symlink_to(real_parent, target_is_directory=True)
 
-        manager = ProcessManager(state_file=link / "processes.json")
+        manager = ProcessManager(state_file=self.state_file)
+        manager.state_file = link / "processes.json"
         with self.assertRaisesRegex(ValueError, "symlinks"):
             manager._write_records([])
 
