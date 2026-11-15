@@ -145,3 +145,8 @@ PrefixManager opens its log with `O_NONBLOCK` as well as `O_NOFOLLOW`, then veri
 ## Wine runtime prefix environment
 
 Every Wine subprocess receives the selected prefix as an absolute WINEPREFIX path. Relative paths and home notation are normalized, and inherited WINEPREFIX values are overridden to prevent operations from being redirected to another prefix. Regression tests cover normalization and environment isolation.
+
+
+## Wine environment architecture isolation
+
+Wine subprocesses use the explicitly selected absolute `WINEPREFIX`. An inherited shell-level `WINEARCH` is removed from ordinary Wine operations to avoid leaking an unrelated prefix-creation setting. Prefix initialization sets `WINEARCH` explicitly for the selected prefix. This environment isolation does not by itself prove that a given Wine build supports every x86 or x64 application; verify the actual WoW64 runtime and application workflow.
