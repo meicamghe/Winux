@@ -31,6 +31,7 @@ class ServiceManager:
         )
 
     def _read(self):
+        # Check symlinks before exists(): dangling symlinks report exists=False.
         if self.state_file.is_symlink():
             raise ValueError("Service state file must not be a symlink")
 
