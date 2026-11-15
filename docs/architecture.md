@@ -90,6 +90,11 @@ Installation data and lock files are kept under Winux's user data directory, inc
 ~/.local/share/winux/locks/
 ```
 
+Installer storage directories are restricted to mode 0700. Installation logs
+and prefix lock files are created as mode 0600; lock files are opened without
+following symbolic links, and history ignores symlinked log entries. Storage
+directory components are checked again before installation and history access.
+
 Installer success and application compatibility are different things: a successful installer exit does not guarantee that the installed application will work correctly.
 
 ### Application manager — `core/applications.py`
