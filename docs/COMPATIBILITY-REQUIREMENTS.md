@@ -114,3 +114,8 @@ ApplicationRunner closes the raw log descriptor if fdopen fails after secure
 relative creation in the pinned log directory. The regression test verifies
 both the directory and file descriptors are closed and no incomplete log
 file remains. Hosted CI is pending.
+
+
+On fdopen failure, ApplicationRunner closes the file descriptor and removes
+the newly created log entry relative to the still-pinned directory descriptor,
+so cleanup does not re-resolve a potentially replaced parent path.
