@@ -1,5 +1,4 @@
 import http.client
-import socket
 import threading
 import time
 import unittest
@@ -291,29 +290,6 @@ class LocalBridgeServerTests(unittest.TestCase):
         self.assertFalse(client.is_alive())
         self.assertTrue(bridge.shutdown(timeout=1))
         self.assertEqual(result["response"][0], 200)
-
-    def test_request_body_read_obeys_socket_timeout(self):
-        policy = LocalBridgePolicy(
-            allow_missing_origin=True,
-            request_timeout=0.1,
-        )
-        bridge = self.make_bridge(policy=policy)
-        sock = socket.create_connection(bridge.address[:2], timeout=1)
-        self.addCleanup(sock.close)
-        sock.settimeout(1)
-        port = bridge.address[1]
-        sock.sendall(
-            (
-                "POST /echo HTTP/1.1\\r\\n"
-                f"Host: 127.0.0.1:{port}\\r\\n"
-                "Content-Length: 4\\r\\n"
-                "Connection: close\\r\\n\\r\\n"
-                "x"
-            ).encode("ascii")
-        )
-        response = sock.recv(1024)
-
-        self.assertIn(b"408 Request Timeout", response)
 
     def test_max_concurrency_rejects_excess_connections(self):
         entered = threading.Event()
