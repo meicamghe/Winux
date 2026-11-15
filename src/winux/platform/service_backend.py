@@ -56,13 +56,22 @@ class SystemdUserBackend:
         return value.strip().replace("\\", "\\\\").replace("%", "%%")
 
     def _run(self, arguments, timeout=30):
-        result = subprocess.run(
-            [self.systemctl, "--user", *arguments],
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                [self.systemctl, "--user", *arguments],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise RuntimeError(
+                f"systemctl command timed out: {arguments[0]}"
+            ) from error
+        except OSError as error:
+            raise RuntimeError(
+                f"Unable to execute systemctl: {error}"
+            ) from error
 
         if result.returncode != 0:
             message = result.stderr.strip() or result.stdout.strip()
@@ -233,22 +242,41 @@ class SystemdUserBackend:
     def status(self, service_id):
         unit_name = self._unit_name(service_id)
 
-        result = subprocess.run(
-            [
-                self.systemctl,
-                "--user",
-                "show",
-                unit_name,
-                "--property=LoadState",
-                "--property=ActiveState",
-                "--property=SubState",
-                "--property=UnitFileState",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                [
+                    self.systemctl,
+                    "--user",
+                    "show",
+                    unit_name,
+                    "--property=LoadState",
+                    "--property=ActiveState",
+                    "--property=SubState",
+                    "--property=UnitFileState",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            return {
+                "unit": unit_name,
+                "load_state": "unknown",
+                "active_state": "unknown",
+                "sub_state": "unknown",
+                "unit_file_state": "unknown",
+                "error": "systemctl status command timed out",
+            }
+        except OSError as error:
+            return {
+                "unit": unit_name,
+                "load_state": "unknown",
+                "active_state": "unknown",
+                "sub_state": "unknown",
+                "unit_file_state": "unknown",
+                "error": f"Unable to execute systemctl: {error}",
+            }
 
         values = {}
         for line in result.stdout.splitlines():
@@ -257,12 +285,14 @@ class SystemdUserBackend:
                 values[key] = value
 
         if result.returncode != 0 and not values:
+            message = result.stderr.strip() or result.stdout.strip()
             return {
                 "unit": unit_name,
-                "load_state": "not-found",
+                "load_state": "unknown",
                 "active_state": "unknown",
                 "sub_state": "unknown",
                 "unit_file_state": "unknown",
+                "error": message or "systemctl status failed",
             }
 
         return {
