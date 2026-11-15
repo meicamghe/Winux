@@ -727,3 +727,41 @@ inventing EMWAT-specific protocol behavior.
 3. Build a small generic sample adapter and integration harness.
 4. Implement EMWAT routes only after its request schema and authentication
    requirements are confirmed; current capture evidence is insufficient.
+
+## 2026-11-15 - Generic LocalBridge transport implemented
+
+### Engine capability
+
+- The generic HTTP transport lives in src/winux/platform/local_bridge.py;
+  security policy remains in src/winux/core/local_bridge.py. This keeps
+  transport mechanics separate from application-specific route semantics.
+- The transport supports explicit method/path routes, IPv4/IPv6 loopback
+  listeners, Host and Origin validation, optional Bearer authentication,
+  route-aware CORS preflight, bounded request bodies, rejected transfer
+  encodings, socket timeouts, and bounded concurrent handlers.
+- Response headers are validated, handler exceptions return generic errors,
+  request-line logging is disabled to avoid leaking query parameters, and
+  shutdown stops accepting work and waits for active requests within a
+  configured deadline.
+- Added tests for active-request draining and rejection when the concurrency
+  limit is reached.
+- The LocalBridge design, compatibility matrix, and architecture docs now
+  distinguish the implemented generic transport from the not-yet-built
+  EMWAT-specific adapter.
+
+### Verification
+
+- Hosted CI run 43719816658 passed **283 unit tests**, wheel/sdist builds,
+  installed-wheel CLI smoke test, and service-runner import:
+  https://github.com/meicamghe/Winux/actions/runs/43719816658
+- The transport implementation and documentation are committed. No EMWAT
+  payload schema or route behavior has been guessed.
+
+### Next engineering work
+
+1. Deepen LocalBridge tests for slow-client body timeouts, duplicate headers,
+   and shutdown deadline behavior under load.
+2. Define a small application-adapter contract and an example health adapter.
+3. Keep EMWAT init/invoke, Word automation, printing, and recovery in separate
+   adapters after their contracts are verified.
+4. Continue Engine state persistence crash-consistency review.
