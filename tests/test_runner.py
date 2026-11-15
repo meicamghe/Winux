@@ -150,6 +150,18 @@ class ApplicationRunnerTests(unittest.TestCase):
                 process_manager=self.process_manager,
             )
 
+    def test_run_rejects_log_directory_replaced_by_symlink(self):
+        target = self.home / "outside-logs"
+        target.mkdir()
+        self.runner.log_dir.rmdir()
+        self.runner.log_dir.symlink_to(target, target_is_directory=True)
+
+        with self.assertRaisesRegex(ValueError, "must not contain symlinks"):
+            self.runner.run("test-prefix", "Example")
+
+        self.assertEqual(list(target.iterdir()), [])
+        self.runtime.run.assert_not_called()
+
     def test_run_does_not_follow_existing_log_symlink(self):
         fixed_time = datetime(2026, 11, 15, 12, 0, 0)
         log_file = self.runner.log_dir / "test-prefix-20261115-120000-000000.log"
