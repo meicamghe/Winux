@@ -129,9 +129,9 @@ The current LocalBridgePolicy implementation provides:
 - Strict bounded Content-Length parsing.
 - Positive finite timeout, body-size, and concurrency configuration checks.
 
-These are policy primitives, not a running HTTP transport. The future server
-must invoke them before route dispatch and still implement request deadlines,
-concurrency enforcement, graceful shutdown, and redacted diagnostics.
+The platform HTTP transport consumes these policy primitives before route
+dispatch. The remaining validation work is to deepen tests for slow-client
+timeouts, shutdown deadlines, and handler draining under load.
 
 ## Implemented transport
 
