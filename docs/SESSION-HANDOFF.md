@@ -577,3 +577,45 @@ Continue process/log lifecycle review, service rollback safety, and the
 LocalBridge implementation plan. LocalBridge remains a design specification
 until the transport and security test matrix can be implemented without
 inventing EMWAT-specific protocol behavior.
+
+## 2026-11-15 - Process registration recovery and concurrent state safety
+
+### Application lifecycle
+
+- ApplicationRunner no longer leaves a newly launched process unmanaged when
+  ProcessManager registration fails. It sends SIGTERM through the Popen handle,
+  waits up to five seconds, then escalates to kill if the process does not exit.
+- If cleanup itself fails, the raised error reports both the registration and
+  cleanup failures, including the process ID.
+- Added tests for normal termination and forced termination after timeout.
+
+### Process state concurrency
+
+- ProcessManager now serializes register and cleanup read/modify/write cycles
+  with an advisory flock on a dedicated per-state-file lock.
+- Lock files are created with 0600 permissions, opened with no-follow
+  semantics where supported, and rejected if they are symlinks or non-regular
+  files.
+- Added concurrent registration coverage using six independent managers
+  sharing the same state file. The test verifies that no process records are
+  lost and that lock permissions remain private.
+
+### Hosted verification
+
+- Source-only lifecycle cleanup commit CI:
+  https://github.com/meicamghe/Winux/actions/runs/43718979468
+- Combined lifecycle and concurrency-test commit CI:
+  https://github.com/meicamghe/Winux/actions/runs/43718982396
+- Latest run passed **249 unit tests**, wheel/sdist packaging, installed-wheel
+  CLI smoke test, and service-runner import check.
+- These changes were verified by hosted CI; no local test execution was
+  performed.
+
+### Next
+
+1. Review cross-process locking and cleanup behavior for crash consistency.
+2. Continue ServiceManager state-file concurrency review.
+3. Start the LocalBridge transport implementation as a generic Engine
+   subsystem, retaining strict loopback/Origin/Host/authentication boundaries.
+4. Keep Office automation, printer integration, and EMWAT payload decoding
+   outside the transport core.
