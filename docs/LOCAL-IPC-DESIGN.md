@@ -109,8 +109,10 @@ and an explicit route table. No wildcard or arbitrary-command route exists.
   have not drained by the deadline.
 - [x] Keep request-line/query logging disabled and return generic handler
   errors without exception details.
-- [ ] Add route-specific Content-Type validation and explicit response/request
-  correlation IDs.
+- [ ] Add route-specific Content-Type validation.
+- [x] Add per-request correlation IDs to requests, responses, and structured
+  diagnostics without logging query strings, request bodies, or exception
+  messages.
 - [x] Exercise the IPv6 loopback listener in hosted CI when IPv6 is available.
 - [ ] Validate with a real browser-origin adapter and a real desktop client.
 
@@ -161,7 +163,8 @@ The platform transport currently provides:
 - Exact-origin CORS responses and route-aware preflight checks.
 - Response-header validation and generic error responses that do not expose
   handler exception details.
-- Request-line logging disabled to avoid leaking query parameters.
+- Request-line logging disabled to avoid leaking query parameters; structured
+  diagnostics include a random request ID, method, path, status, and duration.
 - Shutdown that stops accepting new work and waits for active handlers within
   a caller-supplied deadline.
 
@@ -173,14 +176,15 @@ policy remain unconfirmed.
 
 ## Hosted verification
 
-CI run 43720095250 passed 287 unit tests, wheel and source-distribution
+CI run 43720531599 passed 290 unit tests, wheel and source-distribution
 packaging, and the installed-wheel CLI/service-runner smoke checks:
 https://github.com/meicamghe/Winux/actions/runs/43719933763
 
 The LocalBridge transport tests cover IPv4 and IPv6 loopback routing,
 Host/Origin rejection, exact CORS, Bearer authentication, bounded bodies,
 Transfer-Encoding rejection, route isolation, preflight, response-header
-injection, concurrency, port conflicts, and bounded shutdown. This verifies the generic transport
+injection, correlation IDs, concurrency, port conflicts, and bounded shutdown.
+ This verifies the generic transport
 contract, not an EMWAT end-to-end workflow.
 
 ## Application adapter contract
