@@ -69,6 +69,29 @@ class PrefixManagerTests(unittest.TestCase):
 
         return path
 
+    def test_constructor_rejects_symlinked_prefix_log_file(self):
+        for handler in self.logger.handlers[:]:
+            self.logger.removeHandler(handler)
+            handler.close()
+
+        log_file = self.home / ".local/share/winux/logs/prefix-manager.log"
+        log_file.unlink()
+        target = self.home / "outside-prefix.log"
+        target.write_text("private", encoding="utf-8")
+        log_file.symlink_to(target)
+
+        with self.assertRaisesRegex(ValueError, "log file must not be a symbolic link"):
+            PrefixManager(runtime_manager=self.runtime_manager)
+
+        self.assertEqual(target.read_text(encoding="utf-8"), "private")
+
+    def test_prefix_and_log_directories_are_private(self):
+        self.assertEqual(self.manager.base_dir.stat().st_mode & 0o777, 0o700)
+        log_dir = self.home / ".local/share/winux/logs"
+        self.assertEqual(log_dir.stat().st_mode & 0o777, 0o700)
+        log_file = log_dir / "prefix-manager.log"
+        self.assertEqual(log_file.stat().st_mode & 0o777, 0o600)
+
     def test_constructor_rejects_symlinked_prefix_directory(self):
         root = self.home / ".local/share/winux"
         real = root / "real-prefixes"
