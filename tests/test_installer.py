@@ -262,6 +262,9 @@ class InstallerExecutionTests(unittest.TestCase):
         self.assertIn("Process Status: SUCCESS", log)
         self.assertIn("Verification Status: PENDING", log)
         self.assertIn("Application Architecture: unknown", log)
+        self.assertEqual(Path(result["log"]).stat().st_mode & 0o777, 0o600)
+        lock_file = self.installer.lock_dir / "test-prefix.lock"
+        self.assertEqual(lock_file.stat().st_mode & 0o777, 0o600)
 
     def test_install_records_failure_when_runtime_returns_nonzero(self):
         self.prepare_install(returncode=7)
