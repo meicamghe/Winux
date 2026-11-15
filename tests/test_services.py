@@ -444,6 +444,41 @@ class ServiceManagerTests(unittest.TestCase):
         actions = [call[0] for call in self.backend.calls]
         self.assertEqual(actions, ["install"])
 
+    def test_delete_refuses_when_lifecycle_state_is_missing(self):
+        record = self.create_service()
+        self.backend.current_status.pop("active_state")
+
+        with self.assertRaisesRegex(RuntimeError, "state is unknown"):
+            self.manager.delete(record["id"])
+
+        self.assertIn(record["id"], self.backend.installed)
+        self.assertEqual(
+            [call[0] for call in self.backend.calls],
+            ["install"],
+        )
+
+    def test_delete_reports_unknown_state_during_rollback(self):
+        record = self.create_service()
+        original_status = self.backend.status(record["id"])
+        unknown_status = dict(original_status, active_state="unknown")
+        self.backend.failures["remove_after"] = RuntimeError(
+            "remove failed after unlink"
+        )
+
+        with patch.object(
+            self.backend,
+            "status",
+            side_effect=[original_status, unknown_status],
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "rollback was incomplete",
+            ) as context:
+                self.manager.delete(record["id"])
+
+        self.assertIn("active/enabled state is unknown", str(context.exception))
+        self.assertIn(record["id"], self.backend.installed)
+
     def test_delete_does_not_stop_or_disable_inactive_disabled_service(self):
         record = self.create_service()
 
