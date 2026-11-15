@@ -19,7 +19,8 @@ class WineRuntime(Runtime):
 
     def _env(self, prefix_path):
         env = os.environ.copy()
-        env["WINEPREFIX"] = str(prefix_path)
+        # Wine requires an absolute prefix path; the prefix need not exist yet.
+        env["WINEPREFIX"] = str(Path(prefix_path).expanduser().absolute())
         return env
 
     def is_available(self):
