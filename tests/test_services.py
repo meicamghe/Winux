@@ -244,6 +244,13 @@ class ServiceManagerTests(unittest.TestCase):
 
         self.assertTrue(close.called)
 
+    def test_state_file_ends_with_json_newline(self):
+        self.manager._write([])
+
+        contents = self.state_file.read_bytes()
+        self.assertTrue(contents.endswith(b"\\n"))
+        self.assertEqual(json.loads(contents), [])
+
     def test_state_write_closes_descriptor_when_fdopen_fails(self):
         with patch(
             "winux.core.services.os.fdopen",
