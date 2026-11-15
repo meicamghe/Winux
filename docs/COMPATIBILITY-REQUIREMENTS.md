@@ -87,3 +87,13 @@ SystemdUserBackend keeps ownership of the raw temporary unit-file descriptor
 until fdopen succeeds. A wrapping failure closes the descriptor and removes
 the temporary file. A regression test covers this path; hosted CI run
 https://github.com/meicamghe/Winux/actions/runs/43723953513 is pending.
+
+
+## Systemd unit installation transaction
+
+SystemdUserBackend treats unit-file publication and systemd daemon-reload as
+one installation transaction. If directory fsync or daemon-reload fails after
+publication, it removes the incomplete unit, syncs the directory, and retries
+daemon-reload when necessary. Rollback failures are surfaced explicitly.
+Regression tests cover both post-publication failure points; hosted CI is
+pending.
