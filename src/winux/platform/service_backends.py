@@ -28,13 +28,17 @@ class ServiceBackendManager:
         if default_backend not in self._backends:
             raise ValueError(f"Unknown default service backend: {default_backend}")
 
+    @staticmethod
+    def _is_backend_instance(value):
+        return not isinstance(value, type) and isinstance(value, ServiceBackend)
+
     def register(self, name, backend_factory):
         if not isinstance(name, str) or not name.strip() or name != name.strip():
             raise ValueError("Service backend must have a valid name")
         if name in self._backends:
             raise ValueError(f"Service backend already registered: {name}")
 
-        if isinstance(backend_factory, ServiceBackend):
+        if self._is_backend_instance(backend_factory):
             self._backends[name] = backend_factory
             return
 
@@ -91,13 +95,13 @@ class ServiceBackendManager:
         except KeyError:
             raise ValueError(f"Unknown service backend: {name}") from None
 
-        if not isinstance(backend, ServiceBackend):
+        if not self._is_backend_instance(backend):
             if not callable(backend):
                 raise TypeError(
                     f"Service backend '{name}' is neither a backend nor a factory"
                 )
             backend = backend()
-            if not isinstance(backend, ServiceBackend):
+            if not self._is_backend_instance(backend):
                 raise TypeError(
                     f"Service backend '{name}' does not implement the Winux service contract"
                 )
