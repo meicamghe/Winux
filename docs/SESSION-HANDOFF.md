@@ -1104,4 +1104,4 @@ inventing EMWAT-specific protocol behavior.
 ## 2026-11-15 - Service-state serialization correction
 
 - Corrected the service-state JSON writer to terminate the JSON document with an actual newline character rather than the two literal characters `\\` and `n`.
-- Verified the committed source contains `file.write("\\n")` as the Python newline escape. The latest GitHub Actions run was queued at the time of this update; do not mark the full suite as passing until CI completes.
+- Verified the committed source contains `file.write("\n")` as the Python newline escape. The latest GitHub Actions run was queued at the time of this update; do not mark the full suite as passing until CI completes.
