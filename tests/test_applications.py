@@ -69,6 +69,33 @@ HKEY_CURRENT_USER\\Software\\App\\Two
         )
         self.assertIsNone(rejected)
 
+    def test_windows_path_conversion_rejects_drive_relative_paths(self):
+        self.assertIsNone(
+            self.manager._windows_path_to_linux(
+                self.prefix_path, r"C:Program Files\\Example\\app.exe"
+            )
+        )
+
+    def test_windows_path_conversion_rejects_parent_traversal(self):
+        self.assertIsNone(
+            self.manager._windows_path_to_linux(
+                self.prefix_path, r"C:\\..\\..\\outside.exe"
+            )
+        )
+
+    def test_windows_path_conversion_rejects_symlinked_drive_c(self):
+        drive_c = self.prefix_path / "drive_c"
+        external = Path(self.temp_dir.name) / "external"
+        external.mkdir()
+        drive_c.rmdir()
+        drive_c.symlink_to(external, target_is_directory=True)
+
+        self.assertIsNone(
+            self.manager._windows_path_to_linux(
+                self.prefix_path, r"C:\\Program Files\\Example\\app.exe"
+            )
+        )
+
     def test_windows_path_conversion_handles_display_icon_index(self):
         converted = self.manager._windows_path_to_linux(
             self.prefix_path, r'"C:\\Program Files\\Example\\app.exe",0'
