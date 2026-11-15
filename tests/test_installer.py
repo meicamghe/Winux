@@ -105,11 +105,11 @@ class InstallerArchitectureTests(unittest.TestCase):
     def test_nsis_extraction_reports_tool_launch_failure(self):
         listing = SimpleNamespace(
             returncode=0,
-            stdout=(
-                "Type = Nsis\\n"
-                "Path = /tmp/setup.exe\\n"
-                "Path = app.exe\\n"
-            ),
+            stdout="\n".join([
+                "Type = Nsis",
+                "Path = /tmp/setup.exe",
+                "Path = app.exe",
+            ]),
             stderr="",
         )
         with (
