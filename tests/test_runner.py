@@ -1,3 +1,4 @@
+import os
 import tempfile
 import subprocess
 from datetime import datetime
@@ -176,6 +177,24 @@ class ApplicationRunnerTests(unittest.TestCase):
 
         self.assertEqual(target.read_text(encoding="utf-8"), "do not overwrite")
         self.runtime.run.assert_not_called()
+
+    def test_open_log_file_closes_descriptor_when_fdopen_fails(self):
+        with patch(
+            "winux.core.runner.os.fdopen",
+            side_effect=OSError("fdopen failure"),
+        ), patch(
+            "winux.core.runner.os.close",
+            wraps=os.close,
+        ) as close:
+            with self.assertRaisesRegex(OSError, "fdopen failure"):
+                self.runner._open_log_file(
+                    self.runner.log_dir / "fdopen-failure.log"
+                )
+
+        self.assertEqual(close.call_count, 2)
+        self.assertFalse(
+            (self.runner.log_dir / "fdopen-failure.log").exists()
+        )
 
     def test_run_launches_application_with_correct_runtime(self):
         result = self.runner.run("test-prefix", "Example")
