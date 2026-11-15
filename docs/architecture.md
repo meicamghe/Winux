@@ -227,6 +227,14 @@ The runner launches the configured Windows application through Wine.
 Winux's general ProcessManager remains a separate facility for processes
 launched through the normal application-run workflow.
 
+The manager depends on the platform-neutral `ServiceBackend` Protocol in
+`winux/core/service_contracts.py`, which defines the lifecycle operations,
+service ID format, and restart policies. The systemd backend is the only
+implemented backend today. A future backend for another init/service manager
+can implement this contract without changing service-definition validation
+or the manager's recovery logic; this interface alone does not provide
+non-systemd support.
+
 ### Windows Service Compatibility
 
 Winux Managed Services must not be confused with Windows services.
