@@ -107,7 +107,7 @@ class ServiceBackendManager:
             name: {
                 "default": name == self._default_backend,
                 "backend": (
-                    backend.__name__
+                    getattr(backend, "__name__", type(backend).__name__)
                     if callable(backend)
                     else type(backend).__name__
                 ),
