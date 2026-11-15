@@ -944,6 +944,24 @@ class SystemdUserBackendTests(unittest.TestCase):
                 "Example",
             )
 
+    def test_install_closes_descriptor_when_fdopen_fails(self):
+        with patch(
+            "winux.platform.service_backend.os.fdopen",
+            side_effect=OSError("fdopen failure"),
+        ), patch(
+            "winux.platform.service_backend.os.close",
+            wraps=os.close,
+        ) as close:
+            with self.assertRaisesRegex(OSError, "fdopen failure"):
+                self.backend.install(
+                    SERVICE_ID,
+                    ["/usr/bin/python3"],
+                    "Example",
+                )
+
+        self.assertTrue(close.called)
+        self.assertEqual(list(self.unit_dir.glob("*.tmp")), [])
+
     def test_install_rejects_existing_unit(self):
         self.unit_dir.mkdir(parents=True)
         unit = self.unit_dir / f"winux-{SERVICE_ID}.service"
