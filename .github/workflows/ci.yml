@@ -39,3 +39,4 @@ jobs:
           python -m venv /tmp/winux-wheel-venv
           /tmp/winux-wheel-venv/bin/python -m pip install dist/*.whl
           /tmp/winux-wheel-venv/bin/winux --help
+          /tmp/winux-wheel-venv/bin/python -c "import winux.service_runner"
