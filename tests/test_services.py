@@ -1,4 +1,5 @@
 import concurrent.futures
+import os
 import json
 import subprocess
 import tempfile
@@ -424,6 +425,12 @@ class ServiceManagerTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "must not contain symlinks"):
             manager._write([])
+
+    def test_state_path_rejects_fifo_instead_of_file(self):
+        os.mkfifo(self.state_file)
+
+        with self.assertRaisesRegex(ValueError, "regular file"):
+            self.manager._read()
 
     def test_state_path_rejects_directory_instead_of_file(self):
         self.state_file.mkdir()
