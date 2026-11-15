@@ -1084,3 +1084,14 @@ inventing EMWAT-specific protocol behavior.
 - Follow-up: the fdopen failure path now also unlinks the just-created log
   relative to the still-pinned directory descriptor, preventing orphaned
   empty log files and avoiding a path-based cleanup race.
+
+
+## 2026-11-15 - Service state write rollback
+
+- ServiceManager now snapshots the previous state-file contents before
+  publishing a replacement. If parent-directory fsync fails after atomic
+  replacement, it restores the previous file (or removes a newly created
+  file), syncs the directory, and then surfaces the original error.
+- If restoration also fails, the raised error reports both failures.
+- Regression tests cover existing-state restoration and cleanup when no
+  prior state file existed. Hosted CI pending.
