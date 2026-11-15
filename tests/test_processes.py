@@ -143,6 +143,36 @@ class ProcessManagerTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             self.manager.get("unknown")
 
+    def test_state_file_rejects_invalid_process_identity(self):
+        process = self.start_process()
+        record = self.register_process(process)
+        data = json.loads(self.state_file.read_text(encoding="utf-8"))
+        data[0]["pid"] = True
+        self.state_file.write_text(json.dumps(data), encoding="utf-8")
+
+        with self.assertRaisesRegex(ValueError, "process identity"):
+            self.manager.list()
+
+    def test_state_file_rejects_malformed_process_start_time(self):
+        process = self.start_process()
+        self.register_process(process)
+        data = json.loads(self.state_file.read_text(encoding="utf-8"))
+        data[0]["process_start_time"] = "../unexpected"
+        self.state_file.write_text(json.dumps(data), encoding="utf-8")
+
+        with self.assertRaisesRegex(ValueError, "start time"):
+            self.manager.list()
+
+    def test_state_file_rejects_malformed_record_id(self):
+        process = self.start_process()
+        self.register_process(process)
+        data = json.loads(self.state_file.read_text(encoding="utf-8"))
+        data[0]["id"] = "not-an-id"
+        self.state_file.write_text(json.dumps(data), encoding="utf-8")
+
+        with self.assertRaisesRegex(ValueError, "record ID"):
+            self.manager.list()
+
     def test_state_file_must_not_be_a_symlink(self):
         target = Path(self.temp_dir.name) / "target.json"
         target.write_text("[]", encoding="utf-8")
