@@ -178,3 +178,17 @@ Changes and tests were committed to main. They have not been executed in a local
 ### Verification status
 
 Code and tests are committed to main. Tests were not executed in this assistant session. No actual systemd unit was started, stopped, enabled, disabled, or deleted.
+
+## 2026-11-15 - Service state path and installer inspection hardening
+
+### Implemented
+
+- Service state reads and writes now reject symbolic links in existing parent-directory components, not only a symlink at the final JSON filename.
+- State writes re-check parent path components after directory creation and reject a directory or other non-regular object at the state-file path.
+- MSI architecture inspection now converts executable-launch failures into an actionable `msiinfo` error.
+- NSIS listing and executable extraction now convert executable-launch failures into actionable `7z` errors.
+- Added regression tests for symlinked service-state parents, non-regular state paths, and missing inspection tools at MSI/NSIS inspection stages.
+
+### Verification status
+
+Changes and tests are committed to main. They have not been run in a local checkout in this session. No actual service or Windows installer was launched.
