@@ -99,7 +99,7 @@ Installer success and application compatibility are different things: a successf
 
 ### Application manager — `core/applications.py`
 
-The application manager discovers installed applications by reading Windows uninstall registry information inside a prefix. It exposes application metadata such as display name, version, publisher, registry identifier, executable path, and installation path when available. Registry-derived Windows paths must be absolute C: paths and are resolved within the prefix's real `drive_c` directory; drive-relative paths, parent traversal, and a symlinked drive root are rejected.
+The application manager discovers installed applications by reading Windows uninstall registry information inside a prefix. It exposes application metadata such as display name, version, publisher, registry identifier, executable path, and installation path when available. Registry-derived Windows paths must be absolute C: paths and are resolved within the prefix's real `drive_c` directory; drive-relative paths, parent traversal, and a symlinked drive root are rejected. Uninstall operations validate finite positive timeouts and require a non-empty string command before invoking Wine.
 
 ### Application runner — `core/runner.py`
 
