@@ -1048,3 +1048,14 @@ inventing EMWAT-specific protocol behavior.
 - The new systemd backend regression is covered by CI run
   https://github.com/meicamghe/Winux/actions/runs/43723953513; verify its final
   result before treating this latest change as passing.
+
+
+## 2026-11-15 - Systemd unit installation rollback
+
+- SystemdUserBackend now rolls back a unit file if directory durability or
+  systemd daemon-reload fails after the atomic unit-file replacement.
+- Rollback removes the incomplete unit, fsyncs the unit directory, and retries
+  daemon-reload when the initial reload was attempted. Incomplete rollback is
+  reported with both the original and rollback errors.
+- Added regression tests for directory-fsync failure and daemon-reload failure.
+- Hosted CI is pending for this change.
