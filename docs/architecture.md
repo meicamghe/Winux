@@ -277,16 +277,16 @@ The current managed-service backend uses systemd user units. Runtime diagnostics
 
 ## Local IPC and Browser Bridge
 
-A reusable loopback IPC subsystem is a planned Engine capability for
-applications that coordinate a browser front end with a local desktop process.
-It must remain separate from application-specific endpoints and document
-automation.
+A reusable loopback IPC subsystem is implemented as a Winux Engine
+platform capability for applications that coordinate a browser front end with
+a local desktop process. It remains separate from application-specific
+endpoints and document automation.
 
-The transport boundary is responsible for loopback-only binding, Host and
-exact Origin validation, optional per-session authentication, bounded request
-sizes/timeouts/concurrency, safe diagnostics, and graceful shutdown. Route
-schemas, query-command conventions, sessions, and payload decoding belong to
-application adapters.
+The transport boundary provides loopback-only binding, Host and exact Origin
+validation, optional per-session authentication, bounded request sizes and
+concurrency, socket timeouts, safe diagnostics, and graceful shutdown.
+Route schemas, query-command conventions, sessions, and payload decoding
+belong to application adapters.
 
 EMWAT provides a motivating example because its service binds to
 127.0.0.1:1984 and receives heartbeat, initialization, and invocation traffic.
