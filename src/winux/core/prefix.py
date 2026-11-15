@@ -74,9 +74,10 @@ class PrefixManager:
         self.logger.setLevel(logging.INFO)
 
         if not self.logger.handlers:
-            flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
+            # O_RDWR|O_NONBLOCK opens FIFOs without waiting for a reader,
+            # allowing fstat to reject them before logging starts.
+            flags = os.O_RDWR | os.O_APPEND | os.O_CREAT
             flags |= getattr(os, "O_NOFOLLOW", 0)
-            # Opening a FIFO write-only can block before fstat rejects it.
             flags |= getattr(os, "O_NONBLOCK", 0)
             descriptor = os.open(log_file, flags, 0o600)
             try:
