@@ -893,3 +893,22 @@ inventing EMWAT-specific protocol behavior.
   and installed-wheel CLI smoke test successfully.
 - Verification is from hosted GitHub Actions; no test suite was run in the
   user's local Linux checkout.
+
+## 2026-11-15 - Private prefix storage
+
+### Implemented
+
+- Prefix and log storage directories are now restricted to mode 0700.
+- The prefix-manager log file is restricted to mode 0600.
+- Prefix log-file symlinks are rejected even when a logger handler already
+  exists, preventing logger reuse from bypassing the path check.
+- Added tests for private directory/file permissions and symlinked log files.
+- Updated the architecture documentation to record these storage guarantees.
+
+### Hosted verification
+
+- GitHub Actions run
+  https://github.com/meicamghe/Winux/actions/runs/43721692997
+  passed all 301 unit tests, built the wheel and source distribution, and
+  passed the installed-wheel CLI smoke test.
+- Verification is from hosted GitHub Actions, not a local checkout.
