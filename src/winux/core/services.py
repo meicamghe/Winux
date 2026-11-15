@@ -7,6 +7,11 @@ from pathlib import Path
 
 from winux.core.applications import ApplicationManager
 from winux.core.prefix import PrefixManager
+from winux.core.service_contracts import (
+    SERVICE_ID_PATTERN,
+    SERVICE_RESTART_POLICIES,
+    ServiceBackend,
+)
 from winux.platform.service_backend import SystemdUserBackend
 
 
@@ -20,7 +25,13 @@ class ServiceManager:
         prefix_manager=None,
         application_manager=None,
     ):
-        self.backend = backend or SystemdUserBackend()
+        self.backend = (
+            backend if backend is not None else SystemdUserBackend()
+        )
+        if not isinstance(self.backend, ServiceBackend):
+            raise TypeError(
+                "Service backend does not implement the Winux service contract"
+            )
         self.state_file = Path(
             state_file
             or Path.home() / ".local/share/winux/services.json"
@@ -77,7 +88,7 @@ class ServiceManager:
             service_id = record["id"]
             if (
                 not isinstance(service_id, str)
-                or not SystemdUserBackend.SERVICE_ID_PATTERN.fullmatch(
+                or not SERVICE_ID_PATTERN.fullmatch(
                     service_id
                 )
                 or service_id in seen_ids
@@ -96,7 +107,7 @@ class ServiceManager:
 
             if (
                 not isinstance(record["restart"], str)
-                or record["restart"] not in SystemdUserBackend.RESTART_POLICIES
+                or record["restart"] not in SERVICE_RESTART_POLICIES
             ):
                 raise ValueError(
                     "Invalid service restart policy in state file"
