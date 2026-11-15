@@ -1,5 +1,5 @@
 import http.client
-import threading
+import socket
 import threading
 import time
 import unittest
@@ -414,6 +414,46 @@ class LocalBridgeServerTests(unittest.TestCase):
         self.assertEqual(second[0], 503)
         self.assertEqual(results["first"][0], 200)
         self.assertFalse(worker.is_alive())
+
+    def test_rejects_duplicate_content_length_headers(self):
+        bridge = self.make_bridge()
+        port = bridge.address[1]
+        request = (
+            f"POST /echo HTTP/1.1\\r\\n"
+            f"Host: 127.0.0.1:{port}\\r\\n"
+            "Content-Length: 0\\r\\n"
+            "Content-Length: 0\\r\\n"
+            "Connection: close\\r\\n\\r\\n"
+        ).encode("ascii")
+        with socket.create_connection(("127.0.0.1", port), timeout=2) as client:
+            client.sendall(request)
+            response = client.recv(2048)
+
+        self.assertIn(b"400 Bad Request", response)
+        self.assertIn(b"Invalid Content-Length", response)
+
+    def test_slow_request_body_times_out(self):
+        policy = LocalBridgePolicy(
+            allow_missing_origin=True,
+            max_body_bytes=8,
+            request_timeout=0.1,
+        )
+        bridge = self.make_bridge(policy=policy)
+        port = bridge.address[1]
+        request = (
+            f"POST /echo HTTP/1.1\\r\\n"
+            f"Host: 127.0.0.1:{port}\\r\\n"
+            "Content-Length: 4\\r\\n"
+            "Connection: close\\r\\n\\r\\n"
+            "x"
+        ).encode("ascii")
+        with socket.create_connection(("127.0.0.1", port), timeout=2) as client:
+            client.sendall(request)
+            time.sleep(0.25)
+            response = client.recv(2048)
+
+        self.assertIn(b"408 Request Timeout", response)
+        self.assertIn(b"Request body timed out", response)
 
     def test_port_conflict_is_reported(self):
         first = self.make_bridge()
