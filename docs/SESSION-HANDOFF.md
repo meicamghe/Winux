@@ -209,3 +209,8 @@ Changes and tests are committed to main. They have not been run in a local check
 ### Verification status
 
 Changes and tests are committed to main. They have not been executed in a local checkout in this session.
+### Follow-up
+
+- Added an explicit conformance test for `SystemdUserBackend` as well as the fake backend.
+- Removed the remaining systemd-specific service ID and restart-policy references from `ServiceManager`; it now consumes only the shared service contract. The systemd backend remains the default implementation.
+- The combined commit status endpoint returned no status records for the documentation commit; this is not evidence of a passing CI run.
