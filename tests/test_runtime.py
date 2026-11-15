@@ -23,6 +23,17 @@ class RuntimeTests(unittest.TestCase):
         self.assertIn("wine", result)
         self.assertTrue(result["wine"]["default"])
 
+    def test_manager_rejects_empty_runtime_name(self):
+        manager = RuntimeManager()
+
+        with self.assertRaisesRegex(ValueError, "Unknown runtime"):
+            manager.get("")
+
+        with self.assertRaisesRegex(ValueError, "Unknown runtime"):
+            manager.set_default("")
+
+        self.assertEqual(manager.get_default_name(), "wine")
+
     def test_manager_rejects_unknown_runtime(self):
         manager = RuntimeManager()
 
