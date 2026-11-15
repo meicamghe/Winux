@@ -74,6 +74,7 @@ class PrefixManagerTests(unittest.TestCase):
         real = root / "real-prefixes"
         real.mkdir()
         linked = root / "prefixes"
+        linked.rename(root / "prefixes-original")
         linked.symlink_to(real, target_is_directory=True)
 
         with self.assertRaisesRegex(ValueError, "must not contain symlinks"):
