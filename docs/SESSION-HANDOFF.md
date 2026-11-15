@@ -159,7 +159,7 @@ These changes and tests are committed to the main repository. They have not been
 ### Implemented
 
 - Service state loading now rejects dangling symlinks rather than interpreting them as an absent state file.
-- Installer timeout validation now rejects booleans, strings, NaN, infinities, zero, and negative values; only finite positive integers/floats are accepted.
+- Installer timeout validation now rejects booleans, strings, NaN, infinities, zero, negative values, and integers too large for a finite timeout; only finite positive integers/floats are accepted. Validation occurs before installer inspection.
 - Runtime diagnostics now report availability of msiinfo (MSI architecture inspection) and 7z (NSIS application inspection) as optional tools.
 - Added regression tests for dangling service-state symlinks, invalid timeout values, and optional installer inspection tools.
 
