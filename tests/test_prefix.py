@@ -165,6 +165,7 @@ class PrefixManagerTests(unittest.TestCase):
 
     def test_create_initializes_prefix_and_metadata(self):
         def initialize(path, architecture):
+            (path / "drive_c").mkdir()
             (path / "system.reg").write_text(
                 "WINE REGISTRY\n", encoding="utf-8"
             )
@@ -395,6 +396,7 @@ class PrefixManagerTests(unittest.TestCase):
     def test_prefix_rejects_missing_drive_c_directory(self):
         path = self.manager.base_dir / "missing-drive-c"
         path.mkdir()
+        (path / "drive_c").mkdir()
         (path / "system.reg").write_text("WINE REGISTRY\\n", encoding="utf-8")
 
         with self.assertRaisesRegex(ValueError, "drive_c"):
