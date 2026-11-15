@@ -23,6 +23,8 @@ class ServiceBackendManager:
         if discover:
             self.discover()
 
+        if not isinstance(default_backend, str) or not default_backend:
+            raise ValueError(f"Invalid default service backend: {default_backend!r}")
         if default_backend not in self._backends:
             raise ValueError(f"Unknown default service backend: {default_backend}")
 
@@ -40,11 +42,9 @@ class ServiceBackendManager:
             self._backends[name] = backend_factory
             return
 
-        if not isinstance(backend_factory, ServiceBackend):
-            raise TypeError(
-                f"Service backend '{name}' does not implement the Winux service contract"
-            )
-        self._backends[name] = backend_factory
+        raise TypeError(
+            f"Service backend '{name}' is neither a backend nor a factory"
+        )
 
     def _record_plugin_error(self, plugin_name, stage, error):
         record = {
@@ -117,9 +117,9 @@ class ServiceBackendManager:
             name: {
                 "default": name == self._default_backend,
                 "backend": (
-                    getattr(backend, "__name__", type(backend).__name__)
-                    if callable(backend)
-                    else type(backend).__name__
+                    type(backend).__name__
+                    if isinstance(backend, ServiceBackend)
+                    else getattr(backend, "__name__", type(backend).__name__)
                 ),
                 "loaded": isinstance(backend, ServiceBackend),
             }
