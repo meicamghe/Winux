@@ -497,6 +497,29 @@ class ServiceManagerTests(unittest.TestCase):
         ):
             self.manager.list()
 
+    def test_state_write_closes_previous_file_descriptor_when_fdopen_fails(self):
+        self.state_file.write_text("previous state", encoding="utf-8")
+
+        with patch(
+            "winux.core.services.os.fdopen",
+            side_effect=OSError("fdopen failure"),
+        ), patch(
+            "winux.core.services.os.close",
+            wraps=os.close,
+        ) as close:
+            with self.assertRaisesRegex(OSError, "fdopen failure"):
+                self.manager._write([])
+
+        self.assertTrue(close.called)
+        self.assertEqual(
+            self.state_file.read_text(encoding="utf-8"),
+            "previous state",
+        )
+        self.assertEqual(
+            list(self.state_file.parent.glob(".services-*.tmp")),
+            [],
+        )
+
     def test_state_write_fsyncs_file_and_parent_directory(self):
         with patch("winux.core.services.os.fsync") as fsync:
             self.manager._write([])
