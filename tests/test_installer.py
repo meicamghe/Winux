@@ -384,6 +384,14 @@ class InstallerExecutionTests(unittest.TestCase):
             log,
         )
 
+    def test_history_rejects_non_integer_or_boolean_limits(self):
+        for limit in (True, False, 1.5, "2", 0, -1):
+            with self.subTest(limit=limit):
+                with self.assertRaisesRegex(
+                    ValueError, "positive integer"
+                ):
+                    self.installer.history(limit=limit)
+
     def test_history_and_stats_report_install_results(self):
         self.prepare_install()
         self.installer.install(self.source, "test-prefix")
