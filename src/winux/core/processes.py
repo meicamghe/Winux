@@ -232,7 +232,8 @@ class ProcessManager:
                 os.fsync(file.fileno())
 
             os.replace(temporary_name, self.state_file)
-            os.chmod(self.state_file, 0o600)
+            # mkstemp + fchmod already established the private mode. Avoid
+            # chmod(path) after replacement: it follows a swapped symlink.
             self._fsync_directory(self.state_file.parent)
         except Exception:
             try:
