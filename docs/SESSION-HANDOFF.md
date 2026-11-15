@@ -273,3 +273,9 @@ Changes and tests are committed to main. They have not been executed in a local 
 The implementation and regression tests have been added to the repository.
 They have not yet been executed in the user's local checkout; no CI result is
 available. The registry does not add a second built-in service backend.
+
+- Follow-up review: backend instances are created lazily, so merely constructing
+  the registry does not require systemctl to be installed. Plugin import errors
+  and backend registration errors are recorded separately.
+- Added an integration regression test for selecting a named backend through
+  `ServiceManager` while retaining explicit backend injection.
