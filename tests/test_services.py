@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 from winux.core.services import ServiceManager
 from winux.core.service_contracts import ServiceBackend
 from winux.platform.service_backend import SystemdUserBackend
+from winux.platform.service_backends import ServiceBackendManager
 
 
 SERVICE_ID = "a" * 32
@@ -143,6 +144,18 @@ class ServiceManagerTests(unittest.TestCase):
 
     def test_fake_backend_implements_service_contract(self):
         self.assertIsInstance(self.backend, ServiceBackend)
+
+    def test_service_manager_uses_selected_backend_registry(self):
+        backends = ServiceBackendManager(discover=False)
+        backends.register("fake", self.backend.__class__)
+        manager = ServiceManager(
+            backend_name="fake",
+            backend_manager=backends,
+            state_file=self.state_file,
+            prefix_manager=self.prefix_manager,
+            application_manager=self.application_manager,
+        )
+        self.assertIs(manager.backend, backends.get("fake"))
 
     def test_rejects_backend_missing_required_operations(self):
         with self.assertRaisesRegex(TypeError, "service contract"):
