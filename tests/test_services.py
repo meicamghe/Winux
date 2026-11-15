@@ -944,6 +944,44 @@ class SystemdUserBackendTests(unittest.TestCase):
                 "Example",
             )
 
+    @patch("winux.platform.service_backend.subprocess.run")
+    def test_install_removes_unit_when_directory_fsync_fails(self, run):
+        with patch(
+            "winux.platform.service_backend.os.fsync",
+            side_effect=[None, OSError("directory fsync failed"), None],
+        ):
+            with self.assertRaisesRegex(OSError, "directory fsync failed"):
+                self.backend.install(
+                    SERVICE_ID,
+                    ["/usr/bin/python3"],
+                    "Example",
+                )
+
+        self.assertFalse(
+            (self.unit_dir / f"winux-{SERVICE_ID}.service").exists()
+        )
+        run.assert_not_called()
+
+    @patch("winux.platform.service_backend.subprocess.run")
+    def test_install_rolls_back_unit_when_daemon_reload_fails(self, run):
+        run.side_effect = [
+            subprocess.CompletedProcess([], 1, "", "first reload failed"),
+            subprocess.CompletedProcess([], 0, "", ""),
+        ]
+
+        with self.assertRaisesRegex(RuntimeError, "first reload failed"):
+            self.backend.install(
+                SERVICE_ID,
+                ["/usr/bin/python3"],
+                "Example",
+            )
+
+        self.assertFalse(
+            (self.unit_dir / f"winux-{SERVICE_ID}.service").exists()
+        )
+        self.assertEqual(run.call_count, 2)
+        self.assertTrue(all(call.args[0][-1] == "daemon-reload" for call in run.call_args_list))
+
     def test_install_closes_descriptor_when_fdopen_fails(self):
         with patch(
             "winux.platform.service_backend.os.fdopen",
