@@ -863,3 +863,33 @@ inventing EMWAT-specific protocol behavior.
 - Hosted CI run `43720913671` passed **292 unit tests**, wheel/sdist builds,
   installed-wheel CLI smoke test, and LocalBridge/service-runner import checks:
   https://github.com/meicamghe/Winux/actions/runs/43720913671
+
+## 2026-11-15 - Prefix storage and process registration validation
+
+### Implemented
+
+- PrefixManager now rejects symbolic links in existing components of its
+  prefix and log storage paths instead of resolving through them silently.
+- Prefix storage is revalidated before create, list, and prefix lookup, so
+  replacing the storage root with a symlink after manager construction is
+  rejected as well.
+- Prefix log-file symlinks are rejected during logger initialization.
+- Prefix architecture normalization now rejects non-string input with a
+  controlled ValueError instead of leaking a TypeError.
+- ProcessManager.register now requires a positive integer PID and non-empty
+  application, prefix, runtime, and executable strings. Optional log paths
+  must also be non-empty strings when supplied.
+- Invalid process metadata is rejected before process inspection or state
+  persistence, preventing malformed registrations from making the complete
+  process-state file unreadable.
+- Added regression tests for each boundary and synchronized the architecture
+  source tree with the LocalBridge modules.
+
+### Hosted verification
+
+- GitHub Actions run
+  https://github.com/meicamghe/Winux/actions/runs/43721576182
+  completed the 299-test unit suite, wheel and source-distribution builds,
+  and installed-wheel CLI smoke test successfully.
+- Verification is from hosted GitHub Actions; no test suite was run in the
+  user's local Linux checkout.
