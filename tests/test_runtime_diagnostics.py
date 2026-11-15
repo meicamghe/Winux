@@ -127,7 +127,23 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
             "stage": "load",
             "error": "plugin unavailable",
         }]
-        with patch("builtins.print") as output:
+        with (
+            patch(
+                "winux.platform.runtime._command_status",
+                return_value="/usr/bin/tool",
+            ),
+            patch(
+                "winux.platform.runtime.subprocess.run",
+                return_value=subprocess.CompletedProcess(
+                    args=[], returncode=0, stdout="", stderr=""
+                ),
+            ),
+            patch(
+                "winux.platform.service_backends.entry_points",
+                return_value=[],
+            ),
+            patch("builtins.print") as output,
+        ):
             self.assertTrue(check_runtime(self.manager))
         rendered = " ".join(str(call) for call in output.call_args_list)
         self.assertIn("optional-runtime", rendered)
