@@ -912,3 +912,28 @@ inventing EMWAT-specific protocol behavior.
   passed all 301 unit tests, built the wheel and source distribution, and
   passed the installed-wheel CLI smoke test.
 - Verification is from hosted GitHub Actions, not a local checkout.
+
+## 2026-11-15 - Installer storage hardening
+
+### Implemented
+
+- Installer data, installation-log, and lock directories now reject symbolic
+  links in existing path components and are restricted to mode 0700.
+- Installation logs are created exclusively with mode 0600 and without
+  following symbolic links.
+- Per-prefix lock files are opened without truncation or following symbolic
+  links, checked to be regular files, and restricted to mode 0600.
+- Installer storage directories are revalidated before installation and
+  history access, including after manager construction.
+- Installation history ignores symbolic-link and non-regular log entries.
+- Added regression tests for directory replacement, lock-file symlinks,
+  history symlinks, and private file/directory permissions.
+- Updated the architecture documentation with these guarantees.
+
+### Hosted verification
+
+- GitHub Actions run
+  https://github.com/meicamghe/Winux/actions/runs/43721861376
+  passed all 305 unit tests, wheel and source-distribution builds, and the
+  installed-wheel CLI smoke test.
+- Verification is from hosted GitHub Actions, not a local checkout.
