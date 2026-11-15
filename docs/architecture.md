@@ -294,6 +294,7 @@ The exact invocation schema and browser security policy are not yet known.
 Winux must not invent these details or embed EMWAT-specific routes in the
 generic Engine.
 
-The design specification and required security test matrix are maintained in
-[LOCAL-IPC-DESIGN.md](LOCAL-IPC-DESIGN.md). This is an architecture decision,
-not a claim that LocalBridge has been implemented.
+The design specification, public API, implementation boundaries, and remaining
+gaps are maintained in [LOCAL-IPC-DESIGN.md](LOCAL-IPC-DESIGN.md). The generic
+transport has hosted-CI coverage; no EMWAT-specific adapter or end-to-end
+workflow is claimed.
