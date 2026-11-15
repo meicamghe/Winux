@@ -52,6 +52,23 @@ class ServiceBackendManagerTests(unittest.TestCase):
         self.assertEqual(manager.plugin_errors()[0]["plugin"], "broken")
         self.assertEqual(manager.plugin_errors()[0]["stage"], "load")
 
+    def test_callable_backend_instance_is_not_treated_as_factory(self):
+        class CallableBackend(FakeBackend):
+            def __call__(self):
+                raise AssertionError("backend instance must not be called")
+
+        backend = CallableBackend()
+        manager = ServiceBackendManager(discover=False)
+        manager.register("callable-backend", backend)
+        self.assertIs(manager.get("callable-backend"), backend)
+
+    def test_non_string_backend_names_are_rejected(self):
+        manager = ServiceBackendManager(discover=False)
+        for name in ([], {}, 1, False):
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(ValueError, "Invalid service backend name"):
+                    manager.get(name)
+
     def test_backend_factory_is_created_only_when_selected(self):
         calls = []
 
