@@ -134,7 +134,7 @@ class ApplicationRunnerTests(unittest.TestCase):
 
     def test_constructor_rejects_symlinked_log_directory(self):
         log_parent = self.home / ".local/share/winux/logs"
-        log_parent.mkdir(parents=True)
+        log_parent.mkdir(parents=True, exist_ok=True)
         target = self.home / "outside-logs"
         target.mkdir()
         self.runner.log_dir.rmdir()
