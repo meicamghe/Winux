@@ -106,15 +106,28 @@ class ApplicationManager:
 
         windows_path = PureWindowsPath(value)
 
-        if windows_path.drive.upper() != "C:":
+        if (
+            windows_path.drive.upper() != "C:"
+            or not windows_path.is_absolute()
+        ):
             return None
 
-        path = prefix_path / "drive_c"
+        drive_c = Path(prefix_path) / "drive_c"
+        if drive_c.is_symlink() or not drive_c.is_dir():
+            return None
 
+        path = drive_c
         for part in windows_path.parts[1:]:
             path = path / part
 
-        return path
+        try:
+            root = drive_c.resolve(strict=True)
+            resolved = path.resolve(strict=False)
+            resolved.relative_to(root)
+        except (OSError, ValueError):
+            return None
+
+        return resolved
 
     def list(self, prefix_name):
         prefix_path = self.prefix_manager.get_path(prefix_name)
