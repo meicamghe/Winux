@@ -419,11 +419,11 @@ class LocalBridgeServerTests(unittest.TestCase):
         bridge = self.make_bridge()
         port = bridge.address[1]
         request = (
-            f"POST /echo HTTP/1.1\\r\\n"
-            f"Host: 127.0.0.1:{port}\\r\\n"
-            "Content-Length: 0\\r\\n"
-            "Content-Length: 0\\r\\n"
-            "Connection: close\\r\\n\\r\\n"
+            f"POST /echo HTTP/1.1\r\n"
+            f"Host: 127.0.0.1:{port}\r\n"
+            "Content-Length: 0\r\n"
+            "Content-Length: 0\r\n"
+            "Connection: close\r\n\r\n"
         ).encode("ascii")
         with socket.create_connection(("127.0.0.1", port), timeout=2) as client:
             client.sendall(request)
@@ -441,10 +441,10 @@ class LocalBridgeServerTests(unittest.TestCase):
         bridge = self.make_bridge(policy=policy)
         port = bridge.address[1]
         request = (
-            f"POST /echo HTTP/1.1\\r\\n"
-            f"Host: 127.0.0.1:{port}\\r\\n"
-            "Content-Length: 4\\r\\n"
-            "Connection: close\\r\\n\\r\\n"
+            f"POST /echo HTTP/1.1\r\n"
+            f"Host: 127.0.0.1:{port}\r\n"
+            "Content-Length: 4\r\n"
+            "Connection: close\r\n\r\n"
             "x"
         ).encode("ascii")
         with socket.create_connection(("127.0.0.1", port), timeout=2) as client:
