@@ -192,6 +192,18 @@ Code and tests are committed to main. Tests were not executed in this assistant 
 ### Verification status
 
 Changes and tests are committed to main. They have not been run in a local checkout in this session. No actual service or Windows installer was launched.
+## 2026-11-15 - Installer validation follow-up
+
+### Implemented
+
+- Batch installation now shares the exact timeout validator used by single installation, including valid finite floats and rejection of booleans, non-finite values, and oversized integers before execution.
+- Installation history now rejects booleans, floats, strings, zero, and negative limits instead of treating some of them as valid integer limits.
+- Added regression tests for both behaviors.
+
+### Verification status
+
+Changes are committed to main. The source and test additions were reviewed after writing, but the suite has not been executed in a local checkout. No installer was run.
+
 ## 2026-11-15 - Batch installer timeout consistency
 
 ### Implemented
