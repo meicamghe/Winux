@@ -368,3 +368,27 @@ service was created or changed.
 All affected GitHub files were fetched again after the updates and inspected.
 The regression tests have not been executed in a local checkout. No workflow
 runs are currently available for this repository.
+
+## 2026-11-15 - Dependency injection consistency and first CI workflow
+
+### Implemented
+
+- Replaced truthiness-based dependency selection with explicit `is not None`
+  checks in ApplicationRunner, PrefixManager, ApplicationManager, and Installer.
+  Falsey but intentionally injected manager/runtime objects are no longer
+  silently replaced by default instances.
+- ApplicationManager's optional runtime argument now also distinguishes
+  `None` from a falsey runtime object.
+- Added a runner regression test that verifies falsey injected runtime and
+  process managers are preserved, including propagation into PrefixManager.
+- Added the first GitHub Actions workflow at
+  `.github/workflows/ci.yml`. It runs the unittest suite on Ubuntu 24.04 /
+  Python 3.11, builds wheel and source distributions, then installs the wheel
+  into a clean virtual environment and smoke-tests the `winux --help` CLI.
+
+### Verification status
+
+Source and test changes were committed and are being re-fetched for review.
+The CI workflow has been added but its first hosted run must complete before
+any test or packaging success can be claimed. No local test execution was
+performed from this session.
