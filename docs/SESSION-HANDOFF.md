@@ -252,3 +252,24 @@ Changes and tests are committed to main. They have not been executed in a local 
 - Removed the remaining systemd-specific service ID and restart-policy references from `ServiceManager`; it now consumes only the shared service contract. The systemd backend remains the default implementation.
 - The combined commit status endpoint returned no status records for the documentation commit; this is not evidence of a passing CI run.
 - Updated the architecture document to state explicitly that the protocol is a portability boundary, not proof of non-systemd support: `SystemdUserBackend` remains the only implemented backend.
+
+## 2026-11-15 - Service backend registry
+
+### Implemented
+
+- Added a service-backend registry parallel to runtime discovery.
+- The built-in systemd user backend is registered as the default backend.
+- Third-party backends can be registered manually or discovered through the
+  `winux.service_backends` Python entry-point group.
+- `ServiceManager` retains direct backend injection for tests and embedding,
+  while its default construction resolves the selected backend through the
+  registry.
+- Backend registration validates the shared `ServiceBackend` contract.
+- Plugin load and registration errors are recorded as diagnostics rather than
+  preventing the built-in backend from being used.
+
+### Verification status
+
+The implementation and regression tests have been added to the repository.
+They have not yet been executed in the user's local checkout; no CI result is
+available. The registry does not add a second built-in service backend.
