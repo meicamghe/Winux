@@ -31,9 +31,11 @@ src/winux/
 │   ├── desktop.py
 │   ├── processes.py
 │   ├── services.py
-│   └── service_contracts.py
+│   ├── service_contracts.py
+│   └── local_bridge.py
 ├── platform/
 │   ├── runtime.py
+│   ├── local_bridge.py
 │   ├── service_backend.py
 │   └── service_backends.py
 └── runtime/
