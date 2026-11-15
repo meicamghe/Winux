@@ -261,6 +261,10 @@ not guaranteed by the current implementation.
 - Service IDs and service commands are validated.
 - systemd is invoked without a shell.
 - Service lifecycle errors must not be silently ignored.
+- Service definition reads and lifecycle mutations are serialized with create /
+  delete operations through the per-state-file advisory lock. The service
+  runner's definition lookup remains an atomic lock-free read so a systemd stop
+  cannot deadlock waiting for a runner blocked on the manager lock.
 - Service deletion is refused when the backend reports an error or cannot determine active/enabled state; the manager must not remove unit files based on unknown status.
 - Actual service execution must be tested separately from unit creation.
 
