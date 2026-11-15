@@ -1,16 +1,20 @@
 import os
-import re
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 
+from winux.core.service_contracts import (
+    SERVICE_ID_PATTERN as _SERVICE_ID_PATTERN,
+    SERVICE_RESTART_POLICIES,
+)
+
 
 class SystemdUserBackend:
     """Manage Winux services through the user's systemd instance."""
 
-    SERVICE_ID_PATTERN = re.compile(r"^[a-f0-9]{32}$")
-    RESTART_POLICIES = {"no", "on-failure", "always"}
+    SERVICE_ID_PATTERN = _SERVICE_ID_PATTERN
+    RESTART_POLICIES = SERVICE_RESTART_POLICIES
 
     def __init__(self, systemctl=None, unit_dir=None):
         self.systemctl = systemctl or shutil.which("systemctl")
