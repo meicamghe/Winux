@@ -10,8 +10,12 @@ from winux.runtime.manager import RuntimeManager
 
 class ApplicationRunner:
     def __init__(self, runtime_manager=None, process_manager=None):
-        self.runtime_manager = runtime_manager or RuntimeManager()
-        self.process_manager = process_manager or ProcessManager()
+        self.runtime_manager = (
+            runtime_manager if runtime_manager is not None else RuntimeManager()
+        )
+        self.process_manager = (
+            process_manager if process_manager is not None else ProcessManager()
+        )
         self.prefix_manager = PrefixManager(
             runtime_manager=self.runtime_manager
         )
