@@ -76,6 +76,8 @@ class PrefixManager:
         if not self.logger.handlers:
             flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
             flags |= getattr(os, "O_NOFOLLOW", 0)
+            # Opening a FIFO write-only can block before fstat rejects it.
+            flags |= getattr(os, "O_NONBLOCK", 0)
             descriptor = os.open(log_file, flags, 0o600)
             try:
                 if not stat.S_ISREG(os.fstat(descriptor).st_mode):
