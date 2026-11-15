@@ -384,6 +384,20 @@ class ServiceManagerTests(unittest.TestCase):
             ["install", "disable", "remove"],
         )
 
+    def test_delete_refuses_when_backend_state_is_unknown(self):
+        record = self.create_service()
+        self.backend.current_status["load_state"] = "unknown"
+        self.backend.current_status["active_state"] = "unknown"
+        self.backend.current_status["unit_file_state"] = "unknown"
+
+        with self.assertRaisesRegex(RuntimeError, "state is unknown"):
+            self.manager.delete(record["id"])
+
+        self.assertEqual(len(self.manager.list()), 1)
+        self.assertIn(record["id"], self.backend.installed)
+        actions = [call[0] for call in self.backend.calls]
+        self.assertEqual(actions, ["install"])
+
     def test_delete_does_not_stop_or_disable_inactive_disabled_service(self):
         record = self.create_service()
 
