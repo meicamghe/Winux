@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from winux.core.services import ServiceManager
+from winux.core.service_contracts import ServiceBackend
 from winux.platform.service_backend import SystemdUserBackend
 
 
@@ -139,6 +140,13 @@ class ServiceManagerTests(unittest.TestCase):
             prefix_manager=self.prefix_manager,
             application_manager=self.application_manager,
         )
+
+    def test_fake_backend_implements_service_contract(self):
+        self.assertIsInstance(self.backend, ServiceBackend)
+
+    def test_rejects_backend_missing_required_operations(self):
+        with self.assertRaisesRegex(TypeError, "service contract"):
+            ServiceManager(backend=object(), state_file=self.state_file)
 
     def create_service(self):
         return self.manager.create(
