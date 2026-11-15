@@ -272,6 +272,18 @@ class LocalBridge:
                         except (BrokenPipeError, ConnectionResetError, OSError):
                             pass
                     self.close_connection = True
+                    if request_id is not None:
+                        elapsed_ms = (
+                            time.monotonic() - self._bridge_started_at
+                        ) * 1000
+                        bridge.logger.info(
+                            "request_id=%s method=%s path=%s status=%d duration_ms=%.2f",
+                            request_id,
+                            self.command,
+                            getattr(self, "_bridge_path", "-"),
+                            status,
+                            elapsed_ms,
+                        )
 
                 def _reject(self, status, message, origin=None):
                     self._send(
@@ -313,6 +325,7 @@ class LocalBridge:
 
                     try:
                         parsed = urlsplit(self.path)
+                    self._bridge_path = parsed.path
                     except ValueError:
                         self._reject(400, "Invalid request target", origin)
                         return
@@ -530,6 +543,7 @@ class LocalBridgeRequest:
     headers: dict
     body: bytes
     client_address: tuple
+    request_id: str = ""
 
 
 @dataclass(frozen=True)
