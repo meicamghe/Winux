@@ -96,10 +96,14 @@ class PrefixManager:
         if not isinstance(data, dict):
             raise ValueError("Invalid prefix metadata")
 
-        if data.get("name") != path.name:
+        # Older metadata may omit name/architecture; the historical Winux
+        # prefix format used win64 WoW64 prefixes by default.
+        if "name" in data and data["name"] != path.name:
             raise ValueError("Prefix metadata name does not match its directory")
 
-        if data.get("architecture") != "win64":
+        data.setdefault("name", path.name)
+        data.setdefault("architecture", self.LEGACY_ARCHITECTURE)
+        if data["architecture"] != "win64":
             raise ValueError("Invalid prefix architecture metadata")
 
         format_version = data.get("format_version", 1)
