@@ -170,40 +170,59 @@ class SystemdUserBackend:
         )
         temporary = Path(temporary_name)
 
+        unit_installed = False
+        reload_attempted = False
+
         try:
-            os.fchmod(descriptor, 0o600)
-
-            file_handle = os.fdopen(descriptor, "w", encoding="utf-8")
-            descriptor = -1
-            with file_handle as file:
-                file.write(content)
-                file.flush()
-                os.fsync(file.fileno())
-
-            if unit_path.is_symlink() or unit_path.exists():
-                raise FileExistsError(
-                    f"Service unit appeared during installation: {unit_name}"
-                )
-
-            temporary.replace(unit_path)
-
-            directory_fd = os.open(self.unit_dir, os.O_RDONLY)
             try:
-                os.fsync(directory_fd)
-            finally:
-                os.close(directory_fd)
+                os.fchmod(descriptor, 0o600)
 
+                file_handle = os.fdopen(descriptor, "w", encoding="utf-8")
+                descriptor = -1
+                with file_handle as file:
+                    file.write(content)
+                    file.flush()
+                    os.fsync(file.fileno())
+
+                if unit_path.is_symlink() or unit_path.exists():
+                    raise FileExistsError(
+                        f"Service unit appeared during installation: {unit_name}"
+                    )
+
+                temporary.replace(unit_path)
+                unit_installed = True
+
+                directory_fd = os.open(self.unit_dir, os.O_RDONLY)
+                try:
+                    os.fsync(directory_fd)
+                finally:
+                    os.close(directory_fd)
+
+                reload_attempted = True
+                self._run(["daemon-reload"])
+            except Exception as original_error:
+                if unit_installed:
+                    try:
+                        unit_path.unlink(missing_ok=True)
+                        directory_fd = os.open(self.unit_dir, os.O_RDONLY)
+                        try:
+                            os.fsync(directory_fd)
+                        finally:
+                            os.close(directory_fd)
+                        if reload_attempted:
+                            self._run(["daemon-reload"])
+                    except Exception as rollback_error:
+                        raise RuntimeError(
+                            "Systemd unit installation failed and rollback "
+                            f"was incomplete. Original error: {original_error}. "
+                            f"Rollback error: {rollback_error}. Unit: {unit_name}"
+                        ) from original_error
+                raise
         finally:
             if descriptor >= 0:
                 os.close(descriptor)
             if temporary.exists():
                 temporary.unlink()
-
-        try:
-            self._run(["daemon-reload"])
-        except Exception:
-            unit_path.unlink(missing_ok=True)
-            raise
 
         return str(unit_path)
 
