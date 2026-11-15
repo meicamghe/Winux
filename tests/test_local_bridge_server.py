@@ -258,11 +258,13 @@ class LocalBridgeServerTests(unittest.TestCase):
             raise RuntimeError("secret document contents")
 
         bridge = self.make_bridge(routes={("GET", "/health"): fail})
-        status, body, _ = self.request(bridge)
+        with self.assertLogs("winux.local_bridge", level="ERROR") as captured:
+            status, body, _ = self.request(bridge)
 
         self.assertEqual(status, 500)
         self.assertEqual(body, b"Internal server error")
         self.assertNotIn(b"secret document contents", body)
+        self.assertNotIn("secret document contents", "\\n".join(captured.output))
 
     def test_request_has_non_sensitive_correlation_id(self):
         observed = []
