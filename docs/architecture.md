@@ -30,7 +30,8 @@ src/winux/
 │   ├── runner.py
 │   ├── desktop.py
 │   ├── processes.py
-│   └── services.py
+│   ├── services.py
+│   └── service_contracts.py
 ├── platform/
 │   ├── runtime.py
 │   └── service_backend.py
