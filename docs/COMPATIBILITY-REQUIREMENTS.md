@@ -14,6 +14,8 @@ Application-specific behavior belongs in compatibility profiles or adapters. The
 | Per-application isolation | Named Wine prefixes | Implemented | Add safe export/backup/migration before destructive lifecycle features |
 | Background Windows application | Managed Linux user service wrapping Wine process | Initial implementation | Validate restart, stop, shutdown, logs, and user-session behavior |
 | Genuine Windows service / SCM | Windows service control manager compatibility | Not guaranteed by Wine; not equivalent to Winux-managed service | Detect and report service dependencies; avoid implying full SCM support |
+| Application inventory export | JSON/CSV export with atomic replacement and private permissions | Implemented; hosted CI pending | Preserve existing output on failure and never follow destination symlinks |
+
 | Application execution log storage | Private per-run logs with symlink-safe creation | Implemented; directory replacement regression added, CI pending | Keep log creation anchored to a verified directory descriptor and retain restrictive permissions |
 | Local browser-to-desktop bridge | Reusable LocalBridge transport and application adapters | Generic HTTP transport and security policy implemented; 292-test CI passed; application adapters pending | Add route-specific content-type/correlation support and integration tests; add EMWAT adapter only after protocol confirmation; see LOCAL-IPC-DESIGN.md |
 | Office document automation | Office adapter and document-session lifecycle | Not implemented in core | Keep Office-specific APIs out of prefix/process managers; support multiple office backends |
