@@ -157,6 +157,23 @@ class ServiceManagerTests(unittest.TestCase):
         )
         self.assertIs(manager.backend, backends.get("fake"))
 
+    def test_preserves_falsey_injected_managers(self):
+        class FalseyMock(Mock):
+            def __bool__(self):
+                return False
+
+        prefix_manager = FalseyMock()
+        application_manager = FalseyMock()
+        manager = ServiceManager(
+            backend=self.backend,
+            state_file=self.state_file,
+            prefix_manager=prefix_manager,
+            application_manager=application_manager,
+        )
+
+        self.assertIs(manager.prefix_manager, prefix_manager)
+        self.assertIs(manager.application_manager, application_manager)
+
     def test_rejects_backend_class_instead_of_instance(self):
         class BackendClass:
             def install(self, *args, **kwargs): pass
