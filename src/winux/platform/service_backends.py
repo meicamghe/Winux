@@ -32,12 +32,15 @@ class ServiceBackendManager:
         if name in self._backends:
             raise ValueError(f"Service backend already registered: {name}")
 
-        backend = backend_factory() if callable(backend_factory) else backend_factory
-        if not isinstance(backend, ServiceBackend):
+        if callable(backend_factory):
+            self._backends[name] = backend_factory
+            return
+
+        if not isinstance(backend_factory, ServiceBackend):
             raise TypeError(
                 f"Service backend '{name}' does not implement the Winux service contract"
             )
-        self._backends[name] = backend
+        self._backends[name] = backend_factory
 
     def _record_plugin_error(self, plugin_name, stage, error):
         record = {
@@ -78,9 +81,19 @@ class ServiceBackendManager:
         if name is None:
             name = self._default_backend
         try:
-            return self._backends[name]
+            backend = self._backends[name]
         except KeyError:
             raise ValueError(f"Unknown service backend: {name}") from None
+
+        if not isinstance(backend, ServiceBackend):
+            backend = backend()
+            if not isinstance(backend, ServiceBackend):
+                raise TypeError(
+                    f"Service backend '{name}' does not implement the Winux service contract"
+                )
+            self._backends[name] = backend
+
+        return backend
 
     def set_default(self, name):
         self.get(name)
