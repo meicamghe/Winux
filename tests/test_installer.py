@@ -236,7 +236,7 @@ class InstallerExecutionTests(unittest.TestCase):
     def test_history_ignores_symlinked_log_files(self):
         target = self.home / "outside-history.log"
         target.write_text(
-            "Install ID: external\\nStatus: SUCCESS\\n",
+            "Install ID: external\nStatus: SUCCESS\n",
             encoding="utf-8",
         )
         (self.installer.log_dir / "external.log").symlink_to(target)
