@@ -108,8 +108,9 @@ class ServiceManager:
                 raise ValueError("Service state lock must be a regular file")
             os.fchmod(descriptor, 0o600)
 
-            with os.fdopen(descriptor, "r+b") as lock:
-                descriptor = -1
+            lock_handle = os.fdopen(descriptor, "r+b")
+            descriptor = -1
+            with lock_handle as lock:
                 fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
                 try:
                     yield
