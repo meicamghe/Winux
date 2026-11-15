@@ -1,4 +1,5 @@
 import json
+import os
 import logging
 import subprocess
 import tempfile
@@ -163,6 +164,27 @@ class PrefixManagerTests(unittest.TestCase):
     def test_normalize_rejects_win32_prefixes(self):
         with self.assertRaisesRegex(ValueError, "64-bit WoW64"):
             self.manager.normalize_architecture("win32")
+
+    def test_metadata_write_closes_descriptor_when_fdopen_fails(self):
+        path = self.manager.base_dir / "metadata-failure"
+        path.mkdir()
+
+        with patch(
+            "winux.core.prefix.os.fdopen",
+            side_effect=OSError("fdopen failure"),
+        ), patch(
+            "winux.core.prefix.os.close",
+            wraps=os.close,
+        ) as close:
+            with self.assertRaisesRegex(OSError, "fdopen failure"):
+                self.manager._write_metadata(path, {"name": path.name})
+
+        self.assertTrue(close.called)
+        self.assertEqual(
+            list(path.glob(".winux-prefix-*.tmp")),
+            [],
+        )
+        self.assertFalse((path / ".winux-prefix.json").exists())
 
     def test_create_initializes_prefix_and_metadata(self):
         def initialize(path, architecture):
