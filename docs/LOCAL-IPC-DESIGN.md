@@ -58,21 +58,27 @@ or infer those routes' semantics.
 9. Shutdown must stop accepting new requests, drain or cancel in-flight work
    within a bounded deadline, and release the listening socket.
 
-## API shape (proposed, not yet committed)
+## Implemented API
 
-A transport object should receive explicit configuration:
+The current public API is:
 
-- bind address (loopback only)
-- configured port (including port 0 only for controlled tests or a
-  discovery-capable client)
-- exact allowed Origins
-- authentication callback or token provider
-- maximum body size, request timeout, and worker/concurrency limit
-- adapter-owned route registry
+- `LocalBridgePolicy` in `winux.core.local_bridge` validates bind address,
+  port, exact normalized Origin allowlists, Host, optional Bearer token,
+  Content-Length, and resource limits.
+- `LocalBridge` in `winux.platform.local_bridge` receives a static mapping
+  of `(HTTP method, path)` to handler functions and an optional policy.
+- Handlers receive an immutable `LocalBridgeRequest` containing method,
+  path, query, headers, body, and client address.
+- Handlers return `LocalBridgeResponse(status, body, headers)`.
+- `start()` returns the actual bound address; `address` and `is_running`
+  expose lifecycle state; `shutdown(timeout)` returns whether the server
+  and in-flight handlers drained before the deadline.
 
-The transport should expose start(), address, is_running, and
-shutdown(timeout=...). It should not expose a generic arbitrary-command
-endpoint.
+The default policy binds to 127.0.0.1 on an ephemeral port, rejects requests
+without an Origin, and does not enable authentication unless a token is
+configured. Production adapters should configure a fixed port when required,
+an exact Origin allowlist, a per-session token, body/time/concurrency limits,
+and an explicit route table. No wildcard or arbitrary-command route exists.
 
 ## Compatibility requirements
 
@@ -94,11 +100,19 @@ endpoint.
 - Reject absent, malformed, and unlisted browser Origins according to policy.
 - Verify exact CORS behavior and reject wildcard credentialed CORS.
 - Reject missing/invalid capability tokens when authentication is enabled.
-- Reject oversized, malformed, or unsupported request bodies before dispatch.
-- Enforce request timeout and concurrency limits.
-- Verify deterministic behavior for port-in-use errors.
-- Verify graceful shutdown and no new dispatch after shutdown begins.
-- Verify logs never contain request bodies or authentication secrets.
+- [x] Reject oversized/malformed Content-Length and Transfer-Encoding before
+  dispatch; request socket reads have a configured timeout.
+- [x] Enforce the configured concurrency limit before spawning handler
+  threads.
+- [x] Verify deterministic behavior for port-in-use errors.
+- [x] Verify shutdown stops accepting work and reports active handlers that
+  have not drained by the deadline.
+- [x] Keep request-line/query logging disabled and return generic handler
+  errors without exception details.
+- [ ] Add route-specific Content-Type validation and explicit response/request
+  correlation IDs.
+- [ ] Exercise IPv6 listener behavior in hosted CI and integration tests.
+- [ ] Validate with a real browser-origin adapter and a real desktop client.
 
 ## EMWAT integration sequence
 
@@ -152,5 +166,19 @@ The platform transport currently provides:
   a caller-supplied deadline.
 
 The transport is generic. Application routes and payload semantics remain
-owned by adapters. The EMWAT protocol is not implemented because its complete
-init/invoke schema and authentication policy remain unconfirmed.
+owned by adapters. It does not currently enforce route-specific Content-Type
+schemas, cookie/session semantics, or credentialed CORS. The EMWAT protocol is
+not implemented because its complete init/invoke schema and authentication
+policy remain unconfirmed.
+
+## Hosted verification
+
+CI run 43719798103 passed 281 unit tests, wheel and source-distribution
+packaging, and the installed-wheel CLI/service-runner smoke checks:
+https://github.com/meicamghe/Winux/actions/runs/43719798103
+
+The LocalBridge transport tests cover loopback routing, Host/Origin rejection,
+exact CORS, Bearer authentication, bounded bodies, Transfer-Encoding
+rejection, route isolation, preflight, response-header injection, concurrency,
+port conflicts, and bounded shutdown. This verifies the generic transport
+contract, not an EMWAT end-to-end workflow.
