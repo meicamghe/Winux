@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -25,8 +26,35 @@ class ApplicationRunner:
         self.log_dir = (
             Path.home() / ".local/share/winux/logs/app-runs"
         )
-        self.log_dir.mkdir(parents=True, exist_ok=True)
+        self._reject_symlink_components(self.log_dir)
+        self.log_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+            mode=0o700,
+        )
+        self._reject_symlink_components(self.log_dir)
+        if not self.log_dir.is_dir():
+            raise ValueError("Application log path must be a directory")
+        self.log_dir.chmod(0o700)
 
+    @staticmethod
+    def _reject_symlink_components(path):
+        """Reject symlinks in existing components of the log path."""
+        path = Path(os.path.abspath(path))
+
+        for component in reversed((path, *path.parents)):
+            if component.is_symlink():
+                raise ValueError(
+                    f"Application log path must not contain symlinks: {component}"
+                )
+
+    @staticmethod
+    def _open_log_file(path):
+        """Create a private log file without following existing symlinks."""
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(path, flags, 0o600)
+        return os.fdopen(descriptor, "ab")
 
     def _resolve_application(self, prefix_name, application_id):
         """Resolve and validate an application before starting its process."""
@@ -92,7 +120,7 @@ class ApplicationRunner:
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         log_file = self.log_dir / f"{prefix_name}-{timestamp}.log"
 
-        with log_file.open("ab") as output:
+        with self._open_log_file(log_file) as output:
             process = runtime.run(
                 prefix_path,
                 executable,
