@@ -64,6 +64,17 @@ class ServiceManager:
         )
 
     @staticmethod
+    def _fsync_directory(path):
+        descriptor = os.open(
+            path,
+            os.O_RDONLY | getattr(os, "O_DIRECTORY", 0),
+        )
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+
+    @staticmethod
     def _reject_symlink_components(path):
         """Reject symlinks in existing components of the state path."""
         path = Path(os.path.abspath(path))
@@ -210,6 +221,7 @@ class ServiceManager:
                 os.fsync(file.fileno())
 
             temporary.replace(self.state_file)
+            self._fsync_directory(self.state_file.parent)
         finally:
             if temporary.exists():
                 temporary.unlink()
