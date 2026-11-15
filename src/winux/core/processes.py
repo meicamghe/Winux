@@ -15,14 +15,34 @@ class ProcessManager:
 
     def __init__(self, state_file=None):
         data_dir = Path.home() / ".local/share/winux"
-        data_dir.mkdir(parents=True, exist_ok=True)
-
         self.state_file = Path(
-            state_file or data_dir / "processes.json"
+            state_file if state_file is not None else data_dir / "processes.json"
         )
-        self.state_file.parent.mkdir(parents=True, exist_ok=True)
+        self._reject_symlink_components(self.state_file.parent)
+        self.state_file.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+            mode=0o700,
+        )
+        self._reject_symlink_components(self.state_file.parent)
+
+        if self.state_file.is_symlink():
+            raise ValueError("Process state file must not be a symbolic link")
+        if self.state_file.exists() and not self.state_file.is_file():
+            raise ValueError("Process state path must be a regular file")
 
         self.logger = logging.getLogger("winux.processes")
+
+    @staticmethod
+    def _reject_symlink_components(path):
+        """Reject symbolic links in existing components of the state path."""
+        path = Path(os.path.abspath(path))
+
+        for component in reversed((path, *path.parents)):
+            if component.is_symlink():
+                raise ValueError(
+                    f"Process state path must not contain symlinks: {component}"
+                )
 
     @staticmethod
     def _process_start_time(pid):
@@ -63,11 +83,17 @@ class ProcessManager:
             return ""
 
     def _read_records(self):
+        self._reject_symlink_components(self.state_file.parent)
+
+        # Check symlinks before exists(): dangling symlinks report exists=False.
+        if self.state_file.is_symlink():
+            raise ValueError("Process state file must not be a symbolic link")
+
         if not self.state_file.exists():
             return []
 
-        if self.state_file.is_symlink():
-            raise ValueError("Process state file must not be a symbolic link")
+        if not self.state_file.is_file():
+            raise ValueError("Process state path must be a regular file")
 
         try:
             data = json.loads(self.state_file.read_text(encoding="utf-8"))
@@ -133,7 +159,18 @@ class ProcessManager:
         return data
 
     def _write_records(self, records):
-        self.state_file.parent.mkdir(parents=True, exist_ok=True)
+        self._reject_symlink_components(self.state_file.parent)
+        self.state_file.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+            mode=0o700,
+        )
+        self._reject_symlink_components(self.state_file.parent)
+
+        if self.state_file.is_symlink():
+            raise ValueError("Process state file must not be a symbolic link")
+        if self.state_file.exists() and not self.state_file.is_file():
+            raise ValueError("Process state path must be a regular file")
 
         fd, temporary_name = tempfile.mkstemp(
             prefix=".processes-",
@@ -142,12 +179,13 @@ class ProcessManager:
         )
 
         try:
+            os.fchmod(fd, 0o600)
             with os.fdopen(fd, "w", encoding="utf-8") as file:
                 json.dump(records, file, indent=2)
+                file.write("\\n")
                 file.flush()
                 os.fsync(file.fileno())
 
-            os.chmod(temporary_name, 0o600)
             os.replace(temporary_name, self.state_file)
             os.chmod(self.state_file, 0o600)
         except Exception:
