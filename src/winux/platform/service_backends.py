@@ -65,6 +65,11 @@ class ServiceBackendManager:
             name = getattr(entry_point, "name", "<unknown>")
             try:
                 factory = entry_point.load()
+            except Exception as error:
+                self._record_plugin_error(name, "load", error)
+                continue
+
+            try:
                 self.register(name, factory)
             except Exception as error:
                 self._record_plugin_error(name, "registration", error)
