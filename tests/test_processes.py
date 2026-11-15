@@ -97,6 +97,12 @@ class ProcessManagerTests(unittest.TestCase):
             with self.manager._state_lock():
                 pass
 
+    def test_state_write_fsyncs_file_and_parent_directory(self):
+        with patch("winux.core.processes.os.fsync") as fsync:
+            self.manager._write_records([])
+
+        self.assertEqual(fsync.call_count, 2)
+
     def test_list_reports_running_process(self):
         process = self.start_process()
 
