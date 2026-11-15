@@ -2,8 +2,9 @@
 
 ## Status
 
-Architecture specification only. No HTTP server, browser endpoint, or
-EMWAT-specific request handler is implemented by this document.
+Security-policy primitives are implemented in src/winux/core/local_bridge.py.
+The HTTP listener, request dispatch, bounded concurrency, and application
+adapters are not implemented yet. No EMWAT-specific request handler exists.
 
 ## Goal
 
@@ -114,3 +115,20 @@ The current evidence confirms loopback binding and heartbeat/init/invoke
 traffic, but does not establish the complete API schema, browser-origin
 policy, authentication model, or document workflow. Those must remain open
 requirements rather than invented implementation details.
+
+## Implemented policy primitives
+
+The current LocalBridgePolicy implementation provides:
+
+- Numeric IPv4/IPv6 loopback-only bind-address validation.
+- Exact normalized HTTP(S) Origin allowlists; wildcard, null, credentials,
+  paths, query strings, and fragments are rejected.
+- Exact Host-to-loopback-address-and-port validation.
+- Explicit opt-in for requests without an Origin.
+- Optional per-session token validation using constant-time comparison.
+- Strict bounded Content-Length parsing.
+- Positive finite timeout, body-size, and concurrency configuration checks.
+
+These are policy primitives, not a running HTTP transport. The future server
+must invoke them before route dispatch and still implement request deadlines,
+concurrency enforcement, graceful shutdown, and redacted diagnostics.
