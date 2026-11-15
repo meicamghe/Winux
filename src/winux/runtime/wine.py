@@ -19,6 +19,9 @@ class WineRuntime(Runtime):
 
     def _env(self, prefix_path):
         env = os.environ.copy()
+        # Prefix architecture is immutable after creation. Do not let an
+        # unrelated shell-level WINEARCH leak into ordinary Wine operations.
+        env.pop("WINEARCH", None)
         # Wine requires an absolute prefix path; the prefix need not exist yet.
         env["WINEPREFIX"] = str(Path(prefix_path).expanduser().absolute())
         return env
