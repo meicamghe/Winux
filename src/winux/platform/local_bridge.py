@@ -325,10 +325,10 @@ class LocalBridge:
 
                     try:
                         parsed = urlsplit(self.path)
-                    self._bridge_path = parsed.path
                     except ValueError:
                         self._reject(400, "Invalid request target", origin)
                         return
+                    self._bridge_path = parsed.path
                     if (
                         parsed.scheme
                         or parsed.netloc
