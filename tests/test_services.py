@@ -228,6 +228,23 @@ class ServiceManagerTests(unittest.TestCase):
             0o600,
         )
 
+    def test_state_write_closes_descriptor_when_fdopen_fails(self):
+        with patch(
+            "winux.core.services.os.fdopen",
+            side_effect=OSError("fdopen failure"),
+        ), patch(
+            "winux.core.services.os.close",
+            wraps=os.close,
+        ) as close:
+            with self.assertRaisesRegex(OSError, "fdopen failure"):
+                self.manager._write([])
+
+        self.assertTrue(close.called)
+        self.assertEqual(
+            list(self.state_file.parent.glob(".services-*.tmp")),
+            [],
+        )
+
     def test_concurrent_duplicate_service_creation_is_serialized(self):
         managers = [
             ServiceManager(
