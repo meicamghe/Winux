@@ -81,6 +81,44 @@ class ProcessManagerTests(unittest.TestCase):
         self.assertTrue(result["stopped"])
         self.assertEqual(result["status"], "exited")
 
+    def test_stop_force_kills_process_ignoring_sigterm(self):
+        process = subprocess.Popen([
+            "python",
+            "-c",
+            (
+                "import signal, time; "
+                "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+                "time.sleep(60)"
+            ),
+        ])
+        self.addCleanup(self.cleanup_process, process)
+        record = self.register_process(process)
+
+        result = self.manager.stop(
+            record["id"],
+            timeout=0,
+            force=True,
+        )
+
+        process.wait(timeout=3)
+
+        self.assertTrue(result["stopped"])
+        self.assertTrue(result["forced"])
+        self.assertEqual(result["status"], "exited")
+
+    def test_cleanup_removes_exited_process_records(self):
+        process = self.start_process()
+        self.register_process(process)
+
+        process.terminate()
+        process.wait(timeout=3)
+
+        result = self.manager.cleanup()
+
+        self.assertEqual(result["removed"], 1)
+        self.assertEqual(result["remaining"], 0)
+        self.assertEqual(self.manager.list(), [])
+
     def test_stop_rejects_invalid_timeouts(self):
         process = self.start_process()
         record = self.register_process(process)
