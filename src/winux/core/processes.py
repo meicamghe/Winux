@@ -56,8 +56,9 @@ class ProcessManager:
                 raise ValueError("Process state lock must be a regular file")
             os.fchmod(descriptor, 0o600)
 
-            with os.fdopen(descriptor, "r+b") as lock:
-                descriptor = -1
+            lock_handle = os.fdopen(descriptor, "r+b")
+            descriptor = -1
+            with lock_handle as lock:
                 fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
                 try:
                     yield
@@ -225,7 +226,9 @@ class ProcessManager:
 
         try:
             os.fchmod(fd, 0o600)
-            with os.fdopen(fd, "w", encoding="utf-8") as file:
+            file_handle = os.fdopen(fd, "w", encoding="utf-8")
+            fd = -1
+            with file_handle as file:
                 json.dump(records, file, indent=2)
                 file.write("\n")
                 file.flush()
@@ -236,6 +239,8 @@ class ProcessManager:
             # chmod(path) after replacement: it follows a swapped symlink.
             self._fsync_directory(self.state_file.parent)
         except Exception:
+            if fd >= 0:
+                os.close(fd)
             try:
                 os.unlink(temporary_name)
             except FileNotFoundError:
