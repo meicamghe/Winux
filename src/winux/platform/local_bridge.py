@@ -459,7 +459,7 @@ class LocalBridge:
                             origin,
                         )
                     except Exception:
-                        bridge.logger.exception(
+                        bridge.logger.error(
                             "LocalBridge route failed request_id=%s: %s %s",
                             self._bridge_request_id,
                             self.command,
