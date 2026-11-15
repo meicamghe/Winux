@@ -289,6 +289,35 @@ HKEY_CURRENT_USER\\Software\\App\\Two
         self.assertEqual(result, [])
 
 
+    def test_export_replaces_symlink_without_modifying_its_target(self):
+        target = Path(self.temp_dir.name) / "outside.json"
+        target.write_text("untouched", encoding="utf-8")
+        output = Path(self.temp_dir.name) / "apps.json"
+        output.symlink_to(target)
+
+        with patch.object(self.manager, "list", return_value=[]):
+            self.manager.export("test-prefix", output)
+
+        self.assertFalse(output.is_symlink())
+        self.assertEqual(target.read_text(encoding="utf-8"), "untouched")
+        self.assertEqual(json.loads(output.read_text(encoding="utf-8")), [])
+        self.assertEqual(output.stat().st_mode & 0o777, 0o600)
+
+    def test_export_failure_preserves_existing_destination(self):
+        output = Path(self.temp_dir.name) / "apps.json"
+        output.write_text("original", encoding="utf-8")
+
+        with patch.object(self.manager, "list", return_value=[]):
+            with patch("winux.core.applications.json.dump", side_effect=OSError("disk full")):
+                with self.assertRaisesRegex(OSError, "disk full"):
+                    self.manager.export("test-prefix", output)
+
+        self.assertEqual(output.read_text(encoding="utf-8"), "original")
+        self.assertEqual(
+            [path for path in Path(self.temp_dir.name).iterdir() if path.name.startswith(".apps.json.")],
+            [],
+        )
+
     def test_export_writes_json(self):
         applications = [
             {
