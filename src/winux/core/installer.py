@@ -1,4 +1,5 @@
 import json
+import math
 import re
 import fcntl
 import os
@@ -269,8 +270,13 @@ class Installer:
             except (ValueError, RuntimeError, OSError) as error:
                 inspection_warning = str(error)
 
-        if timeout <= 0:
-            raise ValueError("Timeout must be positive")
+        if (
+            isinstance(timeout, bool)
+            or not isinstance(timeout, (int, float))
+            or not math.isfinite(timeout)
+            or timeout <= 0
+        ):
+            raise ValueError("Timeout must be a finite positive number")
 
         prefix_path = self.prefix_manager.get_path(prefix_name)
 
