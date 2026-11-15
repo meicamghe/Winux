@@ -118,10 +118,15 @@ class ProcessManager:
 
             for field in (
                 "application", "prefix", "runtime", "executable",
-                "command", "started_at",
+                "started_at",
             ):
                 if not isinstance(record[field], str) or not record[field]:
                     raise ValueError(f"Invalid process field: {field}")
+
+            # /proc/<pid>/cmdline may legitimately be empty for kernel
+            # threads or processes that expose no command line.
+            if not isinstance(record["command"], str):
+                raise ValueError("Invalid process field: command")
 
             if record["log"] is not None and not isinstance(record["log"], str):
                 raise ValueError("Invalid process log path")
