@@ -19,22 +19,51 @@ class PrefixManager:
 
     LEGACY_ARCHITECTURE = "win64"
 
+    @staticmethod
+    def _reject_symlink_components(path):
+        """Reject symlinks in every existing component of a managed path."""
+        path = Path(os.path.abspath(path))
+        for component in reversed((path, *path.parents)):
+            if component.is_symlink():
+                raise ValueError(
+                    f"Winux prefix path must not contain symlinks: {component}"
+                )
+
+    @classmethod
+    def _prepare_directory(cls, path):
+        path = Path(path)
+        cls._reject_symlink_components(path.parent)
+        path.mkdir(parents=True, exist_ok=True, mode=0o700)
+        cls._reject_symlink_components(path)
+        if not path.is_dir():
+            raise ValueError(f"Winux managed path is not a directory: {path}")
+        return path
+
+    def _ensure_base_dir(self):
+        self._reject_symlink_components(self.base_dir)
+        if self.base_dir.is_symlink() or not self.base_dir.is_dir():
+            raise ValueError("Winux prefix directory is missing or unsafe")
+
     def __init__(self, runtime_manager=None):
         self.runtime_manager = (
             runtime_manager if runtime_manager is not None else RuntimeManager()
         )
-        self.base_dir = Path.home() / ".local/share/winux/prefixes"
-        self.base_dir.mkdir(parents=True, exist_ok=True)
-        self.base_dir = self.base_dir.resolve()
+        self.base_dir = self._prepare_directory(
+            Path.home() / ".local/share/winux/prefixes"
+        )
 
-        log_dir = Path.home() / ".local/share/winux/logs"
-        log_dir.mkdir(parents=True, exist_ok=True)
+        log_dir = self._prepare_directory(
+            Path.home() / ".local/share/winux/logs"
+        )
 
         self.logger = logging.getLogger("winux.prefix")
         self.logger.setLevel(logging.INFO)
 
         if not self.logger.handlers:
-            handler = logging.FileHandler(log_dir / "prefix-manager.log")
+            log_file = log_dir / "prefix-manager.log"
+            if log_file.is_symlink():
+                raise ValueError("Prefix log file must not be a symbolic link")
+            handler = logging.FileHandler(log_file)
             self.logger.addHandler(handler)
 
     def validate_name(self, name):
@@ -53,6 +82,7 @@ class PrefixManager:
 
     def _get_valid_path(self, name):
         self.validate_name(name)
+        self._ensure_base_dir()
         path = self.base_dir / name
 
         if path.is_symlink() or not path.is_dir():
@@ -184,6 +214,7 @@ class PrefixManager:
     def create(self, name, architecture="win64"):
         self.validate_name(name)
         architecture = self.normalize_architecture(architecture)
+        self._ensure_base_dir()
 
         runtime = self.runtime_manager.get()
 
@@ -231,6 +262,7 @@ class PrefixManager:
             raise
 
     def list(self):
+        self._ensure_base_dir()
         prefixes = []
 
         for path in self.base_dir.iterdir():
