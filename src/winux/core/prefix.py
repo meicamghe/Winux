@@ -74,6 +74,9 @@ class PrefixManager:
     def _read_metadata(self, path):
         metadata = path / ".winux-prefix.json"
 
+        # Check symlinks before exists(): a dangling symlink reports exists=False.
+        if metadata.is_symlink():
+            raise ValueError("Invalid prefix metadata")
         if not metadata.exists():
             return {
                 "name": path.name,
@@ -82,7 +85,7 @@ class PrefixManager:
                 "format_version": 1,
             }
 
-        if metadata.is_symlink() or not metadata.is_file():
+        if not metadata.is_file():
             raise ValueError("Invalid prefix metadata")
 
         try:
@@ -92,6 +95,24 @@ class PrefixManager:
 
         if not isinstance(data, dict):
             raise ValueError("Invalid prefix metadata")
+
+        if data.get("name") != path.name:
+            raise ValueError("Prefix metadata name does not match its directory")
+
+        if data.get("architecture") != "win64":
+            raise ValueError("Invalid prefix architecture metadata")
+
+        format_version = data.get("format_version", 1)
+        if (
+            isinstance(format_version, bool)
+            or not isinstance(format_version, int)
+            or format_version != 1
+        ):
+            raise ValueError("Unsupported prefix metadata format version")
+
+        runtime_name = data.get("runtime", self.runtime_manager.get_default_name())
+        if not isinstance(runtime_name, str) or not runtime_name.strip():
+            raise ValueError("Invalid prefix runtime metadata")
 
         return data
 
