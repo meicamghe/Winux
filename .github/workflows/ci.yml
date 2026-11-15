@@ -1,0 +1,41 @@
+name: Winux CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-package:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install build tools and project
+        run: |
+          python -m pip install --upgrade pip build
+          python -m pip install -e .
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Build wheel and source distribution
+        run: python -m build
+
+      - name: Smoke-test installed wheel CLI
+        run: |
+          python -m venv /tmp/winux-wheel-venv
+          /tmp/winux-wheel-venv/bin/python -m pip install dist/*.whl
+          /tmp/winux-wheel-venv/bin/winux --help
