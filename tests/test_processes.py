@@ -103,6 +103,37 @@ class ProcessManagerTests(unittest.TestCase):
 
         self.assertEqual(fsync.call_count, 2)
 
+    def test_state_write_closes_descriptor_when_fdopen_fails(self):
+        with patch(
+            "winux.core.processes.os.fdopen",
+            side_effect=OSError("fdopen failure"),
+        ), patch(
+            "winux.core.processes.os.close",
+            wraps=os.close,
+        ) as close:
+            with self.assertRaisesRegex(OSError, "fdopen failure"):
+                self.manager._write_records([])
+
+        self.assertTrue(close.called)
+        self.assertEqual(
+            list(self.state_file.parent.glob(".processes-*.tmp")),
+            [],
+        )
+
+    def test_state_lock_closes_descriptor_when_fdopen_fails(self):
+        with patch(
+            "winux.core.processes.os.fdopen",
+            side_effect=OSError("fdopen failure"),
+        ), patch(
+            "winux.core.processes.os.close",
+            wraps=os.close,
+        ) as close:
+            with self.assertRaisesRegex(OSError, "fdopen failure"):
+                with self.manager._state_lock():
+                    self.fail("lock must not be acquired")
+
+        self.assertTrue(close.called)
+
     def test_state_write_does_not_chmod_replaced_path(self):
         with patch(
             "winux.core.processes.os.chmod",
