@@ -73,11 +73,13 @@ class LocalBridge:
         policy=None,
         allowed_headers=("content-type", "authorization"),
     ):
-        self.policy = policy or LocalBridgePolicy()
+        self.policy = policy if policy is not None else LocalBridgePolicy()
         if not isinstance(self.policy, LocalBridgePolicy):
             raise TypeError("policy must be a LocalBridgePolicy instance")
 
         self.routes = self._validate_routes(routes)
+        if isinstance(allowed_headers, (str, bytes)):
+            raise ValueError("Allowed headers must be a collection of names")
         self.allowed_headers = frozenset(
             self._validate_header_name(item) for item in allowed_headers
         )
@@ -120,9 +122,17 @@ class LocalBridge:
 
             method, path = key
             method = method.upper()
-            if not method.isalpha():
+            if not method.isascii() or not method.isalpha():
                 raise ValueError(f"Invalid route method: {method}")
-            if not path.startswith("/") or "?" in path or "#" in path:
+            if (
+                not path.startswith("/")
+                or "?" in path
+                or "#" in path
+                or any(
+                    ord(char) < 0x21 or ord(char) == 0x7F or char == "\\"
+                    for char in path
+                )
+            ):
                 raise ValueError(f"Invalid route path: {path}")
             if not callable(handler):
                 raise TypeError(
@@ -193,6 +203,10 @@ class LocalBridge:
                 def do_OPTIONS(self):
                     self._dispatch()
 
+                def handle_expect_100(self):
+                    self.send_error(417, "Expect header is not supported")
+                    return False
+
                 def _send(
                     self, status, body=b"", headers=None, origin=None,
                     allow_preflight=False,
@@ -209,7 +223,12 @@ class LocalBridge:
                         for name, value in dict(headers or {}).items():
                             if not isinstance(name, str) or not isinstance(value, str):
                                 raise ValueError("Response headers must be strings")
-                            if "\r" in name or "\n" in name or "\r" in value or "\n" in value:
+                            bridge._validate_header_name(name)
+                            if any(
+                                (ord(char) < 0x20 and char != "\\t")
+                                or ord(char) == 0x7F
+                                for char in value
+                            ):
                                 raise ValueError("Invalid response header")
                             reserved = {
                                 "content-length",
@@ -262,6 +281,10 @@ class LocalBridge:
                         if bridge._closing:
                             self._reject(503, "Bridge is shutting down")
                             return
+
+                    if self.request_version != "HTTP/1.1":
+                        self._reject(505, "HTTP/1.1 is required")
+                        return
 
                     actual_port = bridge.address[1]
                     host_values = self.headers.get_all("Host", [])
