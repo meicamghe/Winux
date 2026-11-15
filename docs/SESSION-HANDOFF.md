@@ -431,9 +431,9 @@ unit tests, wheel/sdist build, and clean-wheel CLI smoke test all succeeded.
 The run for the latest backend-factory test commit is:
 https://github.com/meicamghe/Winux/actions/runs/43717620444
 
-The additional ProcessManager path-hardening commits were pushed after those
-successful runs and are awaiting their own CI result. They have not been
-claimed as tested yet.
+The subsequent ProcessManager path-hardening changes were verified by a
+separate successful hosted CI run (238 tests plus package and CLI checks),
+recorded below.
 
 ## 2026-11-15 - Process state path validation CI result
 
@@ -449,8 +449,8 @@ symlink read/write, dangling symlinks, and directory-as-state-file cases.
 
 A further ServiceManager boundary fix rejects backend classes passed as if
 they were instances and preserves explicitly injected falsey prefix and
-application managers. Its own hosted CI run is still in progress and must be
-checked before treating that last change as verified.
+application managers. Its hosted CI run subsequently passed, as recorded in
+the next section.
 
 ## 2026-11-15 - ServiceManager boundary and injection CI result
 
