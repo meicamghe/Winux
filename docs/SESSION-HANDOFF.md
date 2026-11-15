@@ -1115,3 +1115,22 @@ inventing EMWAT-specific protocol behavior.
 - WineRuntime expands home notation and converts relative prefix paths to absolute paths before setting WINEPREFIX, without requiring the prefix to exist.
 - An inherited WINEPREFIX is always overridden so subprocesses use the explicitly selected prefix.
 - Regression tests cover relative-path normalization and environment isolation. Hosted CI verification is pending.
+
+
+## 2026-11-15 - Wine environment architecture isolation
+
+### Implemented
+
+- Ordinary Wine operations now remove inherited `WINEARCH` from the child environment so an unrelated shell setting cannot leak into execution, installation, registry queries, or uninstall operations.
+- Prefix creation still sets the requested architecture explicitly for the `wineboot --init` process.
+- Added regression tests for both environment isolation and explicit prefix-creation architecture.
+
+### Verification
+
+- GitHub Actions Run 242 passed: 337 unit tests across core, runtime, and services.
+- Wheel and source distribution built successfully; the installed wheel CLI smoke test passed.
+- No real Wine prefix or Windows application was created or launched by CI.
+
+### Next priority
+
+- Continue with real x86/x64 prefix and installer validation on supported Wine/WoW64 builds, then improve application discovery and executable resolution.
