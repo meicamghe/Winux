@@ -30,12 +30,73 @@ class Installer:
             runtime_manager=self.runtime_manager
         )
 
-        self.data_dir = Path.home() / ".local/share/winux"
-        self.log_dir = self.data_dir / "logs" / "installations"
-        self.lock_dir = self.data_dir / "locks"
+        self.data_dir = self._prepare_private_directory(
+            Path.home() / ".local/share/winux"
+        )
+        self.log_dir = self._prepare_private_directory(
+            self.data_dir / "logs" / "installations"
+        )
+        self.lock_dir = self._prepare_private_directory(
+            self.data_dir / "locks"
+        )
 
-        self.log_dir.mkdir(parents=True, exist_ok=True)
-        self.lock_dir.mkdir(parents=True, exist_ok=True)
+    @staticmethod
+    def _reject_symlink_components(path):
+        """Reject symlinks in every existing component of a storage path."""
+        path = Path(os.path.abspath(path))
+        for component in reversed((path, *path.parents)):
+            if component.is_symlink():
+                raise ValueError(
+                    f"Installer storage path must not contain symlinks: {component}"
+                )
+
+    @classmethod
+    def _prepare_private_directory(cls, path):
+        path = Path(path)
+        cls._reject_symlink_components(path.parent)
+        path.mkdir(parents=True, exist_ok=True, mode=0o700)
+        cls._reject_symlink_components(path)
+        if not path.is_dir():
+            raise ValueError(f"Installer storage path is not a directory: {path}")
+        path.chmod(0o700)
+        return path
+
+    def _ensure_storage_directories(self):
+        for path in (self.data_dir, self.log_dir, self.lock_dir):
+            self._reject_symlink_components(path)
+            if path.is_symlink() or not path.is_dir():
+                raise ValueError(
+                    f"Installer storage directory is missing or unsafe: {path}"
+                )
+
+    @staticmethod
+    def _open_private_log(path):
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(path, flags, 0o600)
+        try:
+            if not __import__("stat").S_ISREG(os.fstat(descriptor).st_mode):
+                raise ValueError("Installer log path must be a regular file")
+            os.fchmod(descriptor, 0o600)
+            return os.fdopen(descriptor, "w", encoding="utf-8")
+        except Exception:
+            os.close(descriptor)
+            raise
+
+    @staticmethod
+    def _open_lock_file(path):
+        flags = os.O_RDWR | os.O_CREAT
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+        flags |= getattr(os, "O_NONBLOCK", 0)
+        descriptor = os.open(path, flags, 0o600)
+        try:
+            if not __import__("stat").S_ISREG(os.fstat(descriptor).st_mode):
+                raise ValueError("Installer lock path must be a regular file")
+            os.fchmod(descriptor, 0o600)
+            return os.fdopen(descriptor, "r+b")
+        except Exception:
+            os.close(descriptor)
+            raise
 
     @staticmethod
     def _validate_timeout(timeout):
@@ -315,7 +376,8 @@ class Installer:
 
         started = datetime.now(timezone.utc)
 
-        with open(log_file, "w", encoding="utf-8") as log:
+        self._ensure_storage_directories()
+        with self._open_private_log(log_file) as log:
             log.write(f"Install ID: {install_id}\n")
             log.write(f"Started: {started.isoformat()}\n")
             log.write(f"Installer: {source}\n")
@@ -331,7 +393,7 @@ class Installer:
             log.flush()
 
             try:
-                with open(lock_file, "w", encoding="utf-8") as lock:
+                with self._open_lock_file(lock_file) as lock:
                     try:
                         fcntl.flock(
                             lock.fileno(),
@@ -435,6 +497,7 @@ class Installer:
                 raise
 
     def history(self, limit=20):
+        self._ensure_storage_directories()
         if (
             isinstance(limit, bool)
             or not isinstance(limit, int)
@@ -444,9 +507,13 @@ class Installer:
 
         records = []
 
+        log_files = [
+            path for path in self.log_dir.glob("*.log")
+            if not path.is_symlink() and path.is_file()
+        ]
         for log_file in sorted(
-            self.log_dir.glob("*.log"),
-            key=lambda p: p.stat().st_mtime,
+            log_files,
+            key=lambda path: path.stat().st_mtime,
             reverse=True
         ):
             content = log_file.read_text(
