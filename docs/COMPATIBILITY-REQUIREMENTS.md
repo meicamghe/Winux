@@ -128,3 +128,7 @@ fails after atomic replacement, or removes the newly published file when no
 prior state existed. Restoration is itself file- and directory-synced; a
 rollback failure is reported alongside the original error. Regression tests
 cover both cases. Hosted CI pending.
+
+Lifecycle integration tests also verify that create removes its newly
+installed backend unit when state publication fails to sync, while delete
+restores the prior definition and service state.
