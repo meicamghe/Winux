@@ -619,3 +619,28 @@ inventing EMWAT-specific protocol behavior.
    subsystem, retaining strict loopback/Origin/Host/authentication boundaries.
 4. Keep Office automation, printer integration, and EMWAT payload decoding
    outside the transport core.
+
+## 2026-11-15 - Service definition concurrency hardening
+
+- ServiceManager now serializes service create/delete operations with a
+  per-state-file advisory lock, preventing two concurrent creators from both
+  passing the duplicate-name check and installing duplicate services.
+- Lock files are created with 0600 permissions, no-follow semantics where
+  supported, and symlink/non-regular-file rejection.
+- Added regression tests for concurrent duplicate service creation and
+  symlinked service lock files.
+- Hosted CI run `43719099119` passed **251 unit tests**, wheel/sdist builds,
+  installed-wheel CLI smoke test, and service-runner import check:
+  https://github.com/meicamghe/Winux/actions/runs/43719099119
+- ProcessManager's analogous registration/cleanup lock and the runner's
+  unregistered-process cleanup are also covered by the combined 249-test run:
+  https://github.com/meicamghe/Winux/actions/runs/43718982396
+
+### Follow-on engineering
+
+1. Review the lock protocol across processes and state-file recovery after
+   interrupted writes.
+2. Factor shared state-locking mechanics only if doing so preserves the
+   security guarantees and avoids needless abstraction.
+3. Begin the generic LocalBridge transport and its security tests as a Winux
+   Engine capability.
