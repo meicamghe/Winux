@@ -451,3 +451,15 @@ A further ServiceManager boundary fix rejects backend classes passed as if
 they were instances and preserves explicitly injected falsey prefix and
 application managers. Its own hosted CI run is still in progress and must be
 checked before treating that last change as verified.
+
+## 2026-11-15 - ServiceManager boundary and injection CI result
+
+- ServiceManager now rejects a backend class passed as an instance; classes
+  are factories and must be instantiated before satisfying the Protocol.
+- ServiceManager preserves explicitly injected falsey PrefixManager and
+  ApplicationManager objects instead of replacing them with defaults.
+- Added regression tests for both behaviors.
+- Latest hosted run for commit `1674df2` passed all 240 unit tests, built
+  wheel and source distribution, installed the wheel into a clean virtual
+  environment, and passed the `winux --help` smoke test:
+  https://github.com/meicamghe/Winux/actions/runs/43717899761
