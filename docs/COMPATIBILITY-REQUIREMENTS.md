@@ -97,3 +97,12 @@ publication, it removes the incomplete unit, syncs the directory, and retries
 daemon-reload when necessary. Rollback failures are surfaced explicitly.
 Regression tests cover both post-publication failure points; hosted CI is
 pending.
+
+
+## Prefix manager log-file safety
+
+PrefixManager opens its log file with O_NOFOLLOW, validates the opened file
+using fstat, and applies private permissions through the descriptor. This
+avoids following a symlink swapped between a path check and a normal file
+open. Descriptor cleanup and non-regular-file rejection are regression-tested;
+hosted CI is pending.
