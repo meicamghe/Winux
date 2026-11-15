@@ -182,7 +182,7 @@ class ProcessManager:
             os.fchmod(fd, 0o600)
             with os.fdopen(fd, "w", encoding="utf-8") as file:
                 json.dump(records, file, indent=2)
-                file.write("\\n")
+                file.write("\n")
                 file.flush()
                 os.fsync(file.fileno())
 
