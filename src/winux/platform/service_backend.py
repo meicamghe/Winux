@@ -173,7 +173,9 @@ class SystemdUserBackend:
         try:
             os.fchmod(descriptor, 0o600)
 
-            with os.fdopen(descriptor, "w", encoding="utf-8") as file:
+            file_handle = os.fdopen(descriptor, "w", encoding="utf-8")
+            descriptor = -1
+            with file_handle as file:
                 file.write(content)
                 file.flush()
                 os.fsync(file.fileno())
@@ -192,6 +194,8 @@ class SystemdUserBackend:
                 os.close(directory_fd)
 
         finally:
+            if descriptor >= 0:
+                os.close(descriptor)
             if temporary.exists():
                 temporary.unlink()
 
