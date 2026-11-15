@@ -961,3 +961,23 @@ inventing EMWAT-specific protocol behavior.
   passed all 311 unit tests, wheel and source-distribution builds, and the
   installed-wheel CLI smoke test.
 - Verification is from hosted GitHub Actions, not a local checkout.
+
+## 2026-11-15 - Application uninstall input validation
+
+### Implemented
+
+- Application uninstall timeout validation now rejects booleans, strings,
+  zero/negative values, NaN, infinities, and integers too large for a finite
+  timeout before looking up or invoking an uninstaller.
+- Uninstall commands must be non-empty strings before parsing and execution.
+- Added regression tests proving invalid inputs do not reach application
+  lookup or Wine execution.
+- Updated the architecture documentation.
+
+### Hosted verification
+
+- GitHub Actions run
+  https://github.com/meicamghe/Winux/actions/runs/43722350679
+  passed all 313 unit tests, wheel and source-distribution builds, and the
+  installed-wheel CLI smoke test.
+- Verification is from hosted GitHub Actions, not a local checkout.
