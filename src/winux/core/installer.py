@@ -431,7 +431,11 @@ class Installer:
                 raise
 
     def history(self, limit=20):
-        if not isinstance(limit, int) or limit < 1:
+        if (
+            isinstance(limit, bool)
+            or not isinstance(limit, int)
+            or limit < 1
+        ):
             raise ValueError("Limit must be a positive integer")
 
         records = []
