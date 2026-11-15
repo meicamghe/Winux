@@ -937,3 +937,27 @@ inventing EMWAT-specific protocol behavior.
   passed all 305 unit tests, wheel and source-distribution builds, and the
   installed-wheel CLI smoke test.
 - Verification is from hosted GitHub Actions, not a local checkout.
+
+## 2026-11-15 - Wine prefix drive C and registry path containment
+
+### Implemented
+
+- Prefix lookup and listing now reject prefixes whose `drive_c` entry is
+  missing, not a directory, or a symbolic link.
+- Prefix creation validates that the runtime produced a real `drive_c`
+  directory before writing metadata; invalid prefixes are rolled back.
+- Registry-derived Windows paths are accepted only when they are absolute
+  paths on drive C.
+- Converted paths are resolved and constrained to the real prefix
+  `drive_c`; parent traversal, drive-relative paths, and symlinked drive
+  roots are rejected.
+- Updated PrefixManager, ApplicationManager, installer test fixtures, and
+  architecture documentation with regression coverage.
+
+### Hosted verification
+
+- GitHub Actions run
+  https://github.com/meicamghe/Winux/actions/runs/43722246971
+  passed all 311 unit tests, wheel and source-distribution builds, and the
+  installed-wheel CLI smoke test.
+- Verification is from hosted GitHub Actions, not a local checkout.
