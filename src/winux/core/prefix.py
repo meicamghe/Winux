@@ -52,18 +52,22 @@ class PrefixManager:
             Path.home() / ".local/share/winux/prefixes"
         )
 
+        self.base_dir.chmod(0o700)
+
         log_dir = self._prepare_directory(
             Path.home() / ".local/share/winux/logs"
         )
+        log_dir.chmod(0o700)
+        log_file = log_dir / "prefix-manager.log"
+        if log_file.is_symlink():
+            raise ValueError("Prefix log file must not be a symbolic link")
 
         self.logger = logging.getLogger("winux.prefix")
         self.logger.setLevel(logging.INFO)
 
         if not self.logger.handlers:
-            log_file = log_dir / "prefix-manager.log"
-            if log_file.is_symlink():
-                raise ValueError("Prefix log file must not be a symbolic link")
             handler = logging.FileHandler(log_file)
+            os.chmod(log_file, 0o600)
             self.logger.addHandler(handler)
 
     def validate_name(self, name):
