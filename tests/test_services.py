@@ -405,6 +405,25 @@ class ServiceManagerTests(unittest.TestCase):
         self.assertEqual(self.backend.calls[0][0], "install")
         self.assertEqual(self.backend.calls[1][0], "remove")
 
+    def test_create_rolls_back_backend_when_state_directory_sync_fails(self):
+        with patch(
+            "winux.core.services.os.fsync",
+            side_effect=[
+                None,
+                OSError("directory fsync failed"),
+                None,
+            ],
+        ):
+            with self.assertRaisesRegex(OSError, "directory fsync failed"):
+                self.create_service()
+
+        self.assertFalse(self.state_file.exists())
+        self.assertEqual(self.backend.installed, {})
+        self.assertEqual(
+            [call[0] for call in self.backend.calls],
+            ["install", "remove"],
+        )
+
     def test_create_reports_incomplete_rollback(self):
         self.backend.failures["remove"] = RuntimeError(
             "unit removal failure"
@@ -721,6 +740,28 @@ class ServiceManagerTests(unittest.TestCase):
             self.backend.current_status["unit_file_state"],
             "enabled",
         )
+
+    def test_delete_restores_definition_when_state_directory_sync_fails(self):
+        record = self.create_service()
+
+        with patch(
+            "winux.core.services.os.fsync",
+            side_effect=[
+                None,
+                OSError("directory fsync failed"),
+                None,
+                None,
+                None,
+                None,
+            ],
+        ):
+            with self.assertRaisesRegex(OSError, "directory fsync failed"):
+                self.manager.delete(record["id"])
+
+        stored = json.loads(self.state_file.read_text(encoding="utf-8"))
+        self.assertEqual([item["id"] for item in stored], [record["id"]])
+        self.assertIn(record["id"], self.backend.installed)
+        self.assertEqual(self.backend.current_status["unit_file_state"], "enabled")
 
     def test_delete_restores_unit_if_state_write_fails(self):
         record = self.create_service()
