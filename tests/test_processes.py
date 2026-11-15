@@ -1,4 +1,5 @@
 import json
+import concurrent.futures
 import os
 import subprocess
 import tempfile
@@ -55,6 +56,46 @@ class ProcessManagerTests(unittest.TestCase):
             self.state_file.stat().st_mode & 0o777,
             0o600,
         )
+
+    def test_concurrent_registrations_preserve_all_process_records(self):
+        processes = [self.start_process() for _ in range(6)]
+        managers = [
+            ProcessManager(state_file=self.state_file)
+            for _ in processes
+        ]
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+            records = list(pool.map(
+                lambda pair: pair[0].register(
+                    pid=pair[1].pid,
+                    application="Concurrent App",
+                    prefix="test-prefix",
+                    runtime="test-runtime",
+                    executable="/test/app.exe",
+                ),
+                zip(managers, processes),
+            ))
+
+        stored = json.loads(self.state_file.read_text(encoding="utf-8"))
+        self.assertEqual(len(records), 6)
+        self.assertEqual(len(stored), 6)
+        self.assertEqual(
+            {item["id"] for item in stored},
+            {item["id"] for item in records},
+        )
+        self.assertEqual(
+            self.manager.lock_file.stat().st_mode & 0o777,
+            0o600,
+        )
+
+    def test_state_lock_rejects_symbolic_link(self):
+        target = Path(self.temp_dir.name) / "outside.lock"
+        target.write_text("", encoding="utf-8")
+        self.manager.lock_file.symlink_to(target)
+
+        with self.assertRaisesRegex(ValueError, "must not be a symbolic link"):
+            with self.manager._state_lock():
+                pass
 
     def test_list_reports_running_process(self):
         process = self.start_process()
