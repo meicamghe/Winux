@@ -22,18 +22,22 @@ The project is developed in stages. The current codebase is an early **Engine** 
 src/winux/
 ├── __init__.py
 ├── __main__.py
+├── service_runner.py
 ├── core/
-│   ├── __init__.py
 │   ├── installer.py
 │   ├── prefix.py
 │   ├── applications.py
 │   ├── runner.py
-│   └── desktop.py
+│   ├── desktop.py
+│   ├── processes.py
+│   └── services.py
 ├── platform/
-│   ├── __init__.py
-│   └── wine.py
+│   ├── runtime.py
+│   └── service_backend.py
 └── runtime/
-    └── __init__.py
+    ├── base.py
+    ├── manager.py
+    └── wine.py
 ```
 
 ### CLI entry point — `__main__.py`
