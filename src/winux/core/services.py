@@ -365,47 +365,51 @@ class ServiceManager:
 
         return record.copy()
 
-    def list(self):
-        records = self._read()
-        result = []
-
-        for record in records:
-            item = record.copy()
-            item["status"] = self.backend.status(record["id"])
-            result.append(item)
-
+    def _with_status(self, record):
+        result = record.copy()
+        result["status"] = self.backend.status(record["id"])
         return result
+
+    def list(self):
+        with self._state_lock():
+            return [
+                self._with_status(record)
+                for record in self._read()
+            ]
 
     def get(self, service_id):
-        record = self._find(service_id)
-        result = record.copy()
-        result["status"] = self.backend.status(service_id)
-        return result
+        with self._state_lock():
+            return self._with_status(self._find(service_id))
 
     def start(self, service_id):
-        self._find(service_id)
-        self.backend.start(service_id)
-        return self.get(service_id)
+        with self._state_lock():
+            record = self._find(service_id)
+            self.backend.start(service_id)
+            return self._with_status(record)
 
     def stop(self, service_id):
-        self._find(service_id)
-        self.backend.stop(service_id)
-        return self.get(service_id)
+        with self._state_lock():
+            record = self._find(service_id)
+            self.backend.stop(service_id)
+            return self._with_status(record)
 
     def restart(self, service_id):
-        self._find(service_id)
-        self.backend.restart(service_id)
-        return self.get(service_id)
+        with self._state_lock():
+            record = self._find(service_id)
+            self.backend.restart(service_id)
+            return self._with_status(record)
 
     def enable(self, service_id):
-        self._find(service_id)
-        self.backend.enable(service_id)
-        return self.get(service_id)
+        with self._state_lock():
+            record = self._find(service_id)
+            self.backend.enable(service_id)
+            return self._with_status(record)
 
     def disable(self, service_id):
-        self._find(service_id)
-        self.backend.disable(service_id)
-        return self.get(service_id)
+        with self._state_lock():
+            record = self._find(service_id)
+            self.backend.disable(service_id)
+            return self._with_status(record)
 
     @staticmethod
     def _has_unknown_lifecycle_state(status):
