@@ -24,7 +24,7 @@ class _ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
         super().__init__(server_address, handler_class)
 
     def process_request(self, request, client_address):
-        if not self._semaphore.acquire(blocking=False):
+        if self._bridge._closing or not self._semaphore.acquire(blocking=False):
             try:
                 request.sendall(
                     b"HTTP/1.1 503 Service Unavailable\r\n"
@@ -38,15 +38,19 @@ class _ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
                 self.shutdown_request(request)
             return
 
+        with self._bridge._active_condition:
+            self._bridge._active_requests += 1
+
         try:
             super().process_request(request, client_address)
         except Exception:
             self._semaphore.release()
+            with self._bridge._active_condition:
+                self._bridge._active_requests -= 1
+                self._bridge._active_condition.notify_all()
             raise
 
     def process_request_thread(self, request, client_address):
-        with self._bridge._active_condition:
-            self._bridge._active_requests += 1
         try:
             super().process_request_thread(request, client_address)
         finally:
@@ -189,7 +193,10 @@ class LocalBridge:
                 def do_OPTIONS(self):
                     self._dispatch()
 
-                def _send(\n                    self, status, body=b\"\", headers=None, origin=None,\n                    allow_preflight=False,\n                ):
+                def _send(
+                    self, status, body=b"", headers=None, origin=None,
+                    allow_preflight=False,
+                ):
                     if isinstance(body, str):
                         body = body.encode("utf-8")
                     if not isinstance(body, bytes):
@@ -469,7 +476,7 @@ class LocalBridge:
 
         if thread is not None:
             thread.join(
-                timeout=max(0.0, stop_deadline - __import__("time").monotonic())
+                timeout=max(0.0, stop_deadline - time.monotonic())
             )
 
         stopped = (
