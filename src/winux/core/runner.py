@@ -71,14 +71,14 @@ class ApplicationRunner:
                 0o600,
                 dir_fd=directory_fd,
             )
+            try:
+                return os.fdopen(descriptor, "ab")
+            except Exception:
+                os.close(descriptor)
+                os.unlink(path.name, dir_fd=directory_fd)
+                raise
         finally:
             os.close(directory_fd)
-
-        try:
-            return os.fdopen(descriptor, "ab")
-        except Exception:
-            os.close(descriptor)
-            raise
 
     @staticmethod
     def _terminate_unregistered_process(process, timeout=5):
