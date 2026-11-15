@@ -96,8 +96,8 @@ class LocalBridge:
 
     @staticmethod
     def _validate_header_name(value):
-        if not isinstance(value, str) or not value:
-            raise ValueError("HTTP header names must be non-empty strings")
+        if not isinstance(value, str) or not value or not value.isascii():
+            raise ValueError("HTTP header names must be non-empty ASCII strings")
         if any(
             not (char.isalnum() or char in "!#$%&'*+-.^_`|~")
             for char in value
