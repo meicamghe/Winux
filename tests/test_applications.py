@@ -152,6 +152,43 @@ HKEY_CURRENT_USER\\Software\\App\\Two
                 self.manager.info("test-prefix", "missing")
 
 
+    def test_uninstall_rejects_invalid_timeouts_before_lookup(self):
+        invalid_timeouts = (
+            True,
+            False,
+            "30",
+            float("nan"),
+            float("inf"),
+            float("-inf"),
+            0,
+            -1,
+            10 ** 1000,
+        )
+        for timeout in invalid_timeouts:
+            with self.subTest(timeout=repr(timeout)):
+                with patch.object(self.manager, "info") as info:
+                    with self.assertRaisesRegex(
+                        ValueError, "finite positive number"
+                    ):
+                        self.manager.uninstall(
+                            "test-prefix", "Example", timeout=timeout
+                        )
+                info.assert_not_called()
+                self.runtime.uninstall.assert_not_called()
+
+    def test_uninstall_rejects_non_string_command(self):
+        application = {
+            "registry_id": "Example",
+            "DisplayName": "Example App",
+            "UninstallString": ["uninstaller.exe"],
+        }
+
+        with patch.object(self.manager, "info", return_value=application):
+            with self.assertRaisesRegex(ValueError, "Invalid uninstall command"):
+                self.manager.uninstall("test-prefix", "Example")
+
+        self.runtime.uninstall.assert_not_called()
+
     def test_uninstall_uses_quiet_uninstall_string_when_available(self):
         application = {
             "registry_id": "Example",
