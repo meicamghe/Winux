@@ -140,3 +140,8 @@ The service-state JSON writer must append a real newline (`file.write("\n")`) af
 
 
 PrefixManager opens its log with `O_NONBLOCK` as well as `O_NOFOLLOW`, then verifies the descriptor is a regular file. This prevents a malicious or corrupted FIFO at the log path from blocking application startup before type validation.
+
+
+## Wine runtime prefix environment
+
+Every Wine subprocess receives the selected prefix as an absolute WINEPREFIX path. Relative paths and home notation are normalized, and inherited WINEPREFIX values are overridden to prevent operations from being redirected to another prefix. Regression tests cover normalization and environment isolation.
