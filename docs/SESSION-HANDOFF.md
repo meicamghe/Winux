@@ -544,3 +544,36 @@ the next section.
    the security test matrix as acceptance criteria.
 4. Keep EMWAT-specific protocol decoding, Office automation, printing, and
    recovery as adapters/integration work, not responsibilities of Winux core.
+
+## 2026-11-15 - Application log hardening and 246-test CI verification
+
+### Implemented
+
+- ApplicationRunner now rejects symlink components in its log directory,
+  creates the app-runs directory with 0700 permissions, and enforces private
+  directory permissions.
+- Log files are created exclusively with 0600 permissions and no-follow
+  semantics. An existing path, including a symlink, is never opened for
+  append.
+- Added tests for symlinked log directories, pre-existing log-file symlinks,
+  and restrictive directory/file permissions.
+- The first two CI attempts exposed a test-fixture setup issue: the test tried
+  to recreate an already existing parent directory. The fixture was corrected
+  to use exist_ok=True and the latest run passed.
+
+### Verification
+
+- Hosted CI run `43718714658` completed successfully:
+  - 246 unit tests passed.
+  - Wheel and source distribution built.
+  - The installed wheel passed the CLI smoke test and the packaged
+    `winux.service_runner` import check.
+- Run:
+  https://github.com/meicamghe/Winux/actions/runs/43718714658
+
+### Current engineering focus
+
+Continue process/log lifecycle review, service rollback safety, and the
+LocalBridge implementation plan. LocalBridge remains a design specification
+until the transport and security test matrix can be implemented without
+inventing EMWAT-specific protocol behavior.
