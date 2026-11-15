@@ -351,3 +351,20 @@ The updated source, tests, and architecture documentation were committed to
 main and fetched again for inspection. Tests were not executed in a local
 checkout; no GitHub Actions workflow runs were available. No actual system
 service was created or changed.
+
+## 2026-11-15 - Registry constructor and diagnostics regression coverage
+
+### Implemented
+
+- Added constructor-level regression tests ensuring RuntimeManager and
+  ServiceBackendManager reject empty and non-string default names.
+- Confirmed `winux doctor` reports service-backend plugin discovery failures
+  as warnings without treating optional plugins as core runtime failures.
+- Confirmed callable runtime instances are recognized as implementations,
+  while runtime classes and ordinary factories remain lazily instantiated.
+
+### Verification status
+
+All affected GitHub files were fetched again after the updates and inspected.
+The regression tests have not been executed in a local checkout. No workflow
+runs are currently available for this repository.
