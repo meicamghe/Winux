@@ -242,15 +242,16 @@ class ProcessManagerTests(unittest.TestCase):
         )
         for invalid in invalid_metadata:
             with self.subTest(invalid=invalid):
+                arguments = {
+                    "pid": process.pid,
+                    "application": "App",
+                    "prefix": "prefix",
+                    "runtime": "wine",
+                    "executable": "/app.exe",
+                }
+                arguments.update(invalid)
                 with self.assertRaises(ValueError):
-                    self.manager.register(
-                        pid=process.pid,
-                        application="App",
-                        prefix="prefix",
-                        runtime="wine",
-                        executable="/app.exe",
-                        **invalid,
-                    )
+                    self.manager.register(**arguments)
         self.assertFalse(self.state_file.exists())
 
     def test_register_rejects_nonexistent_process(self):
