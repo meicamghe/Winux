@@ -78,6 +78,55 @@ class InstallerArchitectureTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Unsupported MSI architecture"):
                 self.installer._get_msi_architecture(self.home / "app.msi")
 
+    def test_get_msi_architecture_reports_tool_launch_failure(self):
+        with (
+            patch("winux.core.installer.shutil.which", return_value="/usr/bin/msiinfo"),
+            patch(
+                "winux.core.installer.subprocess.run",
+                side_effect=FileNotFoundError("msiinfo disappeared"),
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "Unable to execute msiinfo"):
+                self.installer._get_msi_architecture(self.home / "app.msi")
+
+    def test_nsis_inspection_reports_tool_launch_failure(self):
+        with (
+            patch("winux.core.installer.shutil.which", return_value="/usr/bin/7z"),
+            patch(
+                "winux.core.installer.subprocess.run",
+                side_effect=FileNotFoundError("7z disappeared"),
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "Unable to execute 7z"):
+                self.installer._inspect_nsis_application_architecture(
+                    self.home / "setup.exe"
+                )
+
+    def test_nsis_extraction_reports_tool_launch_failure(self):
+        listing = SimpleNamespace(
+            returncode=0,
+            stdout=(
+                "Type = Nsis\\n"
+                "Path = /tmp/setup.exe\\n"
+                "Path = app.exe\\n"
+            ),
+            stderr="",
+        )
+        with (
+            patch("winux.core.installer.shutil.which", return_value="/usr/bin/7z"),
+            patch(
+                "winux.core.installer.subprocess.run",
+                side_effect=[listing, FileNotFoundError("7z disappeared")],
+            ),
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "Unable to execute 7z for extraction",
+            ):
+                self.installer._inspect_nsis_application_architecture(
+                    self.home / "setup.exe"
+                )
+
     def test_validate_msi_checks_ole_signature_before_inspection(self):
         source = self.home / "bad.msi"
         source.write_bytes(bytes(128))
