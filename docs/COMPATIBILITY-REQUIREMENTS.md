@@ -106,3 +106,11 @@ using fstat, and applies private permissions through the descriptor. This
 avoids following a symlink swapped between a path check and a normal file
 open. Descriptor cleanup and non-regular-file rejection are regression-tested;
 hosted CI is pending.
+
+
+## ApplicationRunner log descriptor ownership
+
+ApplicationRunner closes the raw log descriptor if fdopen fails after secure
+relative creation in the pinned log directory. The regression test verifies
+both the directory and file descriptors are closed and no incomplete log
+file remains. Hosted CI is pending.
