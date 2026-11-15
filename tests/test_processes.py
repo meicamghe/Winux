@@ -173,6 +173,41 @@ class ProcessManagerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "record ID"):
             self.manager.list()
 
+    def test_state_file_rejects_symlink_parent_on_read(self):
+        real_parent = Path(self.temp_dir.name) / "real-parent"
+        real_parent.mkdir()
+        target = real_parent / "processes.json"
+        target.write_text("[]", encoding="utf-8")
+        link = Path(self.temp_dir.name) / "linked-parent"
+        link.symlink_to(real_parent, target_is_directory=True)
+
+        manager = ProcessManager(state_file=link / "processes.json")
+        with self.assertRaisesRegex(ValueError, "symlinks"):
+            manager.list()
+
+    def test_state_file_rejects_symlink_parent_on_write(self):
+        real_parent = Path(self.temp_dir.name) / "real-parent"
+        real_parent.mkdir()
+        link = Path(self.temp_dir.name) / "linked-parent"
+        link.symlink_to(real_parent, target_is_directory=True)
+
+        manager = ProcessManager(state_file=link / "processes.json")
+        with self.assertRaisesRegex(ValueError, "symlinks"):
+            manager._write_records([])
+
+    def test_state_file_rejects_dangling_symlink(self):
+        target = Path(self.temp_dir.name) / "missing-target.json"
+        self.state_file.symlink_to(target)
+
+        with self.assertRaisesRegex(ValueError, "symbolic link"):
+            self.manager.list()
+
+    def test_state_path_rejects_directory_instead_of_file(self):
+        self.state_file.mkdir()
+
+        with self.assertRaisesRegex(ValueError, "regular file"):
+            self.manager.list()
+
     def test_state_file_must_not_be_a_symlink(self):
         target = Path(self.temp_dir.name) / "target.json"
         target.write_text("[]", encoding="utf-8")
