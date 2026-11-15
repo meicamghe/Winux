@@ -31,7 +31,11 @@ class ServiceManager:
         else:
             from winux.platform.service_backends import ServiceBackendManager
 
-            manager = backend_manager or ServiceBackendManager()
+            manager = (
+                backend_manager
+                if backend_manager is not None
+                else ServiceBackendManager()
+            )
             self.backend = manager.get(backend_name)
         if not isinstance(self.backend, ServiceBackend):
             raise TypeError(
