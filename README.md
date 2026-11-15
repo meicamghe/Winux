@@ -23,7 +23,7 @@ The current project focuses on the Winux Engine.
 Implemented capabilities include:
 
 - Wine environment detection.
-- Expanded read-only runtime diagnostics through `winux doctor`.
+- Expanded read-only runtime diagnostics through `winux doctor`, including MSI/NSIS inspection tools.
 - Windows prefix creation and management.
 - EXE and MSI installer support.
 - Windows application discovery through registry information.
