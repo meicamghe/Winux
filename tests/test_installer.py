@@ -186,10 +186,28 @@ class InstallerExecutionTests(unittest.TestCase):
             self.installer.install(link, "test-prefix")
 
     def test_install_rejects_invalid_timeout_values(self):
-        for timeout in (True, False, "30", float("nan"), float("inf"), float("-inf"), 0, -1):
+        invalid_timeouts = (
+            True,
+            False,
+            "30",
+            float("nan"),
+            float("inf"),
+            float("-inf"),
+            0,
+            -1,
+            10 ** 1000,
+        )
+        for timeout in invalid_timeouts:
             with self.subTest(timeout=timeout):
-                with self.assertRaisesRegex(ValueError, "finite positive number"):
-                    self.installer.install(self.source, "test-prefix", timeout=timeout)
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "finite positive number",
+                ):
+                    self.installer.install(
+                        self.source,
+                        "test-prefix",
+                        timeout=timeout,
+                    )
 
     def test_install_rejects_non_positive_timeout(self):
         with patch.object(self.installer, "_validate_installer_file",
