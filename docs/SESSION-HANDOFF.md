@@ -463,3 +463,45 @@ the next section.
   wheel and source distribution, installed the wheel into a clean virtual
   environment, and passed the `winux --help` smoke test:
   https://github.com/meicamghe/Winux/actions/runs/43717899761
+
+## 2026-11-15 - Runner lifecycle consolidation and packaged service validation
+
+### Implemented
+
+- Added an installed-wheel smoke check for `winux.service_runner` to the CI
+  workflow. This verifies that the internal module used by generated systemd
+  service commands is actually present and importable from the built wheel.
+- Consolidated the duplicated prefix/runtime/application/executable
+  resolution and validation logic in `ApplicationRunner` into
+  `_resolve_application()`. Both detached and foreground launch paths now
+  share the same runtime availability, executable existence, and prefix
+  containment checks.
+- Added ProcessManager lifecycle coverage for force-stopping a process that
+  explicitly ignores SIGTERM, and for cleaning up a process record after the
+  process exits normally.
+
+### Hosted verification
+
+- CI run `43718280601` passed for the packaged service-runner import smoke
+  check:
+  https://github.com/meicamghe/Winux/actions/runs/43718280601
+- CI run `43718294457` passed after the ApplicationRunner validation
+  consolidation:
+  https://github.com/meicamghe/Winux/actions/runs/43718294457
+- CI run `43718317782` passed with the additional ProcessManager lifecycle
+  tests:
+  https://github.com/meicamghe/Winux/actions/runs/43718317782
+- Each successful run completed the unit-test, wheel/sdist build, and clean
+  installed-wheel smoke-test steps. The latest run also imported
+  `winux.service_runner` from the installed wheel.
+- No local test execution was performed; verification is from hosted CI.
+
+### Next engineering tracks
+
+1. Continue ProcessManager/ApplicationRunner lifecycle review, including
+   process-registration failure and shutdown/restart behavior.
+2. Continue ServiceManager rollback and systemd runner lifecycle review.
+3. Design the generic loopback IPC subsystem as a Winux Engine capability
+   before implementing any EMWAT-specific endpoint or payload handling.
+4. Keep Office automation, printing, and recovery behind optional adapters;
+   do not claim compatibility until workflow-level integration tests exist.
