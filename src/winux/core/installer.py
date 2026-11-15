@@ -235,6 +235,14 @@ class Installer:
         timeout=3600,
         verification_profile=None,
     ):
+        if (
+            isinstance(timeout, bool)
+            or not isinstance(timeout, (int, float))
+            or not math.isfinite(timeout)
+            or timeout <= 0
+        ):
+            raise ValueError("Timeout must be a finite positive number")
+
         if verification_profile is not None:
             self.verification_manager.validate_profile(
                 verification_profile
@@ -269,14 +277,6 @@ class Installer:
                 application_executable = nsis_info["application_executable"]
             except (ValueError, RuntimeError, OSError) as error:
                 inspection_warning = str(error)
-
-        if (
-            isinstance(timeout, bool)
-            or not isinstance(timeout, (int, float))
-            or not math.isfinite(timeout)
-            or timeout <= 0
-        ):
-            raise ValueError("Timeout must be a finite positive number")
 
         prefix_path = self.prefix_manager.get_path(prefix_name)
 
