@@ -68,7 +68,7 @@ The prefix manager creates and manages named Wine prefixes. Prefixes are stored 
 ~/.local/share/winux/prefixes/
 ```
 
-It provides operations to create, list, inspect, and delete prefixes, and validates that a selected prefix is a usable Wine prefix.
+It provides operations to create, list, inspect, and delete prefixes, and validates that a selected prefix is a usable Wine prefix. A valid prefix must contain a real, non-symbolic-link `drive_c` directory.
 
 The prefix and log storage roots reject symbolic links in existing path
 components during initialization. Prefix operations revalidate the storage
@@ -99,7 +99,7 @@ Installer success and application compatibility are different things: a successf
 
 ### Application manager — `core/applications.py`
 
-The application manager discovers installed applications by reading Windows uninstall registry information inside a prefix. It exposes application metadata such as display name, version, publisher, registry identifier, executable path, and installation path when available.
+The application manager discovers installed applications by reading Windows uninstall registry information inside a prefix. It exposes application metadata such as display name, version, publisher, registry identifier, executable path, and installation path when available. Registry-derived Windows paths must be absolute C: paths and are resolved within the prefix's real `drive_c` directory; drive-relative paths, parent traversal, and a symlinked drive root are rejected.
 
 ### Application runner — `core/runner.py`
 
