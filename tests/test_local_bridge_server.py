@@ -1,5 +1,6 @@
 import http.client
 import threading
+import threading
 import time
 import unittest
 
@@ -326,6 +327,70 @@ class LocalBridgeServerTests(unittest.TestCase):
         first.join(timeout=1)
         self.assertFalse(first.is_alive())
         self.assertEqual(first_result["response"][0], 200)
+
+    def test_shutdown_waits_for_active_request_to_drain(self):
+        entered = threading.Event()
+        release = threading.Event()
+        result = {}
+
+        def slow_route(_request):
+            entered.set()
+            release.wait(timeout=3)
+            return LocalBridgeResponse(body=b"finished")
+
+        bridge = self.make_bridge(
+            routes={("GET", "/slow"): slow_route},
+        )
+
+        def send_request():
+            result["response"] = self.request(bridge, path="/slow")
+
+        worker = threading.Thread(target=send_request)
+        worker.start()
+        self.assertTrue(entered.wait(timeout=2))
+
+        self.assertFalse(bridge.shutdown(timeout=0.1))
+        release.set()
+        worker.join(timeout=3)
+
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(result["response"][0], 200)
+        self.assertTrue(bridge.shutdown(timeout=1))
+
+    def test_rejects_new_requests_when_concurrency_limit_is_reached(self):
+        entered = threading.Event()
+        release = threading.Event()
+        results = {}
+
+        def slow_route(_request):
+            entered.set()
+            release.wait(timeout=3)
+            return LocalBridgeResponse(body=b"finished")
+
+        policy = LocalBridgePolicy(
+            allow_missing_origin=True,
+            max_concurrency=1,
+            request_timeout=3,
+        )
+        bridge = self.make_bridge(
+            policy=policy,
+            routes={("GET", "/slow"): slow_route},
+        )
+
+        def first_request():
+            results["first"] = self.request(bridge, path="/slow")
+
+        worker = threading.Thread(target=first_request)
+        worker.start()
+        self.assertTrue(entered.wait(timeout=2))
+
+        second = self.request(bridge, path="/slow")
+        release.set()
+        worker.join(timeout=3)
+
+        self.assertEqual(second[0], 503)
+        self.assertEqual(results["first"][0], 200)
+        self.assertFalse(worker.is_alive())
 
     def test_port_conflict_is_reported(self):
         first = self.make_bridge()
