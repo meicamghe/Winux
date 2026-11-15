@@ -137,3 +137,6 @@ restores the prior definition and service state.
 ## Service-state persistence note (2026-11-15)
 
 The service-state JSON writer must append a real newline (`file.write("\n")`) after serialization. A literal backslash followed by `n` would make the state file invalid JSON and break subsequent service operations. Regression coverage and CI verification should be retained for this persistence path.
+
+
+PrefixManager opens its log with `O_NONBLOCK` as well as `O_NOFOLLOW`, then verifies the descriptor is a regular file. This prevents a malicious or corrupted FIFO at the log path from blocking application startup before type validation.
