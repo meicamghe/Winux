@@ -50,7 +50,7 @@ class ServiceBackendManagerTests(unittest.TestCase):
         ):
             manager.discover()
         self.assertEqual(manager.plugin_errors()[0]["plugin"], "broken")
-        self.assertEqual(manager.plugin_errors()[0]["stage"], "registration")
+        self.assertEqual(manager.plugin_errors()[0]["stage"], "load")
 
     def test_unknown_backend_is_rejected(self):
         manager = ServiceBackendManager(discover=False)
