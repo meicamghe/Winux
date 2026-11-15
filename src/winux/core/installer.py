@@ -49,6 +49,8 @@ class Installer:
             )
         except subprocess.TimeoutExpired as error:
             raise RuntimeError("MSI inspection timed out") from error
+        except OSError as error:
+            raise RuntimeError(f"Unable to execute msiinfo: {error}") from error
 
         if result.returncode != 0:
             raise ValueError(
@@ -122,6 +124,8 @@ class Installer:
             )
         except subprocess.TimeoutExpired as error:
             raise RuntimeError("NSIS inspection timed out") from error
+        except OSError as error:
+            raise RuntimeError(f"Unable to execute 7z: {error}") from error
 
         if listing.returncode != 0:
             raise ValueError(
@@ -189,6 +193,8 @@ class Installer:
             )
         except subprocess.TimeoutExpired as error:
             raise RuntimeError("NSIS executable extraction timed out") from error
+        except OSError as error:
+            raise RuntimeError(f"Unable to execute 7z for extraction: {error}") from error
 
         if extracted.returncode != 0 or not extracted.stdout:
             raise ValueError("Unable to extract the application executable")
