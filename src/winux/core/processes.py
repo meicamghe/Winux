@@ -1,9 +1,12 @@
+import fcntl
 import json
 import math
 import logging
 import os
 import signal
+import stat
 import tempfile
+from contextlib import contextmanager
 import time
 import uuid
 from datetime import datetime, timezone
@@ -31,7 +34,38 @@ class ProcessManager:
         if self.state_file.exists() and not self.state_file.is_file():
             raise ValueError("Process state path must be a regular file")
 
+        self.lock_file = self.state_file.with_name(
+            self.state_file.name + ".lock"
+        )
         self.logger = logging.getLogger("winux.processes")
+
+    @contextmanager
+    def _state_lock(self):
+        """Serialize process-state read/modify/write operations."""
+        self._reject_symlink_components(self.state_file.parent)
+
+        if self.lock_file.is_symlink():
+            raise ValueError("Process state lock must not be a symbolic link")
+
+        flags = os.O_RDWR | os.O_CREAT
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(self.lock_file, flags, 0o600)
+
+        try:
+            if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+                raise ValueError("Process state lock must be a regular file")
+            os.fchmod(descriptor, 0o600)
+
+            with os.fdopen(descriptor, "r+b") as lock:
+                descriptor = -1
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+                try:
+                    yield
+                finally:
+                    fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+        finally:
+            if descriptor >= 0:
+                os.close(descriptor)
 
     @staticmethod
     def _reject_symlink_components(path):
@@ -232,9 +266,11 @@ class ProcessManager:
             "started_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        records = self._read_records()
-        records.append(record)
-        self._write_records(records)
+        with self._state_lock():
+            records = self._read_records()
+            records.append(record)
+            self._write_records(records)
+
         return {**record, "status": "running"}
 
     def _status(self, record):
@@ -400,15 +436,16 @@ class ProcessManager:
         }
 
     def cleanup(self):
-        records = self._read_records()
-        retained = [
-            record for record in records
-            if self._status(record) == "running"
-        ]
+        with self._state_lock():
+            records = self._read_records()
+            retained = [
+                record for record in records
+                if self._status(record) == "running"
+            ]
 
-        removed = len(records) - len(retained)
-        if removed:
-            self._write_records(retained)
+            removed = len(records) - len(retained)
+            if removed:
+                self._write_records(retained)
 
         return {
             "removed": removed,
