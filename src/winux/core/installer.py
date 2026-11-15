@@ -4,6 +4,7 @@ import re
 import fcntl
 import os
 import shutil
+import stat
 import subprocess
 import tempfile
 from pathlib import PurePosixPath
@@ -75,7 +76,7 @@ class Installer:
         flags |= getattr(os, "O_NOFOLLOW", 0)
         descriptor = os.open(path, flags, 0o600)
         try:
-            if not __import__("stat").S_ISREG(os.fstat(descriptor).st_mode):
+            if not stat.S_ISREG(os.fstat(descriptor).st_mode):
                 raise ValueError("Installer log path must be a regular file")
             os.fchmod(descriptor, 0o600)
             return os.fdopen(descriptor, "w", encoding="utf-8")
