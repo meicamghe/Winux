@@ -128,6 +128,12 @@ class PrefixManagerTests(unittest.TestCase):
                     "win64",
                 )
 
+    def test_normalize_rejects_non_string_architecture(self):
+        for architecture in (None, [], {}, True, 64):
+            with self.subTest(architecture=architecture):
+                with self.assertRaisesRegex(ValueError, "Architecture must be"):
+                    self.manager.normalize_architecture(architecture)
+
     def test_normalize_rejects_win32_prefixes(self):
         with self.assertRaisesRegex(ValueError, "64-bit WoW64"):
             self.manager.normalize_architecture("win32")
