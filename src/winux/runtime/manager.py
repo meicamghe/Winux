@@ -103,6 +103,9 @@ class RuntimeManager:
         if name is None:
             name = self._default_runtime
 
+        if not isinstance(name, str) or not name:
+            raise ValueError(f"Invalid runtime name: {name!r}")
+
         try:
             return self._runtimes[name]
         except KeyError:
