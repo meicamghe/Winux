@@ -73,8 +73,9 @@ It provides operations to create, list, inspect, and delete prefixes, and valida
 The prefix and log storage roots reject symbolic links in existing path
 components during initialization. Prefix operations revalidate the storage
 root before creating, listing, or resolving prefixes, so replacing the root
-with a symlink after manager construction is also rejected. The prefix log
-file itself must not be a symbolic link.
+with a symlink after manager construction is also rejected. The prefix and
+log directories are restricted to mode 0700, the prefix-manager log file is
+restricted to mode 0600, and the log file itself must not be a symbolic link.
 
 The current design uses 64-bit Wine prefixes. Both 32-bit and 64-bit Windows applications are intended to be supported through Wine's WoW64 capabilities where the installed Wine build supports them. This does not mean Winux creates a separate pure 32-bit prefix for every 32-bit application.
 
