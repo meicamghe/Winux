@@ -93,6 +93,34 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
         with patch("builtins.print"):
             self.assertFalse(check_runtime(self.manager))
 
+    def test_service_backend_plugin_failures_are_reported_as_warnings(self):
+        broken_backend = Mock()
+        broken_backend.name = "optional-service-backend"
+        broken_backend.load.side_effect = ImportError("backend unavailable")
+
+        with (
+            patch(
+                "winux.platform.runtime._command_status",
+                return_value="/usr/bin/tool",
+            ),
+            patch(
+                "winux.platform.runtime.subprocess.run",
+                return_value=subprocess.CompletedProcess(
+                    args=[], returncode=0, stdout="", stderr=""
+                ),
+            ),
+            patch(
+                "winux.platform.service_backends.entry_points",
+                return_value=[broken_backend],
+            ),
+            patch("builtins.print") as output,
+        ):
+            self.assertTrue(check_runtime(self.manager))
+
+        rendered = " ".join(str(call) for call in output.call_args_list)
+        self.assertIn("optional-service-backend", rendered)
+        self.assertIn("backend unavailable", rendered)
+
     def test_plugin_failures_are_reported_without_failing_core_runtime(self):
         self.manager.plugin_errors.return_value = [{
             "plugin": "optional-runtime",
