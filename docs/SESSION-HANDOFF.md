@@ -119,3 +119,23 @@ No real managed service was started or enabled during these checks.
   recovery with isolated fixtures.
 - Review source-checkout and installed-package behavior of the service runner.
 - Keep documentation synchronized with implementation and tests.
+
+## 2026-11-15 - Engine diagnostics and application compatibility boundaries
+
+### Implemented in this session
+
+- Expanded winux doctor from a Wine-only check to a read-only diagnostic report.
+- It now reports host architecture, Wine availability/version, wineboot as a required prefix-initialization tool, and msiexec, wineserver, and winepath as optional capabilities.
+- Runtime plugin discovery errors are reported as warnings instead of being hidden.
+- Added isolated tests for successful checks, missing required tools, missing optional tools, runtime failures, and plugin warnings.
+
+### Architecture direction reinforced
+
+- Winux remains the primary product. EMWAT is a compatibility case study, not a separate core or mandatory dependency.
+- Added a reusable application capability matrix covering x86/x64, prefixes, managed services, local IPC, office automation, printers, scanners, and recovery.
+- Do not equate Winux-managed Linux user services with genuine Windows Service Control Manager support.
+- Do not equate successful installation or launch with workflow compatibility.
+
+### Verification status
+
+The source and tests were committed to GitHub. The new test suite has not yet been executed in the user's Linux working copy; do not report it as passing until it is run. No real Wine prefix or Windows application was created or launched during this documentation/code update.
