@@ -14,7 +14,7 @@ Application-specific behavior belongs in compatibility profiles or adapters. The
 | Per-application isolation | Named Wine prefixes | Implemented | Add safe export/backup/migration before destructive lifecycle features |
 | Background Windows application | Managed Linux user service wrapping Wine process | Initial implementation | Validate restart, stop, shutdown, logs, and user-session behavior |
 | Genuine Windows service / SCM | Windows service control manager compatibility | Not guaranteed by Wine; not equivalent to Winux-managed service | Detect and report service dependencies; avoid implying full SCM support |
-| Local browser-to-desktop bridge | Loopback HTTP/IPC service with origin validation | Not yet a first-class Engine subsystem | Design reusable IPC module, configurable ports, strict loopback binding, request limits |
+| Local browser-to-desktop bridge | Reusable LocalBridge transport and application adapters | Architecture specified; implementation not started | Implement loopback-only binding, exact Origin/Host validation, authentication hooks, bounded requests, lifecycle and security tests; see LOCAL-IPC-DESIGN.md |
 | Office document automation | Office adapter and document-session lifecycle | Not implemented in core | Keep Office-specific APIs out of prefix/process managers; support multiple office backends |
 | Word COM / OLE automation | Runtime/application compatibility or native office adapter | Application-dependent; unresolved | Probe required COM interfaces and distinguish Wine support from native LibreOffice adaptation |
 | Printer integration | Host print backend (CUPS/IPP) and app compatibility checks | Not integrated | Never attempt to load Windows kernel printer drivers on Linux |
