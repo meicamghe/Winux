@@ -61,6 +61,7 @@ class PrefixManagerTests(unittest.TestCase):
     def make_prefix(self, name="test-prefix", architecture=None):
         path = self.manager.base_dir / name
         path.mkdir()
+        (path / "drive_c").mkdir()
         (path / "system.reg").write_text("WINE REGISTRY\n", encoding="utf-8")
 
         if architecture:
