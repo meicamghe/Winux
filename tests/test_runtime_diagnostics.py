@@ -70,6 +70,19 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
         rendered = " ".join(str(call) for call in output.call_args_list)
         self.assertIn("systemd user manager: unavailable", rendered)
 
+    def test_missing_systemctl_is_warning_not_runtime_failure(self):
+        with (
+            patch(
+                "winux.platform.runtime._command_status",
+                side_effect=lambda name: None if name == "systemctl" else "/usr/bin/tool",
+            ),
+            patch("builtins.print") as output,
+        ):
+            self.assertTrue(check_runtime(self.manager))
+
+        rendered = " ".join(str(call) for call in output.call_args_list)
+        self.assertIn("systemd user manager: systemctl is unavailable", rendered)
+
     def test_unavailable_runtime_fails_diagnostics(self):
         self.runtime.is_available.return_value = False
         with patch("builtins.print"):
