@@ -12,7 +12,6 @@ from winux.core.service_contracts import (
     SERVICE_RESTART_POLICIES,
     ServiceBackend,
 )
-from winux.platform.service_backend import SystemdUserBackend
 
 
 class ServiceManager:
