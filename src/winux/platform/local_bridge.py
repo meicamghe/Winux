@@ -177,7 +177,7 @@ class LocalBridge:
                 def do_OPTIONS(self):
                     self._dispatch()
 
-                def _send(self, status, body=b"", headers=None, origin=None):
+                def _send(\n                    self, status, body=b\"\", headers=None, origin=None,\n                    allow_preflight=False,\n                ):
                     if isinstance(body, str):
                         body = body.encode("utf-8")
                     if not isinstance(body, bytes):
@@ -192,15 +192,19 @@ class LocalBridge:
                                 raise ValueError("Response headers must be strings")
                             if "\r" in name or "\n" in name or "\r" in value or "\n" in value:
                                 raise ValueError("Invalid response header")
-                            if name.lower() in {
+                            reserved = {
                                 "content-length",
                                 "connection",
                                 "access-control-allow-origin",
                                 "access-control-allow-credentials",
-                                "access-control-allow-methods",
-                                "access-control-allow-headers",
                                 "vary",
-                            }:
+                            }
+                            if not allow_preflight:
+                                reserved.update({
+                                    "access-control-allow-methods",
+                                    "access-control-allow-headers",
+                                })
+                            if name.lower() in reserved:
                                 continue
                             safe_headers[name] = value
                     except (TypeError, ValueError):
@@ -300,6 +304,7 @@ class LocalBridge:
                                 ),
                             },
                             origin=origin,
+                            allow_preflight=True,
                         )
                         return
 
