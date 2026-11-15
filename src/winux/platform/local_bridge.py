@@ -225,7 +225,7 @@ class LocalBridge:
                                 raise ValueError("Response headers must be strings")
                             bridge._validate_header_name(name)
                             if any(
-                                (ord(char) < 0x20 and char != "\\t")
+                                (ord(char) < 0x20 and char != "\t")
                                 or ord(char) == 0x7F
                                 for char in value
                             ):
