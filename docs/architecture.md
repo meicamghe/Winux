@@ -68,6 +68,12 @@ The prefix manager creates and manages named Wine prefixes. Prefixes are stored 
 
 It provides operations to create, list, inspect, and delete prefixes, and validates that a selected prefix is a usable Wine prefix.
 
+The prefix and log storage roots reject symbolic links in existing path
+components during initialization. Prefix operations revalidate the storage
+root before creating, listing, or resolving prefixes, so replacing the root
+with a symlink after manager construction is also rejected. The prefix log
+file itself must not be a symbolic link.
+
 The current design uses 64-bit Wine prefixes. Both 32-bit and 64-bit Windows applications are intended to be supported through Wine's WoW64 capabilities where the installed Wine build supports them. This does not mean Winux creates a separate pure 32-bit prefix for every 32-bit application.
 
 ### Installer — `core/installer.py`
@@ -198,6 +204,7 @@ The OS layer should consume the same engine and desktop components used during d
 
 - Run applications as the logged-in user; do not run ordinary Windows applications as root.
 - Validate paths before launching or deleting files within a prefix.
+- Process registration accepts only positive integer PIDs and non-empty application, prefix, runtime, and executable metadata; invalid records are rejected before they can corrupt the persistent process-state file.
 - Do not store credentials, access tokens, or private installer data in the repository.
 - Treat installers and application files as untrusted input.
 - Preserve logs without recording secrets unnecessarily.
