@@ -1017,3 +1017,13 @@ inventing EMWAT-specific protocol behavior.
   it with fdopen fails, while still removing the temporary file.
 - Added regression tests for both conditions.
 - Hosted CI verification for these latest changes is pending.
+
+## 2026-11-15 - Descriptor cleanup across process and service managers
+
+- Process state writes now transfer descriptor ownership explicitly to the
+  file object only after fdopen succeeds; failures close the raw descriptor
+  and remove the temporary file.
+- Process and service lock acquisition use the same ownership-transfer pattern,
+  closing the descriptor if fdopen fails before lock acquisition.
+- Added regression tests for state-write and lock-file fdopen failures in both
+  managers. Hosted CI verification is pending.
