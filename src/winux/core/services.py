@@ -208,6 +208,20 @@ class ServiceManager:
         if self.state_file.exists() and not self.state_file.is_file():
             raise ValueError("Service state path must be a regular file")
 
+        previous_contents = None
+        if self.state_file.exists():
+            flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+            previous_descriptor = os.open(self.state_file, flags)
+            try:
+                if not stat.S_ISREG(os.fstat(previous_descriptor).st_mode):
+                    raise ValueError("Service state path must be a regular file")
+                with os.fdopen(previous_descriptor, "rb") as previous_file:
+                    previous_descriptor = -1
+                    previous_contents = previous_file.read()
+            finally:
+                if previous_descriptor >= 0:
+                    os.close(previous_descriptor)
+
         descriptor, temporary_name = tempfile.mkstemp(
             prefix=".services-",
             suffix=".tmp",
@@ -222,12 +236,46 @@ class ServiceManager:
             descriptor = -1
             with file_handle as file:
                 json.dump(records, file, ensure_ascii=False, indent=2)
-                file.write("\n")
+                file.write("\\n")
                 file.flush()
                 os.fsync(file.fileno())
 
             temporary.replace(self.state_file)
-            self._fsync_directory(self.state_file.parent)
+            try:
+                self._fsync_directory(self.state_file.parent)
+            except OSError as original_error:
+                rollback_descriptor = -1
+                rollback_path = None
+                try:
+                    if previous_contents is None:
+                        self.state_file.unlink(missing_ok=True)
+                    else:
+                        rollback_descriptor, rollback_name = tempfile.mkstemp(
+                            prefix=".services-rollback-",
+                            suffix=".tmp",
+                            dir=self.state_file.parent,
+                        )
+                        rollback_path = Path(rollback_name)
+                        os.fchmod(rollback_descriptor, 0o600)
+                        with os.fdopen(rollback_descriptor, "wb") as rollback_file:
+                            rollback_descriptor = -1
+                            rollback_file.write(previous_contents)
+                            rollback_file.flush()
+                            os.fsync(rollback_file.fileno())
+                        rollback_path.replace(self.state_file)
+                    self._fsync_directory(self.state_file.parent)
+                except Exception as rollback_error:
+                    raise RuntimeError(
+                        "Service state write failed and rollback was incomplete. "
+                        f"Original error: {original_error}. "
+                        f"Rollback error: {rollback_error}."
+                    ) from original_error
+                finally:
+                    if rollback_descriptor >= 0:
+                        os.close(rollback_descriptor)
+                    if rollback_path is not None and rollback_path.exists():
+                        rollback_path.unlink()
+                raise
         finally:
             if descriptor >= 0:
                 os.close(descriptor)
