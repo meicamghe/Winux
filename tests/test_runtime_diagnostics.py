@@ -1,3 +1,4 @@
+import subprocess
 import unittest
 from unittest.mock import Mock, patch
 
@@ -31,6 +32,43 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
         command.side_effect = lambda name: None if name in {"msiexec", "wineserver", "winepath", "msiinfo", "7z"} else "/usr/bin/tool"
         with patch("builtins.print"):
             self.assertTrue(check_runtime(self.manager))
+
+    @patch("winux.platform.runtime.subprocess.run")
+    def test_systemd_user_manager_is_reported_available(self, run):
+        run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout="LANG=C.UTF-8\n",
+            stderr="",
+        )
+        with (
+            patch(
+                "winux.platform.runtime._command_status",
+                return_value="/usr/bin/tool",
+            ),
+            patch("builtins.print") as output,
+        ):
+            self.assertTrue(check_runtime(self.manager))
+
+        rendered = " ".join(str(call) for call in output.call_args_list)
+        self.assertIn("systemd user manager: available", rendered)
+
+    @patch(
+        "winux.platform.runtime.subprocess.run",
+        side_effect=subprocess.TimeoutExpired("systemctl", 5),
+    )
+    def test_systemd_user_manager_unavailable_is_warning(self, _run):
+        with (
+            patch(
+                "winux.platform.runtime._command_status",
+                return_value="/usr/bin/tool",
+            ),
+            patch("builtins.print") as output,
+        ):
+            self.assertTrue(check_runtime(self.manager))
+
+        rendered = " ".join(str(call) for call in output.call_args_list)
+        self.assertIn("systemd user manager: unavailable", rendered)
 
     def test_unavailable_runtime_fails_diagnostics(self):
         self.runtime.is_available.return_value = False
