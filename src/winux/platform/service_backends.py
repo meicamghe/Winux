@@ -47,7 +47,8 @@ class ServiceBackendManager:
             return
 
         raise TypeError(
-            f"Service backend '{name}' is neither a backend nor a factory"
+            f"Service backend '{name}' does not implement the Winux service contract "
+            "and is not a factory"
         )
 
     def _record_plugin_error(self, plugin_name, stage, error):
@@ -122,10 +123,10 @@ class ServiceBackendManager:
                 "default": name == self._default_backend,
                 "backend": (
                     type(backend).__name__
-                    if isinstance(backend, ServiceBackend)
+                    if self._is_backend_instance(backend)
                     else getattr(backend, "__name__", type(backend).__name__)
                 ),
-                "loaded": isinstance(backend, ServiceBackend),
+                "loaded": self._is_backend_instance(backend),
             }
             for name, backend in self._backends.items()
         }
