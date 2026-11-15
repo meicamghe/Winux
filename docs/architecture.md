@@ -250,3 +250,5 @@ The winux doctor command performs read-only checks of the selected runtime and r
 ## Application compatibility profiles
 
 Application-specific requirements must not leak into the generic Engine managers. A future compatibility profile can declare required architectures, runtime versions, Windows services, COM/OLE interfaces, local IPC, host devices, and workflow verification steps. See COMPATIBILITY-REQUIREMENTS.md for the current capability matrix and EMWAT-derived requirements.
+
+The current managed-service backend uses systemd user units. Runtime diagnostics check both the systemctl executable and the current user's systemd manager; a missing or unavailable user manager is a service-integration warning, not a failure of ordinary application execution. Backend status distinguishes an unavailable manager (unknown) from a unit that is genuinely not found.
