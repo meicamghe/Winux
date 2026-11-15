@@ -505,3 +505,42 @@ the next section.
    before implementing any EMWAT-specific endpoint or payload handling.
 4. Keep Office automation, printing, and recovery behind optional adapters;
    do not claim compatibility until workflow-level integration tests exist.
+
+## 2026-11-15 - Service rollback safety and LocalBridge architecture
+
+### Service lifecycle hardening
+
+- Service deletion now refuses to proceed when the backend omits or reports
+  unknown active/enabled state.
+- Service rollback now verifies that the restored unit's active and enabled
+  states are knowable before deciding whether to start/stop or enable/disable
+  it. Unknown state is reported as incomplete rollback rather than being
+  silently interpreted as inactive/disabled.
+- Added regression coverage for missing lifecycle state and unknown state
+  during rollback.
+- Hosted CI run `43718552322` passed after these changes, including the full
+  unit-test suite, wheel/sdist build, and installed-wheel smoke test:
+  https://github.com/meicamghe/Winux/actions/runs/43718552322
+
+### Local IPC architecture
+
+- Added `docs/LOCAL-IPC-DESIGN.md` defining a generic loopback bridge boundary
+  for browser-to-desktop communication.
+- The design specifies loopback-only binding, exact Host/Origin validation,
+  authentication hooks, request size/time/concurrency limits, safe logging,
+  and bounded shutdown.
+- Updated `docs/COMPATIBILITY-REQUIREMENTS.md` and
+  `docs/architecture.md` to link this design.
+- This is a specification, not an implementation. EMWAT's init/invoke payload
+  schema and browser security policy remain unknown; no application-specific
+  endpoints or semantics have been invented.
+
+### Current next steps
+
+1. Review remaining ProcessManager/ApplicationRunner races and process
+   shutdown behavior.
+2. Continue ServiceManager/systemd lifecycle and rollback edge-case tests.
+3. Implement LocalBridge only against the documented generic contract, with
+   the security test matrix as acceptance criteria.
+4. Keep EMWAT-specific protocol decoding, Office automation, printing, and
+   recovery as adapters/integration work, not responsibilities of Winux core.
