@@ -18,6 +18,12 @@ class FakeBackend:
 
 
 class ServiceBackendManagerTests(unittest.TestCase):
+    def test_manager_rejects_invalid_default_backend_names(self):
+        for name in ([], {}, 1, False, ""):
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(ValueError, "Invalid default service backend"):
+                    ServiceBackendManager(default_backend=name, discover=False)
+
     def test_systemd_is_registered_as_default(self):
         manager = ServiceBackendManager(discover=False)
         self.assertEqual(manager.get_default_name(), "systemd")
