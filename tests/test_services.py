@@ -264,6 +264,13 @@ class ServiceManagerTests(unittest.TestCase):
         self.assertIn("unit removal failure", str(context.exception))
         self.assertEqual(len(self.backend.installed), 1)
 
+    def test_state_file_rejects_dangling_symlink(self):
+        target = self.state_file.parent / "missing-services.json"
+        self.state_file.symlink_to(target)
+
+        with self.assertRaisesRegex(ValueError, "must not be a symlink"):
+            self.manager.list()
+
     def test_state_file_rejects_non_string_restart_policy(self):
         self.state_file.write_text(
             json.dumps([{
