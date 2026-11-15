@@ -1027,3 +1027,11 @@ inventing EMWAT-specific protocol behavior.
   closing the descriptor if fdopen fails before lock acquisition.
 - Added regression tests for state-write and lock-file fdopen failures in both
   managers. Hosted CI verification is pending.
+
+## 2026-11-15 - Prefix metadata descriptor cleanup
+
+- Prefix metadata persistence now transfers descriptor ownership only after
+  fdopen succeeds. If wrapping fails, the raw descriptor is closed and the
+  temporary metadata file is removed.
+- Added a regression test for the failure path. Hosted CI verification is
+  pending.
