@@ -18,9 +18,13 @@ from winux.runtime.manager import RuntimeManager
 
 class Installer:
     def __init__(self, runtime_manager=None, verification_manager=None):
-        self.runtime_manager = runtime_manager or RuntimeManager()
+        self.runtime_manager = (
+            runtime_manager if runtime_manager is not None else RuntimeManager()
+        )
         self.verification_manager = (
-            verification_manager or VerificationManager()
+            verification_manager
+            if verification_manager is not None
+            else VerificationManager()
         )
         self.prefix_manager = PrefixManager(
             runtime_manager=self.runtime_manager
