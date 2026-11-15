@@ -54,9 +54,9 @@ The command-line interface exposes the current engine workflows, including:
 
 The CLI is the current user-facing entry point. A graphical interface is a later milestone.
 
-### Wine platform check — `platform/wine.py`
+### Runtime platform check — `platform/runtime.py`
 
-This layer checks whether Wine is available and reports its version. It is the starting point for isolating Wine-specific platform detection and behavior from the higher-level engine.
+This layer checks whether the selected runtime and its required/optional tools are available and reports diagnostic details. Wine-specific execution is encapsulated by the runtime implementation under `runtime/`.
 
 ### Prefix manager — `core/prefix.py`
 
