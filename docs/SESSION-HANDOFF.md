@@ -192,3 +192,20 @@ Code and tests are committed to main. Tests were not executed in this assistant 
 ### Verification status
 
 Changes and tests are committed to main. They have not been run in a local checkout in this session. No actual service or Windows installer was launched.
+## 2026-11-15 - Platform-neutral service backend contract
+
+### Implemented
+
+- Added `core/service_contracts.py` with a runtime-checkable `ServiceBackend` Protocol, shared service ID validation, and platform-neutral restart policies.
+- `ServiceManager` now validates injected backends against the shared contract and no longer depends on systemd-specific constants for service IDs or restart policy validation.
+- `SystemdUserBackend` implements the shared contract while retaining its existing class constants as compatibility aliases.
+- Added contract regression tests and documented the new core module in the architecture source tree.
+
+### Architectural effect
+
+- The service manager's lifecycle logic now has an explicit backend boundary. A future non-systemd implementation can satisfy the contract without changing service-definition and recovery logic.
+- This does not add a second service backend yet; systemd user services remain the only implemented platform backend.
+
+### Verification status
+
+Changes and tests are committed to main. They have not been executed in a local checkout in this session.
