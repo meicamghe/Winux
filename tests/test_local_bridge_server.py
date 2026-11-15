@@ -427,7 +427,13 @@ class LocalBridgeServerTests(unittest.TestCase):
         ).encode("ascii")
         with socket.create_connection(("127.0.0.1", port), timeout=2) as client:
             client.sendall(request)
-            response = client.recv(2048)
+            chunks = []
+            while True:
+                chunk = client.recv(2048)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+            response = b"".join(chunks)
 
         self.assertIn(b"400 Bad Request", response)
         self.assertIn(b"Invalid Content-Length", response)
