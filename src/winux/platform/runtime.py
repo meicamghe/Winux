@@ -1,11 +1,32 @@
 import platform
 import shutil
+import subprocess
 
 from winux.runtime.manager import RuntimeManager
 
 
 def _command_status(name):
     return shutil.which(name)
+
+
+def _systemd_user_manager_status(systemctl_path):
+    """Return whether the current user's systemd manager is responding."""
+    try:
+        result = subprocess.run(
+            [systemctl_path, "--user", "show-environment"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        return False, str(error)
+
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip()
+        return False, detail or "systemd user manager is unavailable"
+
+    return True, "systemd user manager is responding"
 
 
 def check_runtime(runtime_manager=None):
@@ -61,6 +82,18 @@ def check_runtime(runtime_manager=None):
                 print(f"[OK] {command}: available ({purpose})")
             else:
                 print(f"[WARN] {command}: missing ({purpose} unavailable)")
+
+        systemctl_path = _command_status("systemctl")
+        if not systemctl_path:
+            print("[WARN] systemd user manager: systemctl is unavailable")
+        else:
+            manager_available, detail = _systemd_user_manager_status(
+                systemctl_path
+            )
+            if manager_available:
+                print("[OK] systemd user manager: available")
+            else:
+                print(f"[WARN] systemd user manager: unavailable ({detail})")
 
         for plugin_error in manager.plugin_errors():
             print(
