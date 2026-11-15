@@ -111,7 +111,7 @@ and an explicit route table. No wildcard or arbitrary-command route exists.
   errors without exception details.
 - [ ] Add route-specific Content-Type validation and explicit response/request
   correlation IDs.
-- [ ] Exercise IPv6 listener behavior in hosted CI and integration tests.
+- [x] Exercise the IPv6 loopback listener in hosted CI when IPv6 is available.
 - [ ] Validate with a real browser-origin adapter and a real desktop client.
 
 ## EMWAT integration sequence
@@ -173,12 +173,12 @@ policy remain unconfirmed.
 
 ## Hosted verification
 
-CI run 43719798103 passed 281 unit tests, wheel and source-distribution
+CI run 43719933763 passed 284 unit tests, wheel and source-distribution
 packaging, and the installed-wheel CLI/service-runner smoke checks:
-https://github.com/meicamghe/Winux/actions/runs/43719798103
+https://github.com/meicamghe/Winux/actions/runs/43719933763
 
-The LocalBridge transport tests cover loopback routing, Host/Origin rejection,
-exact CORS, Bearer authentication, bounded bodies, Transfer-Encoding
-rejection, route isolation, preflight, response-header injection, concurrency,
-port conflicts, and bounded shutdown. This verifies the generic transport
+The LocalBridge transport tests cover IPv4 and IPv6 loopback routing,
+Host/Origin rejection, exact CORS, Bearer authentication, bounded bodies,
+Transfer-Encoding rejection, route isolation, preflight, response-header
+injection, concurrency, port conflicts, and bounded shutdown. This verifies the generic transport
 contract, not an EMWAT end-to-end workflow.
