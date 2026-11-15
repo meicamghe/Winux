@@ -72,3 +72,10 @@ Winux should expose these as distinct outcomes rather than a single compatible b
 - Failed wrapping closes the raw descriptor; failed process state writes also
   remove their temporary file. Regression tests cover all affected paths.
 - Hosted CI verification is pending.
+
+## Prefix metadata persistence
+
+Prefix metadata writes use a private same-directory temporary file, fsync the
+file before atomic replacement, and fsync the containing directory. Descriptor
+ownership is transferred only after file wrapping succeeds; failures close the
+raw descriptor and remove the temporary file.
