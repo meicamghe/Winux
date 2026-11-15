@@ -408,6 +408,17 @@ class ServiceManager:
 
         original_status = self.backend.status(service_id)
 
+        if original_status.get("error") or any(
+            original_status.get(field) == "unknown"
+            for field in ("active_state", "unit_file_state")
+        ):
+            detail = original_status.get("error") or (
+                "service state is incomplete"
+            )
+            raise RuntimeError(
+                f"Cannot safely delete service while its state is unknown: {detail}"
+            )
+
         try:
             if self._is_active(original_status):
                 self.backend.stop(service_id)
