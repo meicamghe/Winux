@@ -30,7 +30,19 @@ class ServiceManager:
             application_manager or ApplicationManager()
         )
 
+    @staticmethod
+    def _reject_symlink_components(path):
+        """Reject symlinks in existing components of the state path."""
+        path = Path(os.path.abspath(path))
+
+        for component in reversed((path, *path.parents)):
+            if component.is_symlink():
+                raise ValueError(
+                    f"Service state path must not contain symlinks: {component}"
+                )
+
     def _read(self):
+        self._reject_symlink_components(self.state_file.parent)
         # Check symlinks before exists(): dangling symlinks report exists=False.
         if self.state_file.is_symlink():
             raise ValueError("Service state file must not be a symlink")
@@ -100,14 +112,19 @@ class ServiceManager:
         return records
 
     def _write(self, records):
+        self._reject_symlink_components(self.state_file.parent)
         self.state_file.parent.mkdir(
             parents=True,
             exist_ok=True,
             mode=0o700,
         )
+        self._reject_symlink_components(self.state_file.parent)
 
         if self.state_file.is_symlink():
             raise ValueError("Service state file must not be a symlink")
+
+        if self.state_file.exists() and not self.state_file.is_file():
+            raise ValueError("Service state path must be a regular file")
 
         descriptor, temporary_name = tempfile.mkstemp(
             prefix=".services-",
