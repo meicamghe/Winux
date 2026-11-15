@@ -11,6 +11,12 @@ class RuntimeTests(unittest.TestCase):
         runtime = WineRuntime()
         self.assertIsInstance(runtime, Runtime)
 
+    def test_manager_rejects_invalid_default_runtime_names(self):
+        for name in ([], {}, 1, False, ""):
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(ValueError, "Invalid default runtime"):
+                    RuntimeManager(default_runtime=name, discover=False)
+
     def test_manager_selects_wine_by_default(self):
         manager = RuntimeManager()
         self.assertEqual(manager.get_default_name(), "wine")
