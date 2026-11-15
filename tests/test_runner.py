@@ -1,4 +1,5 @@
 import tempfile
+import subprocess
 from datetime import datetime
 import unittest
 from pathlib import Path
@@ -193,20 +194,43 @@ class ApplicationRunnerTests(unittest.TestCase):
             log=result["log"],
         )
 
-    def test_run_returns_result_when_process_registration_fails(self):
+    def test_run_stops_process_when_registration_fails(self):
+        process = Mock()
+        process.pid = 4321
+        self.runtime.run.return_value = process
         self.process_manager.register.side_effect = OSError(
             "state storage unavailable"
         )
 
-        result = self.runner.run("test-prefix", "Example")
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "process was stopped because Winux could not register it",
+        ):
+            self.runner.run("test-prefix", "Example")
 
-        self.assertEqual(result["pid"], 4321)
-        self.assertIsNone(result["process_id"])
-        self.assertEqual(
-            result["process_registration_error"],
-            "state storage unavailable",
-        )
+        process.terminate.assert_called_once_with()
+        process.wait.assert_called_once_with(timeout=5)
+        process.kill.assert_not_called()
         self.runtime.run.assert_called_once()
+
+    def test_run_force_kills_unregistered_process_after_timeout(self):
+        process = Mock()
+        process.pid = 4321
+        process.wait.side_effect = [
+            subprocess.TimeoutExpired("wine", 5),
+            0,
+        ]
+        self.runtime.run.return_value = process
+        self.process_manager.register.side_effect = OSError(
+            "state storage unavailable"
+        )
+
+        with self.assertRaises(RuntimeError):
+            self.runner.run("test-prefix", "Example")
+
+        process.terminate.assert_called_once_with()
+        process.kill.assert_called_once_with()
+        self.assertEqual(process.wait.call_count, 2)
 
     def test_run_fails_when_runtime_is_unavailable(self):
         self.runtime.is_available.return_value = False
