@@ -246,6 +246,43 @@ class PrefixManagerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Invalid prefix architecture"):
             self.manager.get_architecture("invalid-architecture")
 
+    def test_metadata_name_must_match_prefix_directory(self):
+        path = self.make_prefix("metadata-name", "win64")
+        metadata = path / ".winux-prefix.json"
+        data = json.loads(metadata.read_text(encoding="utf-8"))
+        data["name"] = "different-prefix"
+        metadata.write_text(json.dumps(data), encoding="utf-8")
+
+        with self.assertRaisesRegex(ValueError, "does not match"):
+            self.manager.get_path("metadata-name")
+
+    def test_metadata_rejects_unsupported_architecture(self):
+        path = self.make_prefix("metadata-architecture", "win64")
+        metadata = path / ".winux-prefix.json"
+        data = json.loads(metadata.read_text(encoding="utf-8"))
+        data["architecture"] = "win32"
+        metadata.write_text(json.dumps(data), encoding="utf-8")
+
+        with self.assertRaisesRegex(ValueError, "architecture"):
+            self.manager.get_path("metadata-architecture")
+
+    def test_metadata_rejects_unsupported_format_version(self):
+        path = self.make_prefix("metadata-version", "win64")
+        metadata = path / ".winux-prefix.json"
+        data = json.loads(metadata.read_text(encoding="utf-8"))
+        data["format_version"] = 2
+        metadata.write_text(json.dumps(data), encoding="utf-8")
+
+        with self.assertRaisesRegex(ValueError, "format version"):
+            self.manager.get_path("metadata-version")
+
+    def test_dangling_metadata_symlink_is_not_treated_as_legacy(self):
+        path = self.make_prefix("dangling-metadata")
+        (path / ".winux-prefix.json").symlink_to(path / "missing.json")
+
+        with self.assertRaisesRegex(ValueError, "metadata"):
+            self.manager.get_path("dangling-metadata")
+
     def test_delete_requires_explicit_confirmation(self):
         self.make_prefix("to-delete")
 
