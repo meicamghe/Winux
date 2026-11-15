@@ -1108,3 +1108,10 @@ inventing EMWAT-specific protocol behavior.
 
 
 - Prevented a FIFO-based startup hang in PrefixManager: its log file is opened with `O_NONBLOCK` before the descriptor is checked for a regular-file type. The existing FIFO regression test now exercises the nonblocking rejection path.
+
+
+## 2026-11-15 - Wine prefix environment normalization
+
+- WineRuntime expands home notation and converts relative prefix paths to absolute paths before setting WINEPREFIX, without requiring the prefix to exist.
+- An inherited WINEPREFIX is always overridden so subprocesses use the explicitly selected prefix.
+- Regression tests cover relative-path normalization and environment isolation. Hosted CI verification is pending.
