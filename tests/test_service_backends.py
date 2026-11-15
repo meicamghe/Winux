@@ -71,6 +71,19 @@ class ServiceBackendManagerTests(unittest.TestCase):
         self.assertIs(manager.get("lazy"), backend)
         self.assertEqual(calls, ["created"])
 
+    def test_callable_factory_object_is_listed_safely(self):
+        class Factory:
+            def __call__(self):
+                return FakeBackend()
+
+        manager = ServiceBackendManager(discover=False)
+        manager.register("callable-object", Factory())
+        self.assertEqual(
+            manager.list()["callable-object"]["backend"],
+            "Factory",
+        )
+        self.assertFalse(manager.list()["callable-object"]["loaded"])
+
     def test_invalid_factory_result_is_rejected(self):
         manager = ServiceBackendManager(discover=False)
         manager.register("invalid-factory", lambda: object())
