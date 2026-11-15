@@ -157,6 +157,22 @@ class ServiceManagerTests(unittest.TestCase):
         )
         self.assertIs(manager.backend, backends.get("fake"))
 
+    def test_rejects_backend_class_instead_of_instance(self):
+        class BackendClass:
+            def install(self, *args, **kwargs): pass
+            def unit_exists(self, *args, **kwargs): return True
+            def reload(self, *args, **kwargs): pass
+            def start(self, *args, **kwargs): pass
+            def stop(self, *args, **kwargs): pass
+            def restart(self, *args, **kwargs): pass
+            def enable(self, *args, **kwargs): pass
+            def disable(self, *args, **kwargs): pass
+            def status(self, *args, **kwargs): return {}
+            def remove(self, *args, **kwargs): pass
+
+        with self.assertRaisesRegex(TypeError, "service contract"):
+            ServiceManager(backend=BackendClass, state_file=self.state_file)
+
     def test_rejects_backend_missing_required_operations(self):
         with self.assertRaisesRegex(TypeError, "service contract"):
             ServiceManager(backend=object(), state_file=self.state_file)
