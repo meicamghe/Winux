@@ -214,3 +214,4 @@ Changes and tests are committed to main. They have not been executed in a local 
 - Added an explicit conformance test for `SystemdUserBackend` as well as the fake backend.
 - Removed the remaining systemd-specific service ID and restart-policy references from `ServiceManager`; it now consumes only the shared service contract. The systemd backend remains the default implementation.
 - The combined commit status endpoint returned no status records for the documentation commit; this is not evidence of a passing CI run.
+- Updated the architecture document to state explicitly that the protocol is a portability boundary, not proof of non-systemd support: `SystemdUserBackend` remains the only implemented backend.
