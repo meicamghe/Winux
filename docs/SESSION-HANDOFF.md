@@ -145,6 +145,7 @@ The source and tests were committed to GitHub. The doctor CLI now exits with sta
 
 - Prefix metadata is now validated against its directory name and supported architecture.
 - Prefix metadata format versions are checked; unsupported versions are rejected.
+- Legacy metadata that predates explicit name/architecture fields remains readable using the historical win64 WoW64 default.
 - Dangling metadata symlinks are rejected instead of being mistaken for legacy prefixes.
 - Persisted process records now validate required fields, UUID-like IDs, positive non-boolean PIDs, non-negative UIDs, numeric Linux process start times, and field types before status or signal operations.
 - Added regression tests for each of these validation cases.
