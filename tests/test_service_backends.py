@@ -61,6 +61,11 @@ class ServiceBackendManagerTests(unittest.TestCase):
         manager = ServiceBackendManager(discover=False)
         manager.register("callable-backend", backend)
         self.assertIs(manager.get("callable-backend"), backend)
+        self.assertEqual(
+            manager.list()["callable-backend"]["backend"],
+            "CallableBackend",
+        )
+        self.assertTrue(manager.list()["callable-backend"]["loaded"])
 
     def test_non_string_backend_names_are_rejected(self):
         manager = ServiceBackendManager(discover=False)
