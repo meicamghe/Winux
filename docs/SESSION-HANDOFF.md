@@ -839,3 +839,16 @@ inventing EMWAT-specific protocol behavior.
   CLI smoke test, and imports of the packaged bridge and service-runner
   modules:
   https://github.com/meicamghe/Winux/actions/runs/43720531599
+
+## 2026-11-15 - Atomic prefix metadata persistence
+
+- PrefixManager now writes `.winux-prefix.json` through a temporary file
+  created inside the prefix directory with mode 0600.
+- The temporary file is flushed and fsynced, atomically renamed into place,
+  and the prefix directory is fsynced so the metadata rename is durable.
+- Existing or symlinked metadata paths are refused rather than overwritten.
+- Added tests for private metadata permissions, a real trailing newline, and
+  refusing an existing metadata symlink without modifying its target.
+- Hosted CI run `43720800367` passed **291 unit tests**, wheel/sdist builds,
+  and installed-wheel CLI and module-import smoke tests:
+  https://github.com/meicamghe/Winux/actions/runs/43720800367
