@@ -325,3 +325,29 @@ workflow runs. No actual systemd service was created or modified.
 The changed source and test files were fetched again from GitHub for review.
 Tests have not been executed in a local checkout. No runtime, service, or
 systemd operations were performed.
+
+## 2026-11-15 - Doctor service-plugin diagnostics and runtime plugin instance handling
+
+### Implemented
+
+- `winux doctor` now discovers optional service-backend plugins and reports
+  their load/registration failures as warnings, matching runtime plugin
+  diagnostics. It does not instantiate a service backend or make systemd a
+  requirement for ordinary application execution.
+- Runtime diagnostics now preserve an explicitly injected manager even if it
+  is falsey, rather than silently replacing it with a new manager.
+- Runtime plugin discovery now recognizes an already-instantiated object
+  satisfying the runtime contract before treating a callable as a factory.
+  This avoids accidentally invoking callable runtime instances.
+- Added a regression test for callable runtime instances and a doctor warning
+  test for broken service-backend plugins.
+- Expanded architecture documentation to explain the managed Linux service
+  boundary and clarify that entry-point extensibility does not mean multiple
+  init systems are already supported.
+
+### Verification status
+
+The updated source, tests, and architecture documentation were committed to
+main and fetched again for inspection. Tests were not executed in a local
+checkout; no GitHub Actions workflow runs were available. No actual system
+service was created or changed.
