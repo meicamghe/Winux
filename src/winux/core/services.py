@@ -162,7 +162,7 @@ class ServiceManager:
         """Return a stored service definition without backend status data."""
         if (
             not isinstance(service_id, str)
-            or not SystemdUserBackend.SERVICE_ID_PATTERN.fullmatch(service_id)
+            or not SERVICE_ID_PATTERN.fullmatch(service_id)
         ):
             raise KeyError(f"Unknown service: {service_id}")
 
@@ -198,7 +198,7 @@ class ServiceManager:
 
         if (
             not isinstance(restart, str)
-            or restart not in SystemdUserBackend.RESTART_POLICIES
+            or restart not in SERVICE_RESTART_POLICIES
         ):
             raise ValueError("Invalid restart policy")
 
