@@ -834,6 +834,14 @@ class SystemdUserBackendTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "timed out: start"):
             self.backend.start(SERVICE_ID)
 
+    @patch(
+        "winux.platform.service_backend.subprocess.run",
+        side_effect=FileNotFoundError("systemctl missing"),
+    )
+    def test_command_launch_failure_has_actionable_error(self, _run):
+        with self.assertRaisesRegex(RuntimeError, "Unable to execute systemctl"):
+            self.backend.start(SERVICE_ID)
+
     def test_remove_rejects_symbolic_link(self):
         self.unit_dir.mkdir(parents=True)
         target = Path(self.temp_dir.name) / "target"
