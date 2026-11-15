@@ -392,3 +392,45 @@ Source and test changes were committed and are being re-fetched for review.
 The CI workflow has been added but its first hosted run must complete before
 any test or packaging success can be claimed. No local test execution was
 performed from this session.
+
+## 2026-11-15 - First CI failures resolved; process state hardening
+
+### CI findings and fixes
+
+The first hosted CI run executed 233 unit tests and exposed six pre-existing
+regressions/assumption mismatches:
+
+- Process cleanup rejected an empty `/proc/<pid>/cmdline`, which is valid
+  metadata for some Linux processes. The schema now permits an empty command
+  string while still requiring the field to be a string.
+- Runtime empty-name tests expected the old "Unknown runtime" wording even
+  though the manager intentionally rejects an empty name as invalid input.
+  Assertions now match the current validation contract.
+- The runtime-plugin Doctor test depended on host tools and installed entry
+  points. It now isolates optional plugin discovery and systemd probes.
+- The service-backend registry treated a backend class as an instantiated
+  backend because runtime-checkable Protocol checks can match class-level
+  methods. It now explicitly distinguishes classes/factories from instances,
+  including in registry listings. A regression test covers class factories.
+
+### Additional process state protections
+
+- ProcessManager now rejects symlinks in existing parent path components
+  during construction, reads, and writes.
+- Dangling state-file symlinks are rejected before checking file existence.
+- Existing state paths must be regular files, not directories or other types.
+- State directories are created with restrictive 0700 permissions; temporary
+  state files are created with 0600 permissions before writing.
+- Added tests for symlinked parents on read/write, dangling symlinks, and
+  directory paths.
+
+### Verification
+
+Two hosted GitHub Actions runs completed successfully after the CI fixes:
+unit tests, wheel/sdist build, and clean-wheel CLI smoke test all succeeded.
+The run for the latest backend-factory test commit is:
+https://github.com/meicamghe/Winux/actions/runs/43717620444
+
+The additional ProcessManager path-hardening commits were pushed after those
+successful runs and are awaiting their own CI result. They have not been
+claimed as tested yet.
