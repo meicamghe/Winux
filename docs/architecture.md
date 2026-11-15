@@ -274,3 +274,26 @@ Runtime selection uses the default only when no runtime name is supplied; an exp
 Application-specific requirements must not leak into the generic Engine managers. A future compatibility profile can declare required architectures, runtime versions, Windows services, COM/OLE interfaces, local IPC, host devices, and workflow verification steps. See COMPATIBILITY-REQUIREMENTS.md for the current capability matrix and EMWAT-derived requirements.
 
 The current managed-service backend uses systemd user units. Runtime diagnostics check both the systemctl executable and the current user's systemd manager; a missing or unavailable user manager is a service-integration warning, not a failure of ordinary application execution. Backend status distinguishes an unavailable manager (unknown) from a unit that is genuinely not found.
+
+## Local IPC and Browser Bridge
+
+A reusable loopback IPC subsystem is a planned Engine capability for
+applications that coordinate a browser front end with a local desktop process.
+It must remain separate from application-specific endpoints and document
+automation.
+
+The transport boundary is responsible for loopback-only binding, Host and
+exact Origin validation, optional per-session authentication, bounded request
+sizes/timeouts/concurrency, safe diagnostics, and graceful shutdown. Route
+schemas, query-command conventions, sessions, and payload decoding belong to
+application adapters.
+
+EMWAT provides a motivating example because its service binds to
+127.0.0.1:1984 and receives heartbeat, initialization, and invocation traffic.
+The exact invocation schema and browser security policy are not yet known.
+Winux must not invent these details or embed EMWAT-specific routes in the
+generic Engine.
+
+The design specification and required security test matrix are maintained in
+[LOCAL-IPC-DESIGN.md](LOCAL-IPC-DESIGN.md). This is an architecture decision,
+not a claim that LocalBridge has been implemented.
