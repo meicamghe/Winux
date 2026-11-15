@@ -279,3 +279,26 @@ available. The registry does not add a second built-in service backend.
   and backend registration errors are recorded separately.
 - Added an integration regression test for selecting a named backend through
   `ServiceManager` while retaining explicit backend injection.
+
+## 2026-11-15 - Service backend registry refinement
+
+### Implemented
+
+- Added lazy backend factory instantiation and validation of the created object
+  against the platform-neutral `ServiceBackend` protocol.
+- Registry listings now distinguish loaded backend instances from factories
+  without instantiating a backend as a side effect.
+- Callable factory objects are handled safely in registry diagnostics.
+- Added regression coverage for lazy creation, singleton reuse, invalid
+  factory results, and callable factory-object listing.
+- Added an integration test proving that `ServiceManager` can select a named
+  backend from an injected registry while retaining direct backend injection.
+- Updated README source-tree documentation and corrected the architecture
+  document's stale reference to `platform/wine.py`.
+
+### Verification status
+
+Source, test, packaging metadata, and documentation were fetched again from
+GitHub and inspected for the expected changes. Tests have not been executed
+in a local checkout, and the repository currently reports no GitHub Actions
+workflow runs. No actual systemd service was created or modified.
