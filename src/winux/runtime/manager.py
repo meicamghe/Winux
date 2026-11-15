@@ -30,6 +30,8 @@ class RuntimeManager:
         if discover:
             self.discover()
 
+        if not isinstance(default_runtime, str) or not default_runtime:
+            raise ValueError(f"Invalid default runtime: {default_runtime!r}")
         if default_runtime not in self._runtimes:
             raise ValueError(f"Unknown default runtime: {default_runtime}")
 
