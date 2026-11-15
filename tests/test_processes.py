@@ -214,6 +214,45 @@ class ProcessManagerTests(unittest.TestCase):
         self.assertEqual(result["remaining"], 0)
         self.assertEqual(self.manager.list(), [])
 
+    def test_register_rejects_invalid_pid_before_inspecting_process(self):
+        for pid in (True, False, 0, -1, "123", 1.5):
+            with self.subTest(pid=pid):
+                with patch.object(
+                    self.manager,
+                    "_process_start_time",
+                ) as inspect_process:
+                    with self.assertRaisesRegex(ValueError, "positive integer"):
+                        self.manager.register(
+                            pid=pid,
+                            application="App",
+                            prefix="prefix",
+                            runtime="wine",
+                            executable="/app.exe",
+                        )
+                    inspect_process.assert_not_called()
+
+    def test_register_rejects_invalid_metadata_before_state_write(self):
+        process = self.start_process()
+        invalid_metadata = (
+            {"application": ""},
+            {"prefix": None},
+            {"runtime": "  "},
+            {"executable": 123},
+            {"log": ""},
+        )
+        for invalid in invalid_metadata:
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(ValueError):
+                    self.manager.register(
+                        pid=process.pid,
+                        application="App",
+                        prefix="prefix",
+                        runtime="wine",
+                        executable="/app.exe",
+                        **invalid,
+                    )
+        self.assertFalse(self.state_file.exists())
+
     def test_register_rejects_nonexistent_process(self):
         with self.assertRaises(ProcessLookupError):
             self.manager.register(
