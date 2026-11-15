@@ -45,6 +45,8 @@ def check_runtime(runtime_manager=None):
             "msiexec": "MSI installation",
             "wineserver": "Wine process lifecycle",
             "winepath": "Windows/Linux path conversion",
+            "msiinfo": "MSI architecture inspection",
+            "7z": "NSIS installer inspection",
         }
 
         for command, purpose in required_commands.items():
