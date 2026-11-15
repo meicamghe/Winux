@@ -459,6 +459,12 @@ class ServiceManagerTests(unittest.TestCase):
         ):
             self.manager.list()
 
+    def test_state_write_fsyncs_file_and_parent_directory(self):
+        with patch("winux.core.services.os.fsync") as fsync:
+            self.manager._write([])
+
+        self.assertEqual(fsync.call_count, 2)
+
     def test_list_returns_service_status(self):
         record = self.create_service()
 
