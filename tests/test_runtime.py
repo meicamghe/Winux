@@ -95,6 +95,32 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(manager.get_default_name(), "test-runtime")
         self.assertIs(manager.get(), runtime)
 
+    def test_manager_does_not_call_callable_runtime_instance(self):
+        class CallableRuntime:
+            name = "callable-runtime"
+
+            def __call__(self):
+                raise AssertionError("runtime instance must not be called")
+
+            def is_available(self): return True
+            def version(self): return "test"
+            def validate_prefix(self, prefix_path): return True
+            def create_prefix(self, prefix_path, architecture): pass
+            def run(self, prefix_path, executable, args=None, **kwargs): pass
+            def install(self, prefix_path, installer, **kwargs): pass
+            def query_registry(self, prefix_path, key, **kwargs): pass
+            def uninstall(self, prefix_path, command, **kwargs): pass
+
+        runtime = CallableRuntime()
+        plugin = Mock()
+        plugin.name = "callable-runtime"
+        plugin.load.return_value = runtime
+
+        with patch("winux.runtime.manager.entry_points", return_value=[plugin]):
+            manager = RuntimeManager()
+
+        self.assertIs(manager.get("callable-runtime"), runtime)
+
     def test_manager_discovers_external_runtime_plugins(self):
         runtime = Mock(spec=Runtime)
         runtime.name = "external-runtime"
