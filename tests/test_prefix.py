@@ -29,6 +29,8 @@ class PrefixManagerTests(unittest.TestCase):
             lambda path: (
                 path.is_dir()
                 and not path.is_symlink()
+                and (path / "drive_c").is_dir()
+                and not (path / "drive_c").is_symlink()
                 and (path / "system.reg").is_file()
                 and not (path / "system.reg").is_symlink()
             )
@@ -189,6 +191,7 @@ class PrefixManagerTests(unittest.TestCase):
         target.write_text("do not overwrite", encoding="utf-8")
 
         def initialize(path, architecture):
+            (path / "drive_c").mkdir()
             (path / "system.reg").write_text(
                 "WINE REGISTRY\\n", encoding="utf-8"
             )
@@ -388,6 +391,32 @@ class PrefixManagerTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "metadata"):
             self.manager.get_path("dangling-metadata")
+
+    def test_prefix_rejects_missing_drive_c_directory(self):
+        path = self.manager.base_dir / "missing-drive-c"
+        path.mkdir()
+        (path / "system.reg").write_text("WINE REGISTRY\\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(ValueError, "drive_c"):
+            self.manager.get_path("missing-drive-c")
+
+    def test_prefix_rejects_drive_c_symlink(self):
+        path = self.make_prefix("linked-drive-c")
+        external = self.home / "external-drive-c"
+        external.mkdir()
+        (path / "drive_c").rmdir()
+        (path / "drive_c").symlink_to(external, target_is_directory=True)
+
+        with self.assertRaisesRegex(ValueError, "drive_c"):
+            self.manager.get_path("linked-drive-c")
+
+    def test_list_ignores_prefix_with_invalid_drive_c(self):
+        self.make_prefix("valid-drive-c")
+        invalid = self.manager.base_dir / "invalid-drive-c"
+        invalid.mkdir()
+        (invalid / "system.reg").write_text("WINE REGISTRY\\n", encoding="utf-8")
+
+        self.assertEqual(self.manager.list(), ["valid-drive-c"])
 
     def test_delete_requires_explicit_confirmation(self):
         self.make_prefix("to-delete")
