@@ -89,6 +89,36 @@ class PrefixManagerTests(unittest.TestCase):
 
         self.assertEqual(target.read_text(encoding="utf-8"), "private")
 
+    def test_prefix_log_open_closes_descriptor_when_fdopen_fails(self):
+        log_file = self.home / ".local/share/winux/logs/prefix-manager.log"
+        for handler in self.logger.handlers[:]:
+            self.logger.removeHandler(handler)
+            handler.close()
+
+        with patch(
+            "winux.core.prefix.os.fdopen",
+            side_effect=OSError("fdopen failure"),
+        ), patch(
+            "winux.core.prefix.os.close",
+            wraps=os.close,
+        ) as close:
+            with self.assertRaisesRegex(OSError, "fdopen failure"):
+                PrefixManager(runtime_manager=self.runtime_manager)
+
+        self.assertTrue(close.called)
+        self.assertTrue(log_file.is_file())
+
+    def test_prefix_log_rejects_non_regular_file(self):
+        log_file = self.home / ".local/share/winux/logs/prefix-manager.log"
+        for handler in self.logger.handlers[:]:
+            self.logger.removeHandler(handler)
+            handler.close()
+        log_file.unlink()
+        os.mkfifo(log_file)
+
+        with self.assertRaisesRegex(ValueError, "regular file"):
+            PrefixManager(runtime_manager=self.runtime_manager)
+
     def test_prefix_and_log_directories_are_private(self):
         self.assertEqual(self.manager.base_dir.stat().st_mode & 0o777, 0o700)
         log_dir = self.home / ".local/share/winux/logs"
