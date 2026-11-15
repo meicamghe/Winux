@@ -99,6 +99,14 @@ The runner locates an application's executable in its prefix, validates that the
 
 A desktop manager has been started to integrate Wine-generated desktop launchers with the user's desktop. This area is still being developed and needs further testing for duplicate entries, missing desktop utilities, launcher trust, and different desktop environments.
 
+### Service management — `core/services.py`
+
+Winux can wrap a Windows application process in a Linux user-level service. Service definitions and lifecycle policy live in the core manager; platform-specific unit operations are delegated through the `ServiceBackend` protocol.
+
+The current built-in backend is `SystemdUserBackend`. Optional third-party backends may be discovered through the `winux.service_backends` Python entry-point group. Discovery errors are diagnostics, and the registry does not instantiate a backend until it is selected. This extension point is not evidence that another init system is currently supported.
+
+Winux-managed services are Linux user services that launch Windows applications through a Winux prefix. They are not equivalent to Windows Service Control Manager services running inside Wine.
+
 ## 4. Runtime data layout
 
 Winux-managed runtime data is stored in the user's data directory rather than in the source tree:
