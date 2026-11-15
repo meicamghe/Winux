@@ -248,7 +248,7 @@ class ServiceManagerTests(unittest.TestCase):
         self.manager._write([])
 
         contents = self.state_file.read_bytes()
-        self.assertTrue(contents.endswith(b"\\n"))
+        self.assertTrue(contents.endswith(b"\n"))
         self.assertEqual(json.loads(contents), [])
 
     def test_state_write_closes_descriptor_when_fdopen_fails(self):
