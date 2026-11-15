@@ -138,4 +138,4 @@ No real managed service was started or enabled during these checks.
 
 ### Verification status
 
-The source and tests were committed to GitHub. The new test suite has not yet been executed in the user's Linux working copy; do not report it as passing until it is run. No real Wine prefix or Windows application was created or launched during this documentation/code update.
+The source and tests were committed to GitHub. The doctor CLI now exits with status 1 when required runtime diagnostics fail; CLI regression tests cover both failure and success. The new test suite has not yet been executed in the user's Linux working copy; do not report it as passing until it is run. No real Wine prefix or Windows application was created or launched during this documentation/code update.
