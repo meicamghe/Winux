@@ -634,8 +634,9 @@ class SystemdUserBackendTests(unittest.TestCase):
 
         result = self.backend.status(SERVICE_ID)
 
-        self.assertEqual(result["load_state"], "not-found")
+        self.assertEqual(result["load_state"], "unknown")
         self.assertEqual(result["active_state"], "unknown")
+        self.assertEqual(result["error"], "not found")
 
     @patch("winux.platform.service_backend.subprocess.run")
     def test_install_preserves_existing_unit_directory_permissions(self, run):
@@ -794,6 +795,44 @@ class SystemdUserBackendTests(unittest.TestCase):
 
         with self.assertRaisesRegex(RuntimeError, "daemon reload failed"):
             self.backend.reload()
+
+    @patch("winux.platform.service_backend.subprocess.run")
+    def test_status_reports_manager_failure_as_unknown_not_missing(self, run):
+        run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=1,
+            stdout="",
+            stderr="Failed to connect to user bus",
+        )
+        result = self.backend.status(SERVICE_ID)
+        self.assertEqual(result["load_state"], "unknown")
+        self.assertEqual(result["error"], "Failed to connect to user bus")
+
+    @patch(
+        "winux.platform.service_backend.subprocess.run",
+        side_effect=subprocess.TimeoutExpired("systemctl", 30),
+    )
+    def test_status_reports_timeout_as_unknown(self, _run):
+        result = self.backend.status(SERVICE_ID)
+        self.assertEqual(result["load_state"], "unknown")
+        self.assertIn("timed out", result["error"])
+
+    @patch(
+        "winux.platform.service_backend.subprocess.run",
+        side_effect=FileNotFoundError("systemctl disappeared"),
+    )
+    def test_status_reports_missing_systemctl_as_unknown(self, _run):
+        result = self.backend.status(SERVICE_ID)
+        self.assertEqual(result["load_state"], "unknown")
+        self.assertIn("Unable to execute systemctl", result["error"])
+
+    @patch(
+        "winux.platform.service_backend.subprocess.run",
+        side_effect=subprocess.TimeoutExpired("systemctl", 30),
+    )
+    def test_command_timeout_has_actionable_error(self, _run):
+        with self.assertRaisesRegex(RuntimeError, "timed out: start"):
+            self.backend.start(SERVICE_ID)
 
     def test_remove_rejects_symbolic_link(self):
         self.unit_dir.mkdir(parents=True)
