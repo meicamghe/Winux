@@ -684,3 +684,46 @@ inventing EMWAT-specific protocol behavior.
    and graceful shutdown before connecting any application adapter.
 3. Continue crash-consistency review for process/service state writes.
 4. Keep Word automation and printing as separate host adapters.
+
+## 2026-11-15 - LocalBridge HTTP transport implementation
+
+### Implemented
+
+- Added `src/winux/platform/local_bridge.py` as the generic HTTP/1.1
+  transport, reusing the existing `LocalBridgePolicy` rather than duplicating
+  policy validation.
+- Added explicit method/path route registration and immutable request /
+  response data objects. There is no generic arbitrary-command endpoint.
+- Enforced the exact bound loopback IP and port in Host validation, exact
+  normalized Origin allowlists, optional Bearer token authentication, bounded
+  Content-Length, and rejection of Transfer-Encoding.
+- Added route-aware CORS preflight. Preflight does not require the actual
+  request's Bearer token; actual requests still do.
+- Bounded concurrency before creating handler threads, applied socket
+  timeouts, disabled request-line logging, rejected response-header
+  line-break injection, and hid handler exception details from clients.
+- Shutdown now stops accepting requests and waits for in-flight handlers
+  within the supplied deadline. It returns false if handlers have not drained,
+  allowing the caller to retry shutdown.
+- Added HTTP-level tests for route dispatch, Host/Origin checks, CORS,
+  authentication, body limits, unsupported transfer encoding, preflight,
+  response-header injection, concurrency, port conflicts, and shutdown.
+
+### Hosted verification
+
+- CI run `43719798103` passed **281 unit tests**, wheel/sdist packaging,
+  installed-wheel CLI smoke test, and `winux.service_runner` import check:
+  https://github.com/meicamghe/Winux/actions/runs/43719798103
+- Earlier implementation attempts exposed a syntax error, CORS preflight
+  header filtering, and a flaky raw-socket timeout assertion. These were
+  corrected or removed; the final hosted run passed.
+- No local test execution was performed.
+
+### Remaining work
+
+1. Add route-specific Content-Type schemas and correlation IDs if needed by
+   adapters.
+2. Exercise IPv6 listener behavior in hosted CI.
+3. Build a small generic sample adapter and integration harness.
+4. Implement EMWAT routes only after its request schema and authentication
+   requirements are confirmed; current capture evidence is insufficient.
