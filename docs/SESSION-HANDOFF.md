@@ -192,6 +192,19 @@ Code and tests are committed to main. Tests were not executed in this assistant 
 ### Verification status
 
 Changes and tests are committed to main. They have not been run in a local checkout in this session. No actual service or Windows installer was launched.
+## 2026-11-15 - Batch installer timeout consistency
+
+### Implemented
+
+- Centralized installer timeout validation in `Installer._validate_timeout`.
+- Single and batch installation now apply the same finite-positive-number rules.
+- Batch manifests accept valid positive floating-point timeouts and reject booleans, non-finite values, zero/negative values, and oversized integers before any installation starts.
+- Added regression tests for valid float timeouts and invalid batch timeout values.
+
+### Verification status
+
+Source and tests are committed to main. They have not been executed in a local checkout in this session; no installer was run.
+
 ## 2026-11-15 - Platform-neutral service backend contract
 
 ### Implemented
