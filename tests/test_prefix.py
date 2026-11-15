@@ -113,6 +113,30 @@ class PrefixManagerTests(unittest.TestCase):
         self.assertTrue(metadata_file.read_bytes().endswith(b"\n"))
         self.runtime.create_prefix.assert_called_once_with(path, "win64")
 
+    def test_create_refuses_existing_metadata_symlink(self):
+        target = self.home / "outside-prefix-metadata.json"
+        target.write_text("do not overwrite", encoding="utf-8")
+
+        def initialize(path, architecture):
+            (path / "system.reg").write_text(
+                "WINE REGISTRY\\n", encoding="utf-8"
+            )
+            (path / ".winux-prefix.json").symlink_to(target)
+            return subprocess.CompletedProcess(["runtime"], 0, "", "")
+
+        self.runtime.create_prefix.side_effect = initialize
+
+        with self.assertRaises(FileExistsError):
+            self.manager.create("metadata-link-prefix")
+
+        self.assertEqual(
+            target.read_text(encoding="utf-8"),
+            "do not overwrite",
+        )
+        self.assertFalse(
+            (self.manager.base_dir / "metadata-link-prefix").exists()
+        )
+
     def test_create_rejects_unavailable_runtime(self):
         self.runtime.is_available.return_value = False
 
