@@ -107,19 +107,27 @@ PYTHONPATH=src python3 -m winux doctor
 
 ```text
 Winux/
-├── src/
-│   └── winux/
-│       ├── core/
-│       │   ├── applications.py
-│       │   ├── desktop.py
-│       │   ├── installer.py
-│       │   ├── prefix.py
-│       │   └── runner.py
-│       ├── platform/
-│       │   └── wine.py
-│       ├── runtime/
-│       └── __main__.py
-├── .gitignore
+├── src/winux/
+│   ├── __main__.py
+│   ├── service_runner.py
+│   ├── core/
+│   │   ├── applications.py
+│   │   ├── desktop.py
+│   │   ├── installer.py
+│   │   ├── prefix.py
+│   │   ├── runner.py
+│   │   ├── processes.py
+│   │   └── services.py
+│   ├── platform/
+│   │   ├── runtime.py
+│   │   └── service_backend.py
+│   └── runtime/
+│       ├── base.py
+│       ├── manager.py
+│       └── wine.py
+├── tests/
+├── docs/
+├── pyproject.toml
 └── README.md
 ```
 
