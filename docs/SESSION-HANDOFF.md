@@ -1079,3 +1079,8 @@ inventing EMWAT-specific protocol behavior.
 - Added a regression test that verifies both the directory and file
   descriptors are closed and the incomplete log file is removed.
 - Hosted CI is pending for this change.
+
+
+- Follow-up: the fdopen failure path now also unlinks the just-created log
+  relative to the still-pinned directory descriptor, preventing orphaned
+  empty log files and avoiding a path-based cleanup race.
