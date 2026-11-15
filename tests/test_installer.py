@@ -194,7 +194,7 @@ class InstallerExecutionTests(unittest.TestCase):
     def test_install_rejects_non_positive_timeout(self):
         with patch.object(self.installer, "_validate_installer_file",
                           return_value="x64"):
-            with self.assertRaisesRegex(ValueError, "Timeout must be positive"):
+            with self.assertRaisesRegex(ValueError, "finite positive number"):
                 self.installer.install(self.source, "test-prefix", timeout=0)
 
     def test_install_verifies_application_when_profile_is_configured(self):
