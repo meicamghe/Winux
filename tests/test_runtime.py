@@ -1,3 +1,4 @@
+import os
 import unittest
 from unittest.mock import Mock, patch
 
@@ -7,6 +8,19 @@ from winux.runtime.wine import WineRuntime
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_wine_environment_uses_absolute_prefix_path(self):
+        runtime = WineRuntime()
+        with patch.dict(os.environ, {"WINEPREFIX": "/inherited/prefix"}):
+            env = runtime._env("relative/prefix")
+        self.assertTrue(os.path.isabs(env["WINEPREFIX"]))
+        self.assertEqual(env["WINEPREFIX"], os.path.abspath("relative/prefix"))
+
+    def test_wine_environment_overrides_inherited_prefix(self):
+        runtime = WineRuntime()
+        with patch.dict(os.environ, {"WINEPREFIX": "/inherited/prefix"}):
+            env = runtime._env("/selected/prefix")
+        self.assertEqual(env["WINEPREFIX"], "/selected/prefix")
+
     def test_wine_runtime_implements_interface(self):
         runtime = WineRuntime()
         self.assertIsInstance(runtime, Runtime)
