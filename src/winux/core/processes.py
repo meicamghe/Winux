@@ -250,7 +250,23 @@ class ProcessManager:
         executable,
         log=None,
     ):
-        pid = int(pid)
+        if isinstance(pid, bool) or not isinstance(pid, int) or pid <= 0:
+            raise ValueError("PID must be a positive integer")
+
+        for field, value in (
+            ("application", application),
+            ("prefix", prefix),
+            ("runtime", runtime),
+            ("executable", executable),
+        ):
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{field} must be a non-empty string")
+
+        if log is not None and (
+            not isinstance(log, str) or not log.strip()
+        ):
+            raise ValueError("log must be a non-empty string when provided")
+
         start_time = self._process_start_time(pid)
 
         if start_time is None:
@@ -269,12 +285,12 @@ class ProcessManager:
             "pid": pid,
             "process_start_time": start_time,
             "uid": uid,
-            "application": str(application),
-            "prefix": str(prefix),
-            "runtime": str(runtime),
-            "executable": str(executable),
+            "application": application,
+            "prefix": prefix,
+            "runtime": runtime,
+            "executable": executable,
             "command": self._process_command(pid),
-            "log": str(log) if log is not None else None,
+            "log": log,
             "started_at": datetime.now(timezone.utc).isoformat(),
         }
 
