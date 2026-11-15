@@ -201,7 +201,9 @@ class PrefixManager:
         )
         try:
             os.fchmod(descriptor, 0o600)
-            with os.fdopen(descriptor, "w", encoding="utf-8") as file:
+            file_handle = os.fdopen(descriptor, "w", encoding="utf-8")
+            descriptor = -1
+            with file_handle as file:
                 json.dump(metadata, file, indent=2)
                 file.write("\n")
                 file.flush()
@@ -217,6 +219,8 @@ class PrefixManager:
             finally:
                 os.close(directory_fd)
         except Exception:
+            if descriptor >= 0:
+                os.close(descriptor)
             try:
                 os.unlink(temporary_name)
             except FileNotFoundError:
