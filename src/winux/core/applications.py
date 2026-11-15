@@ -26,13 +26,15 @@ class ApplicationManager:
     }
 
     def __init__(self, runtime_manager=None):
-        self.runtime_manager = runtime_manager or RuntimeManager()
+        self.runtime_manager = (
+            runtime_manager if runtime_manager is not None else RuntimeManager()
+        )
         self.prefix_manager = PrefixManager(
             runtime_manager=self.runtime_manager
         )
 
     def _query_registry(self, prefix_path, key, runtime=None):
-        runtime = runtime or self.runtime_manager.get()
+        runtime = runtime if runtime is not None else self.runtime_manager.get()
 
         if not runtime.is_available():
             raise RuntimeError("Selected runtime is not available")
