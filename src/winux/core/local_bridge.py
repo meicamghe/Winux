@@ -70,6 +70,8 @@ class LocalBridgePolicy:
 
         self.bind_address = address.compressed
         self.port = port
+        if isinstance(allowed_origins, str):
+            raise ValueError("allowed_origins must be a collection of origins")
         self.allowed_origins = frozenset(
             self.normalize_origin(origin) for origin in allowed_origins
         )
@@ -314,6 +316,10 @@ class LocalBridge:
                 raise ValueError("Route method is reserved or unsupported")
             self.routes[(method, key[1])] = handler
 
+        if any(not isinstance(method, str) or not method for method in allowed_methods):
+            raise ValueError("Allowed methods must be non-empty strings")
+        if any(not isinstance(header, str) or not header for header in allowed_headers):
+            raise ValueError("Allowed headers must be non-empty strings")
         self.allowed_methods = frozenset(
             method.upper() for method in allowed_methods
         )
@@ -432,6 +438,7 @@ class LocalBridge:
                         continue
                     safe_headers[name] = str(value)
 
+                self._last_status = status
                 self.send_response(status)
                 for name, value in safe_headers.items():
                     self.send_header(name, value)
@@ -530,10 +537,17 @@ class LocalBridge:
                     self._reject(400, "Incomplete request body")
                     return
 
+                route_path = "/"
                 try:
                     target = self.path
                     parsed = urlsplit(target)
-                    if parsed.scheme or parsed.netloc or not parsed.path.startswith("/"):
+                    route_path = parsed.path
+                    if (
+                        parsed.scheme
+                        or parsed.netloc
+                        or parsed.fragment
+                        or not parsed.path.startswith("/")
+                    ):
                         self._reject(400, "Invalid request target")
                         return
                     route = bridge.routes.get((self.command, parsed.path))
@@ -563,7 +577,7 @@ class LocalBridge:
                     bridge.logger.exception(
                         "LocalBridge route failed (request_id=%s, path=%s)",
                         request_id,
-                        parsed.path,
+                        route_path,
                     )
                     self._send(500, "Internal Server Error", origin=origin)
                 finally:
