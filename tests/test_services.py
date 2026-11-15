@@ -264,6 +264,44 @@ class ServiceManagerTests(unittest.TestCase):
         self.assertIn("unit removal failure", str(context.exception))
         self.assertEqual(len(self.backend.installed), 1)
 
+    def test_state_file_rejects_symlink_parent_on_read(self):
+        root = Path(self.temp_dir.name)
+        real_dir = root / "real-state"
+        real_dir.mkdir()
+        linked_dir = root / "linked-state"
+        linked_dir.symlink_to(real_dir, target_is_directory=True)
+        manager = ServiceManager(
+            backend=self.backend,
+            state_file=linked_dir / "services.json",
+            prefix_manager=self.prefix_manager,
+            application_manager=self.application_manager,
+        )
+
+        with self.assertRaisesRegex(ValueError, "must not contain symlinks"):
+            manager.list()
+
+    def test_state_file_rejects_symlink_parent_on_write(self):
+        root = Path(self.temp_dir.name)
+        real_dir = root / "real-state"
+        real_dir.mkdir()
+        linked_dir = root / "linked-state"
+        linked_dir.symlink_to(real_dir, target_is_directory=True)
+        manager = ServiceManager(
+            backend=self.backend,
+            state_file=linked_dir / "services.json",
+            prefix_manager=self.prefix_manager,
+            application_manager=self.application_manager,
+        )
+
+        with self.assertRaisesRegex(ValueError, "must not contain symlinks"):
+            manager._write([])
+
+    def test_state_path_rejects_directory_instead_of_file(self):
+        self.state_file.mkdir()
+
+        with self.assertRaisesRegex(ValueError, "regular file"):
+            self.manager._write([])
+
     def test_state_file_rejects_dangling_symlink(self):
         target = self.state_file.parent / "missing-services.json"
         self.state_file.symlink_to(target)
