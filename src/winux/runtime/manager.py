@@ -35,6 +35,13 @@ class RuntimeManager:
         if default_runtime not in self._runtimes:
             raise ValueError(f"Unknown default runtime: {default_runtime}")
 
+    @classmethod
+    def _is_runtime_instance(cls, value):
+        return not isinstance(value, type) and all(
+            callable(getattr(value, method, None))
+            for method in cls.REQUIRED_METHODS
+        )
+
     def register(self, runtime):
         name = getattr(runtime, "name", None)
 
@@ -93,7 +100,9 @@ class RuntimeManager:
 
             try:
                 runtime = (
-                    runtime_factory()
+                    runtime_factory
+                    if self._is_runtime_instance(runtime_factory)
+                    else runtime_factory()
                     if callable(runtime_factory)
                     else runtime_factory
                 )
