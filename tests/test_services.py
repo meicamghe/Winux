@@ -266,6 +266,29 @@ class ServiceManagerTests(unittest.TestCase):
             0o600,
         )
 
+    def test_start_waits_for_service_definition_lock(self):
+        record = self.create_service()
+        other_manager = ServiceManager(
+            backend=self.backend,
+            state_file=self.state_file,
+            prefix_manager=self.prefix_manager,
+            application_manager=self.application_manager,
+        )
+
+        with self.manager._state_lock():
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(other_manager.start, record["id"])
+                with self.assertRaises(concurrent.futures.TimeoutError):
+                    future.result(timeout=0.05)
+                self.assertNotIn(
+                    ("start", record["id"]),
+                    self.backend.calls,
+                )
+
+        result = future.result(timeout=1)
+        self.assertEqual(result["id"], record["id"])
+        self.assertIn(("start", record["id"]), self.backend.calls)
+
     def test_service_state_lock_rejects_symbolic_link(self):
         target = Path(self.temp_dir.name) / "outside-services.lock"
         target.write_text("", encoding="utf-8")
