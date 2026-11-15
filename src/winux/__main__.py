@@ -226,7 +226,8 @@ def main():
     try:
         if args.command == "doctor":
             from winux.platform.runtime import check_runtime
-            check_runtime()
+            if not check_runtime():
+                sys.exit(1)
 
         elif args.command == "prefix":
             from winux.core.prefix import PrefixManager
