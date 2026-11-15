@@ -1059,3 +1059,13 @@ inventing EMWAT-specific protocol behavior.
   reported with both the original and rollback errors.
 - Added regression tests for directory-fsync failure and daemon-reload failure.
 - Hosted CI is pending for this change.
+
+
+## 2026-11-15 - Prefix log file descriptor hardening
+
+- PrefixManager now opens its log file with O_NOFOLLOW, verifies the opened
+  descriptor is a regular file, and applies mode 0600 through that descriptor.
+- Logging no longer performs a check-then-open sequence through FileHandler,
+  closing the symlink replacement window. Failed fdopen setup closes the raw
+  descriptor. Added tests for descriptor cleanup and FIFO rejection.
+- Hosted CI is pending for this change.
