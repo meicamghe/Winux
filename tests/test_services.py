@@ -275,8 +275,9 @@ class ServiceManagerTests(unittest.TestCase):
             application_manager=self.application_manager,
         )
 
-        with self.manager._state_lock():
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        try:
+            with self.manager._state_lock():
                 future = pool.submit(other_manager.start, record["id"])
                 with self.assertRaises(concurrent.futures.TimeoutError):
                     future.result(timeout=0.05)
@@ -285,7 +286,9 @@ class ServiceManagerTests(unittest.TestCase):
                     self.backend.calls,
                 )
 
-        result = future.result(timeout=1)
+            result = future.result(timeout=1)
+        finally:
+            pool.shutdown(wait=True)
         self.assertEqual(result["id"], record["id"])
         self.assertIn(("start", record["id"]), self.backend.calls)
 
