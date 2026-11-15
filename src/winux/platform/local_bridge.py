@@ -5,6 +5,7 @@ import math
 from dataclasses import dataclass, field
 import socket
 import time
+import uuid
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
@@ -236,6 +237,7 @@ class LocalBridge:
                                 "access-control-allow-origin",
                                 "access-control-allow-credentials",
                                 "vary",
+                                "x-winux-request-id",
                             }
                             if not allow_preflight:
                                 reserved.update({
@@ -258,6 +260,9 @@ class LocalBridge:
                     if origin is not None:
                         self.send_header("Access-Control-Allow-Origin", origin)
                         self.send_header("Vary", "Origin")
+                    request_id = getattr(self, "_bridge_request_id", None)
+                    if request_id is not None:
+                        self.send_header("X-Winux-Request-ID", request_id)
                     self.send_header("Content-Length", str(len(body)))
                     self.send_header("Connection", "close")
                     self.end_headers()
@@ -277,6 +282,8 @@ class LocalBridge:
                     )
 
                 def _dispatch(self):
+                    self._bridge_request_id = uuid.uuid4().hex
+                    self._bridge_started_at = time.monotonic()
                     with bridge._lock:
                         if bridge._closing:
                             self._reject(503, "Bridge is shutting down")
@@ -418,6 +425,7 @@ class LocalBridge:
                         headers=dict(self.headers.items()),
                         body=body,
                         client_address=self.client_address,
+                        request_id=self._bridge_request_id,
                     )
                     try:
                         response = handler(request)
@@ -439,7 +447,8 @@ class LocalBridge:
                         )
                     except Exception:
                         bridge.logger.exception(
-                            "LocalBridge route failed: %s %s",
+                            "LocalBridge route failed request_id=%s: %s %s",
+                            self._bridge_request_id,
                             self.command,
                             parsed.path,
                         )
