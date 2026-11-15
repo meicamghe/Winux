@@ -119,3 +119,12 @@ file remains. Hosted CI is pending.
 On fdopen failure, ApplicationRunner closes the file descriptor and removes
 the newly created log entry relative to the still-pinned directory descriptor,
 so cleanup does not re-resolve a potentially replaced parent path.
+
+
+## ServiceManager state publication rollback
+
+ServiceManager now restores the prior state-file contents if directory fsync
+fails after atomic replacement, or removes the newly published file when no
+prior state existed. Restoration is itself file- and directory-synced; a
+rollback failure is reported alongside the original error. Regression tests
+cover both cases. Hosted CI pending.
