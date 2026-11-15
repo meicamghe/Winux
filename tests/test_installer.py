@@ -528,6 +528,40 @@ class InstallerBatchTests(unittest.TestCase):
             mock_install.call_args_list[1].kwargs["verification_profile"]
         )
 
+    def test_batch_accepts_finite_positive_float_timeout(self):
+        self.write_manifest([
+            {"file": str(self.file1), "timeout": 12.5}
+        ])
+
+        with patch.object(
+            self.installer,
+            "install",
+            return_value={"success": True, "install_id": "test"},
+        ) as mock_install:
+            result = self.installer.install_batch(
+                self.manifest, "test-prefix"
+            )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(mock_install.call_args.kwargs["timeout"], 12.5)
+
+    def test_batch_rejects_non_finite_and_boolean_timeouts_before_install(self):
+        for timeout in (True, float("nan"), float("inf"), float("-inf"), 10 ** 1000):
+            with self.subTest(timeout=repr(timeout)):
+                self.write_manifest([
+                    {"file": str(self.file1), "timeout": timeout}
+                ])
+
+                with patch.object(self.installer, "install") as mock_install:
+                    with self.assertRaisesRegex(
+                        ValueError, "invalid timeout"
+                    ):
+                        self.installer.install_batch(
+                            self.manifest, "test-prefix"
+                        )
+
+                mock_install.assert_not_called()
+
     def test_batch_rejects_invalid_timeout(self):
         self.write_manifest([
             {"file": str(self.file1), "timeout": 0}
