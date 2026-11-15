@@ -37,17 +37,24 @@ class ServiceManager:
                 else ServiceBackendManager()
             )
             self.backend = manager.get(backend_name)
-        if not isinstance(self.backend, ServiceBackend):
+        if isinstance(self.backend, type) or not isinstance(
+            self.backend, ServiceBackend
+        ):
             raise TypeError(
                 "Service backend does not implement the Winux service contract"
             )
         self.state_file = Path(
             state_file
-            or Path.home() / ".local/share/winux/services.json"
+            if state_file is not None
+            else Path.home() / ".local/share/winux/services.json"
         )
-        self.prefix_manager = prefix_manager or PrefixManager()
+        self.prefix_manager = (
+            prefix_manager if prefix_manager is not None else PrefixManager()
+        )
         self.application_manager = (
-            application_manager or ApplicationManager()
+            application_manager
+            if application_manager is not None
+            else ApplicationManager()
         )
 
     @staticmethod
