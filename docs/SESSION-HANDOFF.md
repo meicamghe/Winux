@@ -994,3 +994,16 @@ inventing EMWAT-specific protocol behavior.
   Winux and the Windows application is not launched.
 - Hosted CI run is pending for this change; do not count this regression as
   passing until the workflow completes.
+
+## 2026-11-15 - Atomic application inventory exports
+
+- Application inventory JSON and CSV exports are now written to a private
+  temporary file in the destination directory, flushed and fsynced, then
+  atomically replaced into place.
+- The export file is created with mode 0600. A destination symlink is replaced
+  as a directory entry rather than followed, so its target remains untouched.
+- Failed serialization leaves any existing destination unchanged and removes
+  the temporary file.
+- Added regression tests for symlink destinations, private permissions, and
+  write-failure preservation.
+- Hosted CI verification is pending.
