@@ -155,6 +155,11 @@ def main():
         default=300,
         help="Uninstallation timeout in seconds (default: 300)"
     )
+    app_uninstall_parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skip the interactive uninstall confirmation",
+    )
 
     process_parser = commands.add_parser(
         "process",
@@ -364,6 +369,19 @@ def main():
                 print(f"Log:         {result['log']}")
 
             elif args.app_command == "uninstall":
+                application = manager.info(args.prefix, args.application_id)
+                application_name = (
+                    application.get("DisplayName") or args.application_id
+                )
+                if not args.yes:
+                    answer = input(
+                        f"Uninstall '{application_name}' from prefix "
+                        f"'{args.prefix}'? [y/N]: "
+                    )
+                    if answer.strip().casefold() != "y":
+                        print("Uninstallation cancelled.")
+                        return
+
                 result = manager.uninstall(
                     args.prefix,
                     args.application_id,
