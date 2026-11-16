@@ -39,6 +39,8 @@ SilentInstall silent
 Section "Install"
   SetOutPath "$INSTDIR"
   File "fixture.exe"
+  CreateDirectory "$SMPROGRAMS\\WinuxFixture"
+  CreateShortCut "$SMPROGRAMS\\WinuxFixture\\Winux Fixture.lnk" "$INSTDIR\\fixture.exe"
 SectionEnd
 EOF
 
@@ -74,7 +76,43 @@ for architecture in x86 x64; do
     WINEPREFIX="$prefix_path" WINEDEBUG=-all timeout --signal=TERM --kill-after=5s 45s wine "$installed"
   )
   test -s "$(dirname "$installed")/fixture-ran.txt"
-  echo "PASS: Winux installed and launched $architecture application"
+
+  echo "DISCOVER: Start Menu shortcut for $architecture application"
+  rm -f "$(dirname "$installed")/fixture-ran.txt"
+  PREFIX_NAME="$prefix" EXPECTED_EXECUTABLE="$installed" python - <<'PY'
+import os
+import time
+from pathlib import Path
+from winux.core.applications import ApplicationManager
+from winux.core.runner import ApplicationRunner
+
+prefix = os.environ["PREFIX_NAME"]
+expected = str(Path(os.environ["EXPECTED_EXECUTABLE"]).resolve())
+apps = ApplicationManager().list(prefix)
+matches = [
+    app for app in apps
+    if app.get("discovery_source") == "start_menu"
+    and app.get("executable_path") == expected
+]
+if len(matches) != 1:
+    raise SystemExit(
+        f"Expected one Start Menu discovery result for {expected}, got {len(matches)}"
+    )
+app = matches[0]
+print(f"PASS: Start Menu discovered {app['DisplayName']} ({app['registry_id']})")
+result = ApplicationRunner().run(prefix, app["registry_id"])
+print(f"LAUNCHED: PID {result['pid']}")
+marker = Path(expected).parent / "fixture-ran.txt"
+deadline = time.monotonic() + 30
+while time.monotonic() < deadline:
+    if marker.is_file() and marker.stat().st_size:
+        print("PASS: application launched through Winux Start Menu inventory")
+        break
+    time.sleep(0.25)
+else:
+    raise SystemExit("Application did not create its marker after Start Menu launch")
+PY
+  echo "PASS: Winux installed, discovered and launched $architecture application"
 done
 
 echo "PASS: real EXE installer workflow completed for x86 and x64 applications"
