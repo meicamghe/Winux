@@ -14,8 +14,7 @@ def make_link(base, suffix=""):
     suffix_bytes = suffix.encode("cp1252") + bytes([0])
     size = 0x1C + len(base_bytes) + len(suffix_bytes)
     info = struct.pack("<III", size, 0x1C, 0x1)
-    info += struct.pack("<III", 0x1C, 0, 0x1C + len(base_bytes))
-    info += bytes(4)
+    info += struct.pack("<IIII", 0, 0x1C, 0, 0x1C + len(base_bytes))
     return header + info + base_bytes + suffix_bytes
 
 
