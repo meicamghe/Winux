@@ -22,18 +22,18 @@ def make_link(base, suffix=""):
 
 class ShellLinkTests(unittest.TestCase):
     def test_parses_absolute_local_target_and_suffix(self):
-        data = make_link(r"C:\\Program Files\\Example", "app.exe")
+        data = make_link(r"C:\Program Files\Example", "app.exe")
         self.assertEqual(
             parse_shell_link_target(data),
-            r"C:\\Program Files\\Example\\app.exe",
+            r"C:\Program Files\Example\app.exe",
         )
 
     def test_rejects_invalid_or_unsupported_links(self):
         self.assertIsNone(parse_shell_link_target(b"short"))
-        data = bytearray(make_link(r"C:\\Example", "app.exe"))
+        data = bytearray(make_link(r"C:\Example", "app.exe"))
         data[4] = 0
         self.assertIsNone(parse_shell_link_target(data))
-        data = bytearray(make_link(r"C:\\Example", "app.exe"))
+        data = bytearray(make_link(r"C:\Example", "app.exe"))
         struct.pack_into("<I", data, 20, 0)
         self.assertIsNone(parse_shell_link_target(data))
 
@@ -44,11 +44,11 @@ class ShellLinkTests(unittest.TestCase):
             app = drive / "Program Files" / "Example" / "app.exe"
             app.parent.mkdir(parents=True)
             app.write_bytes(b"MZ")
-            data = make_link(r"C:\\Program Files\\Example", "app.exe")
+            data = make_link(r"C:\Program Files\Example", "app.exe")
             self.assertEqual(resolve_shell_link_target(data, root), app)
-            missing = make_link(r"C:\\Program Files\\Example", "missing.exe")
+            missing = make_link(r"C:\Program Files\Example", "missing.exe")
             self.assertIsNone(resolve_shell_link_target(missing, root))
-            outside = make_link(r"D:\\Example", "app.exe")
+            outside = make_link(r"D:\Example", "app.exe")
             self.assertIsNone(resolve_shell_link_target(outside, root))
 
 
