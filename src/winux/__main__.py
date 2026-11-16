@@ -311,6 +311,10 @@ def main():
                     print(f"Executable: {app.get('executable_path') or 'Not found'}")
                     print(f"Launch status: {app.get('executable_status', 'unknown')}")
                     print(f"Registry ID: {app.get('registry_id')}")
+                    registry_ids = app.get("registry_ids") or [app.get("registry_id")]
+                    registry_keys = app.get("registry_keys") or [app.get("registry_key")]
+                    print(f"Registry IDs: {', '.join(str(value) for value in registry_ids if value)}")
+                    print(f"Registry Keys: {', '.join(str(value) for value in registry_keys if value)}")
 
             elif args.app_command == "audit":
                 report = manager.audit(args.prefix)
@@ -364,6 +368,19 @@ def main():
                 print(f"Publisher:        {app.get('Publisher') or 'Unknown'}")
                 print(f"Registry ID:      {app.get('registry_id')}")
                 print(f"Registry Key:     {app.get('registry_key')}")
+                for registry_id in app.get("registry_ids", []):
+                    if registry_id and registry_id != app.get("registry_id"):
+                        print(f"Registry ID:      {registry_id}")
+                for registry_key in app.get("registry_keys", []):
+                    if registry_key and registry_key != app.get("registry_key"):
+                        print(f"Registry Key:     {registry_key}")
+                for command in app.get("uninstall_commands", []):
+                    print(
+                        "Uninstall source: "
+                        f"{command.get('registry_id')} "
+                        f"(quiet={command.get('quiet') or 'none'}, "
+                        f"normal={command.get('normal') or 'none'})"
+                    )
                 print(f"Executable:       {app.get('executable_path') or 'Not found'}")
                 print(f"Launch status:    {app.get('executable_status', 'unknown')}")
                 print(f"Install Location: {app.get('install_path') or 'Not found'}")

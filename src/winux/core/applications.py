@@ -454,6 +454,9 @@ class ApplicationManager:
             "executable_status",
             "registry_id",
             "registry_key",
+            "registry_ids",
+            "registry_keys",
+            "uninstall_commands",
             "discovery_source",
         ]
 
@@ -489,7 +492,14 @@ class ApplicationManager:
                     writer = csv.DictWriter(file, fieldnames=fields)
                     writer.writeheader()
                     writer.writerows(
-                        {field: app.get(field) for field in fields}
+                        {
+                            field: (
+                                json.dumps(app.get(field), ensure_ascii=False)
+                                if isinstance(app.get(field), (list, dict))
+                                else app.get(field)
+                            )
+                            for field in fields
+                        }
                         for app in applications
                     )
                 file.flush()
