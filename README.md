@@ -26,7 +26,8 @@ Implemented capabilities include:
 - Expanded read-only runtime diagnostics through `winux doctor`, including MSI/NSIS inspection tools.
 - Windows prefix creation and management.
 - EXE and MSI installer support, including explicit argument forwarding for silent or customized installs.
-- Windows application discovery through registry information.
+- Windows application discovery through registry information, including logical MSI deduplication by Windows Installer ProductCode across registry views.
+- MSI inventory retains all contributing registry IDs, registry keys, and uninstall command variants; non-MSI entries are not merged by display name.
 - Application information retrieval.
 - Launching installed Windows applications, including forwarding command-line arguments safely.
 - Installation and execution logging.
@@ -34,6 +35,7 @@ Implemented capabilities include:
 - Validated Windows Start Menu shortcut discovery through a conservative Shell Link parser.
 - x86 and x64 application execution in a real Wine WoW64 prefix, verified in hosted CI.
 - Real NSIS EXE installer integration in hosted CI, including installation, Start Menu discovery, and launch through the Winux application runner.
+- Real x86/x64 EXE and MSI install-discover-launch-uninstall lifecycle validation on distro Wine and WineHQ Stable 11.
 
 Both x86 and x64 Windows applications are considered in the compatibility design.
 
