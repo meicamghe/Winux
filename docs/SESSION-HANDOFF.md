@@ -1264,3 +1264,15 @@ inventing EMWAT-specific protocol behavior.
 - This does not establish compatibility for arbitrary EXE/MSI installers,
   application-specific APIs, COM/OLE automation, Windows services, printers,
   or recovery workflows. Those require application-level integration tests.
+
+
+## 2026-11-16 - Safe application uninstall confirmation
+
+- The `winux app uninstall` command now resolves the selected application's
+  display name and asks for explicit confirmation before executing its
+  registered uninstall command.
+- Uninstallation proceeds only when the response is `y` (case-insensitive).
+  Any other response cancels without invoking the uninstall operation.
+- Added `--yes` for deliberate non-interactive automation.
+- CLI regression tests cover cancellation, the explicit bypass, and uppercase
+  confirmation. Hosted CI must pass before merging.
