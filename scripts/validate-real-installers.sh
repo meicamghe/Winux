@@ -91,28 +91,6 @@ for architecture in x86 x64; do
   )
   test -s "$(dirname "$installed")/fixture-ran.txt"
 
-  echo "UNINSTALL: $architecture EXE application through Winux"
-  PREFIX_NAME="$prefix" EXPECTED_EXECUTABLE="$installed" python - <<'PY'
-import os
-from pathlib import Path
-from winux.core.applications import ApplicationManager
-
-manager = ApplicationManager()
-prefix = os.environ["PREFIX_NAME"]
-expected = Path(os.environ["EXPECTED_EXECUTABLE"]).resolve()
-apps = manager.list(prefix)
-matches = [app for app in apps if app.get("DisplayName") == "Winux EXE Fixture"]
-if len(matches) != 1:
-    raise SystemExit(f"Expected one EXE uninstall record, found {len(matches)}")
-manager.uninstall(prefix, matches[0]["registry_id"], timeout=120)
-if expected.exists():
-    raise SystemExit(f"Uninstaller left executable behind: {expected}")
-remaining = [app for app in manager.list(prefix) if app.get("DisplayName") == "Winux EXE Fixture"]
-if remaining:
-    raise SystemExit(f"Stale EXE inventory record remains: {remaining}")
-print("PASS: EXE uninstall removed files and registry inventory")
-PY
-
   echo "DISCOVER: Start Menu shortcut for $architecture application"
   rm -f "$(dirname "$installed")/fixture-ran.txt"
   PREFIX_NAME="$prefix" EXPECTED_EXECUTABLE="$installed" python - <<'PY'
@@ -148,7 +126,30 @@ while time.monotonic() < deadline:
 else:
     raise SystemExit("Application did not create its marker after Start Menu launch")
 PY
-  echo "PASS: Winux installed, discovered and launched $architecture application"
+
+  echo "UNINSTALL: $architecture EXE application through Winux"
+  PREFIX_NAME="$prefix" EXPECTED_EXECUTABLE="$installed" python - <<'PY'
+import os
+from pathlib import Path
+from winux.core.applications import ApplicationManager
+
+manager = ApplicationManager()
+prefix = os.environ["PREFIX_NAME"]
+expected = Path(os.environ["EXPECTED_EXECUTABLE"]).resolve()
+apps = manager.list(prefix)
+matches = [app for app in apps if app.get("DisplayName") == "Winux EXE Fixture"]
+if len(matches) != 1:
+    raise SystemExit(f"Expected one EXE uninstall record, found {len(matches)}")
+manager.uninstall(prefix, matches[0]["registry_id"], timeout=120)
+if expected.exists():
+    raise SystemExit(f"Uninstaller left executable behind: {expected}")
+remaining = [app for app in manager.list(prefix) if app.get("DisplayName") == "Winux EXE Fixture"]
+if remaining:
+    raise SystemExit(f"Stale EXE inventory record remains: {remaining}")
+print("PASS: EXE uninstall removed files and registry inventory")
+PY
+
+  echo "PASS: Winux installed, discovered, launched and uninstalled $architecture application"
 done
 
 echo "PASS: real EXE installer workflow completed for x86 and x64 applications"
