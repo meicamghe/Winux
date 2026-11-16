@@ -330,6 +330,59 @@ HKEY_CURRENT_USER\\Software\\App\\Two
         self.assertTrue(result["success"])
         self.assertIn("/remove", run.call_args.args[1])
 
+    def test_uninstall_converts_msi_install_switch_to_uninstall(self):
+        product_code = "{12345678-1234-1234-1234-123456789abc}"
+        application = {
+            "registry_id": "Example",
+            "DisplayName": "Example App",
+            "UninstallString": f'MsiExec.exe /I{product_code}',
+        }
+
+        with patch.object(self.manager, "info", return_value=application):
+            with patch.object(self.runtime, "uninstall") as run:
+                run.return_value.returncode = 0
+                self.manager.uninstall("test-prefix", "Example")
+
+        self.assertEqual(
+            run.call_args.args[1],
+            ["MsiExec.exe", f"/X{product_code}"],
+        )
+
+    def test_uninstall_converts_separate_msi_install_switch(self):
+        product_code = "{12345678-1234-1234-1234-123456789abc}"
+        application = {
+            "registry_id": "Example",
+            "DisplayName": "Example App",
+            "UninstallString": f'MSIEXEC /i {product_code} /qn',
+        }
+
+        with patch.object(self.manager, "info", return_value=application):
+            with patch.object(self.runtime, "uninstall") as run:
+                run.return_value.returncode = 0
+                self.manager.uninstall("test-prefix", "Example")
+
+        self.assertEqual(
+            run.call_args.args[1],
+            ["MSIEXEC", "/X", product_code, "/qn"],
+        )
+
+    def test_uninstall_does_not_rewrite_non_msi_commands(self):
+        application = {
+            "registry_id": "Example",
+            "DisplayName": "Example App",
+            "UninstallString": "custom-uninstaller.exe /I{12345678-1234-1234-1234-123456789abc}",
+        }
+
+        with patch.object(self.manager, "info", return_value=application):
+            with patch.object(self.runtime, "uninstall") as run:
+                run.return_value.returncode = 0
+                self.manager.uninstall("test-prefix", "Example")
+
+        self.assertEqual(
+            run.call_args.args[1],
+            ["custom-uninstaller.exe", "/I{12345678-1234-1234-1234-123456789abc}"],
+        )
+
     def test_uninstall_rejects_application_without_uninstaller(self):
         application = {
             "registry_id": "Example",

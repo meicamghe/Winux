@@ -489,6 +489,30 @@ class ApplicationManager:
         if not args:
             raise ValueError("Invalid uninstall command")
 
+        # Windows Installer registry entries may incorrectly retain /I
+        # (install/repair) in UninstallString. Convert it to /X only when
+        # the executable is msiexec and the following target is a product
+        # code, never for arbitrary executables or MSI package paths.
+        if PureWindowsPath(args[0]).name.casefold() in ("msiexec", "msiexec.exe"):
+            product_code = re.compile(
+                r"\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-"
+                r"[0-9a-f]{4}-[0-9a-f]{12}\}$",
+                re.IGNORECASE,
+            )
+            for index, argument in enumerate(args[1:], start=1):
+                if argument.casefold().startswith("/i") and product_code.fullmatch(
+                    argument[2:]
+                ):
+                    args[index] = "/X" + argument[2:]
+                    break
+                if (
+                    argument.casefold() == "/i"
+                    and index + 1 < len(args)
+                    and product_code.fullmatch(args[index + 1])
+                ):
+                    args[index] = "/X"
+                    break
+
         prefix_path = self.prefix_manager.get_path(prefix_name)
         runtime = self.prefix_manager.get_runtime(prefix_name)
 
