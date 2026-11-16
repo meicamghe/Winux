@@ -359,9 +359,11 @@ class InstallerCliTests(unittest.TestCase):
                 "--installer-arg", "/S",
             ],
         ):
-            with self.assertRaisesRegex(ValueError, "inside the manifest"):
-                main()
+            with patch("builtins.print"):
+                with self.assertRaises(SystemExit) as raised:
+                    main()
 
+        self.assertEqual(raised.exception.code, 1)
         installer_class.return_value.install_batch.assert_not_called()
 
 
