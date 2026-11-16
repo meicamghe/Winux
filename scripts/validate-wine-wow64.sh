@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-for tool in wine wineboot timeout i686-w64-mingw32-gcc x86_64-w64-mingw32-gcc; do
+for tool in wine wineboot wineserver timeout i686-w64-mingw32-gcc x86_64-w64-mingw32-gcc; do
   command -v "$tool" >/dev/null 2>&1 || {
     echo "MISSING: required tool '$tool' is not installed" >&2
     exit 2
