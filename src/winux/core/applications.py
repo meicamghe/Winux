@@ -209,8 +209,8 @@ class ApplicationManager:
             ):
                 continue
             match = re.search(
-                r"\\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-"
-                r"[0-9a-f]{4}-[0-9a-f]{12}\\}",
+                r"\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-"
+                r"[0-9a-f]{4}-[0-9a-f]{12}\}",
                 command,
                 flags=re.IGNORECASE,
             )
