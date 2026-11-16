@@ -114,7 +114,7 @@ HKEY_CURRENT_USER\\Software\\App\\Two
         executable.touch()
         output = (
             r"HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\example.exe"
-            + "\\n    (Default)    REG_SZ    C:\\\\Program Files\\\\Example\\\\example.exe\\n"
+            + "\n    (Default)    REG_SZ    C:\\\\Program Files\\\\Example\\\\example.exe\n"
         )
         candidates = self.manager._parse_app_paths(output, self.prefix_path)
         self.assertEqual(len(candidates), 1)
@@ -124,9 +124,9 @@ HKEY_CURRENT_USER\\Software\\App\\Two
     def test_parse_app_paths_rejects_missing_or_non_executable_targets(self):
         output = (
             r"HKEY_LOCAL_MACHINE\\Software\\App Paths\\missing.exe"
-            + "\\n    (Default)    REG_SZ    C:\\\\Missing\\\\missing.exe\\n"
+            + "\n    (Default)    REG_SZ    C:\\\\Missing\\\\missing.exe\n"
             + r"HKEY_LOCAL_MACHINE\\Software\\App Paths\\resource.exe"
-            + "\\n    (Default)    REG_SZ    C:\\\\Windows\\\\resource.dll\\n"
+            + "\n    (Default)    REG_SZ    C:\\\\Windows\\\\resource.dll\n"
         )
         self.assertEqual(
             self.manager._parse_app_paths(output, self.prefix_path), []
