@@ -42,10 +42,19 @@ cat > "$work_dir/fixture.wxs.in" <<'EOF'
     </Directory>
     <Feature Id="Complete" Title="Winux MSI Fixture" Level="1">
       <ComponentRef Id="MainComponent" />
+      <ComponentRef Id="ArpComponent" />
     </Feature>
     <DirectoryRef Id="INSTALLDIR">
       <Component Id="MainComponent" Guid="*" Win64="@WIN64@">
         <File Id="FixtureExe" Source="fixture.exe" KeyPath="yes" />
+      </Component>
+      <!-- Keep ARP registration in a 32-bit component so x86 and x64 MSI
+           fixtures expose uninstall metadata through the same registry view. -->
+      <Component Id="ArpComponent" Guid="*" Win64="no">
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]" Type="string" Name="DisplayName" Value="Winux MSI Fixture" KeyPath="yes" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]" Type="string" Name="Publisher" Value="Winux CI" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]" Type="string" Name="InstallLocation" Value="[INSTALLDIR]" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]" Type="string" Name="UninstallString" Value="msiexec.exe /x [ProductCode] /qn" />
       </Component>
     </DirectoryRef>
   </Product>
@@ -72,6 +81,13 @@ for architecture in x86 x64; do
   (cd "$work_dir" && wixl -a "$architecture" -o "fixture-$architecture.msi" fixture.wxs)
   msi="$work_dir/fixture-$architecture.msi"
   echo "MSI SUMMARY: $(msiinfo suminfo "$msi" | tr "\n" ";")"
+  echo "MSI REGISTRY TABLE ($architecture):"
+  msiinfo export "$msi" Registry || {
+    echo "FAIL: unable to inspect MSI Registry table" >&2
+    exit 1
+  }
+  echo "MSI COMPONENT TABLE ($architecture):"
+  msiinfo export "$msi" Component
   echo "MSI FIXTURE FILES:"
   ls -la "$work_dir"
   msiinfo suminfo "$msi" | grep -Eiq "Template.*(Intel|x64)"
@@ -103,7 +119,67 @@ for architecture in x86 x64; do
     WINEPREFIX="$prefix_path" WINEDEBUG=-all timeout --signal=TERM --kill-after=5s 45s wine "$installed"
   )
   test -s "$(dirname "$installed")/msi-fixture-ran.txt"
-  echo "PASS: Winux installed and launched MSI $architecture application"
+  echo "UNINSTALL: $architecture MSI application through Winux"
+  PREFIX_NAME="$prefix" EXPECTED_EXECUTABLE="$installed" python - <<'PY'
+import os
+from pathlib import Path
+from winux.core.applications import ApplicationManager
+
+manager = ApplicationManager()
+prefix = os.environ["PREFIX_NAME"]
+expected = Path(os.environ["EXPECTED_EXECUTABLE"]).resolve()
+apps = manager.list(prefix)
+matches = [app for app in apps if app.get("DisplayName") == "Winux MSI Fixture"]
+if not matches:
+    print("DEBUG: complete application inventory:", apps)
+    for key in ApplicationManager.UNINSTALL_KEYS:
+        result = manager.runtime_manager.get().query_registry(
+            manager.prefix_manager.get_path(prefix), key,
+            capture_output=True, text=True, timeout=60,
+        )
+        print(f"DEBUG REGISTRY {key}: returncode={result.returncode}\\n{result.stdout}")
+    raise SystemExit("No MSI uninstall inventory record was discovered")
+import re
+
+def uninstall_command(app):
+    return (app.get("QuietUninstallString") or app.get("UninstallString") or "").strip()
+
+product_codes = {
+    code.casefold()
+    for app in matches
+    for code in re.findall(r"\{[0-9a-fA-F-]{36}\}", uninstall_command(app))
+}
+if len(product_codes) != 1 or not all(uninstall_command(app) for app in matches):
+    details = [
+        {
+            "registry_key": app.get("registry_key"),
+            "registry_id": app.get("registry_id"),
+            "UninstallString": app.get("UninstallString"),
+            "QuietUninstallString": app.get("QuietUninstallString"),
+        }
+        for app in matches
+    ]
+    raise SystemExit(
+        f"Expected registry-view duplicates for one MSI product; "
+        f"found product codes {sorted(product_codes)} in {len(matches)} records: {details}"
+    )
+# Wine may expose both the MSI product registration (/I) and the package's
+# ARP registration (/X) in separate registry views. Prefer an explicit /X
+# command; ApplicationManager normalizes /I to /X when needed.
+selected = next(
+    (app for app in matches if re.search(r"(?i)(?:^|\s)/x(?:\s|\{|$)", uninstall_command(app))),
+    matches[0],
+)
+print(f"MSI inventory records: {len(matches)}; using {selected['registry_key']}")
+manager.uninstall(prefix, selected["registry_id"], timeout=120)
+if expected.exists():
+    raise SystemExit(f"MSI uninstaller left executable behind: {expected}")
+remaining = [app for app in manager.list(prefix) if app.get("DisplayName") == "Winux MSI Fixture"]
+if remaining:
+    raise SystemExit(f"Stale MSI inventory record remains: {remaining}")
+print("PASS: MSI uninstall removed files and registry inventory")
+PY
+  echo "PASS: Winux installed, launched and uninstalled MSI $architecture application"
 done
 
 echo "PASS: real MSI installer workflow completed for x86 and x64 applications"
