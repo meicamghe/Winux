@@ -66,8 +66,7 @@ for architecture in x86 x64; do
       ;;
   esac
   "$compiler" -Os -s -o "$work_dir/fixture.exe" "$work_dir/fixture.c"
-  sed -e "s/@PLATFORM@/$platform/g" \
-      -e "s/@PROGRAMFILES@/$programfiles/g" \
+  sed -e "s/@PROGRAMFILES@/$programfiles/g" \
       -e "s/@WIN64@/$win64/g" \
       "$work_dir/fixture.wxs.in" > "$work_dir/fixture.wxs"
   (cd "$work_dir" && wixl -a "$architecture" -o "fixture-$architecture.msi" fixture.wxs)
@@ -82,7 +81,7 @@ for architecture in x86 x64; do
   echo "INSTALL: $architecture MSI using Winux installer engine"
   if ! timeout --signal=TERM --kill-after=5s 180s winux install "$msi" --prefix "$prefix" --timeout 120; then
     echo "INSTALLATION LOGS:" >&2
-    find "$HOME/.local/share/winux/logs/installations" -type f -name "*.log" -print -exec cat {} \\; >&2 || true
+    find "$HOME/.local/share/winux/logs/installations" -type f -name "*.log" -print -exec cat {} \; >&2 || true
     exit 1
   fi
 
