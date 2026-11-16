@@ -60,9 +60,8 @@ def parse_shell_link_target(data):
     if not info_flags & 0x1:  # VolumeIDAndLocalBasePath
         return None
 
-    base_offset, suffix_offset = struct.unpack_from(
-        "<II", data, link_info_offset + 16
-    )
+    base_offset = struct.unpack_from("<I", data, link_info_offset + 16)[0]
+    suffix_offset = struct.unpack_from("<I", data, link_info_offset + 24)[0]
     base_unicode = suffix_unicode = 0
     if header_size >= 0x24:
         base_unicode, suffix_unicode = struct.unpack_from(
