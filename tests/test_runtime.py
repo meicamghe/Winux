@@ -38,6 +38,54 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(run.call_args.kwargs["env"]["WINEPREFIX"], "/selected/prefix")
         self.assertEqual(run.call_args.kwargs["env"]["WINEARCH"], "win64")
 
+    def test_wine_run_preserves_argument_boundaries(self):
+        runtime = WineRuntime()
+        executable = Path("/prefix/drive_c/Program Files/app.exe")
+        with patch.object(runtime, "_find", return_value="/usr/bin/wine"), patch(
+            "winux.runtime.wine.subprocess.Popen"
+        ) as popen:
+            runtime.run(
+                Path("/prefix"),
+                executable,
+                args=["--profile", "two words"],
+            )
+
+        self.assertEqual(
+            popen.call_args.args[0],
+            ["/usr/bin/wine", str(executable), "--profile", "two words"],
+        )
+        self.assertEqual(
+            popen.call_args.kwargs["env"]["WINEPREFIX"],
+            "/prefix",
+        )
+
+    def test_wine_run_rejects_string_argument_collection(self):
+        runtime = WineRuntime()
+        with patch.object(runtime, "_find", return_value="/usr/bin/wine"), patch(
+            "winux.runtime.wine.subprocess.Popen"
+        ) as popen:
+            with self.assertRaisesRegex(TypeError, "list or tuple"):
+                runtime.run(Path("/prefix"), Path("/app.exe"), args="--flag")
+        popen.assert_not_called()
+
+    def test_wine_run_rejects_non_string_arguments(self):
+        runtime = WineRuntime()
+        with patch.object(runtime, "_find", return_value="/usr/bin/wine"), patch(
+            "winux.runtime.wine.subprocess.Popen"
+        ) as popen:
+            with self.assertRaisesRegex(TypeError, "only strings"):
+                runtime.run(Path("/prefix"), Path("/app.exe"), args=["--flag", 3])
+        popen.assert_not_called()
+
+    def test_wine_run_rejects_nul_characters_in_arguments(self):
+        runtime = WineRuntime()
+        with patch.object(runtime, "_find", return_value="/usr/bin/wine"), patch(
+            "winux.runtime.wine.subprocess.Popen"
+        ) as popen:
+            with self.assertRaisesRegex(ValueError, "NUL"):
+                runtime.run(Path("/prefix"), Path("/app.exe"), args=["bad\\x00arg"])
+        popen.assert_not_called()
+
     def test_wine_runtime_implements_interface(self):
         runtime = WineRuntime()
         self.assertIsInstance(runtime, Runtime)
