@@ -91,7 +91,8 @@ class DesktopManager:
 
         return {"launchers": discovered, "errors": errors}
 
-    def discover_start_menu_shortcuts(self, prefix_path, start_menu_roots=None):
+    @staticmethod
+    def discover_start_menu_shortcuts(prefix_path, start_menu_roots=None):
         """Discover only .lnk files resolving to existing EXEs in this prefix."""
         prefix = Path(prefix_path).expanduser().resolve()
         drive_c = prefix / "drive_c"
