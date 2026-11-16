@@ -1,4 +1,5 @@
 import platform
+import re
 import shutil
 import subprocess
 
@@ -29,6 +30,23 @@ def _systemd_user_manager_status(systemctl_path):
     return True, "systemd user manager is responding"
 
 
+
+def _wine_version_warning(version):
+    """Return a compatibility warning for Wine versions older than 11.0."""
+    if not isinstance(version, str):
+        return "Wine version could not be parsed; WoW64 compatibility is unknown"
+
+    match = re.search(r"\bwine[- ]?(\d+)\.(\d+)(?:\.\d+)?\b", version, re.IGNORECASE)
+    if not match:
+        return "Wine version could not be parsed; WoW64 compatibility is unknown"
+
+    major, minor = (int(part) for part in match.groups())
+    if (major, minor) < (11, 0):
+        return (f"Wine {major}.{minor} detected; Wine 11.0 or newer is "
+                "recommended for fully supported new WoW64 mode")
+    return ("Wine 11.0+ detected; this version alone does not confirm that "
+            "the installed build has new WoW64 enabled")
+
 def check_runtime(runtime_manager=None):
     """Run read-only diagnostics for Winux's core runtime requirements.
 
@@ -56,7 +74,11 @@ def check_runtime(runtime_manager=None):
             print(f"[OK] Runtime: {name}")
 
             try:
-                print(f"[OK] Version: {runtime.version()}")
+                wine_version = runtime.version()
+                print(f"[OK] Version: {wine_version}")
+                version_warning = _wine_version_warning(wine_version) if name == "wine" else None
+                if version_warning:
+                    print(f"[WARN] {version_warning}")
             except Exception as error:
                 print(f"[FAIL] Runtime version check failed: {error}")
                 failed = True
