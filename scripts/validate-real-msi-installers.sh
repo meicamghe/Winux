@@ -33,7 +33,7 @@ cat > "$work_dir/fixture.wxs.in" <<'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Product Id="*" Name="Winux MSI Fixture" Language="1033" Version="1.0.0" Manufacturer="Winux CI" UpgradeCode="8F0E5D6A-2C4C-4A41-A9D2-0E44F2D6A2A1">
-    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Platform="@PLATFORM@" />
+    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
     <MediaTemplate />
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="@PROGRAMFILES@" Name="ProgramFiles">
@@ -56,13 +56,11 @@ for architecture in x86 x64; do
   case "$architecture" in
     x86)
       compiler=i686-w64-mingw32-gcc
-      platform=Intel
       programfiles=ProgramFilesFolder
       win64=no
       ;;
     x64)
       compiler=x86_64-w64-mingw32-gcc
-      platform=x64
       programfiles=ProgramFiles64Folder
       win64=yes
       ;;
@@ -74,6 +72,7 @@ for architecture in x86 x64; do
       "$work_dir/fixture.wxs.in" > "$work_dir/fixture.wxs"
   (cd "$work_dir" && wixl -a "$architecture" -o "fixture-$architecture.msi" fixture.wxs)
   msi="$work_dir/fixture-$architecture.msi"
+  echo "MSI SUMMARY: $(msiinfo suminfo "$msi" | tr "\n" ";")"
   msiinfo suminfo "$msi" | grep -Eiq "Template.*(Intel|x64)"
 
   prefix="msi-$architecture"
@@ -81,7 +80,11 @@ for architecture in x86 x64; do
   timeout --signal=TERM --kill-after=5s 120s winux prefix create "$prefix" --arch x64
 
   echo "INSTALL: $architecture MSI using Winux installer engine"
-  timeout --signal=TERM --kill-after=5s 180s winux install "$msi" --prefix "$prefix" --timeout 120
+  if ! timeout --signal=TERM --kill-after=5s 180s winux install "$msi" --prefix "$prefix" --timeout 120; then
+    echo "INSTALLATION LOGS:" >&2
+    find "$HOME/.local/share/winux/logs/installations" -type f -name "*.log" -print -exec cat {} \\; >&2 || true
+    exit 1
+  fi
 
   prefix_path="$HOME/.local/share/winux/prefixes/$prefix"
   mapfile -t installed_candidates < <(find "$prefix_path/drive_c" -type f -path '*/WinuxMsiFixture/fixture.exe' -print)
