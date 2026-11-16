@@ -72,6 +72,16 @@ class ShellLinkTests(unittest.TestCase):
         struct.pack_into("<I", data, 0x4C + 16, 0xFFFFFFF0)
         self.assertIsNone(parse_shell_link_target(data))
 
+    def test_rejects_linkinfo_offsets_inside_the_header(self):
+        data = bytearray(make_link(r"C:\Example", "app.exe"))
+        struct.pack_into("<I", data, 0x4C + 16, 0x10)
+        self.assertIsNone(parse_shell_link_target(data))
+
+    def test_rejects_linkinfo_offsets_outside_the_declared_block(self):
+        data = bytearray(make_link(r"C:\Example", "app.exe"))
+        struct.pack_into("<I", data, 0x4C + 24, 0xFFFFFFF0)
+        self.assertIsNone(parse_shell_link_target(data))
+
     def test_resolves_only_existing_exe_inside_prefix(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
