@@ -61,14 +61,14 @@ class ShellLinkTests(unittest.TestCase):
         self.assertIsNone(parse_shell_link_target(data))
 
     def test_parses_unicode_linkinfo_paths(self):
-        data = make_unicode_link(r"C:\\Program Files\\例子", "应用.exe")
+        data = make_unicode_link(r"C:\Program Files\例子", "应用.exe")
         self.assertEqual(
             parse_shell_link_target(data),
-            r"C:\\Program Files\\例子\\应用.exe",
+            r"C:\Program Files\例子\应用.exe",
         )
 
     def test_rejects_linkinfo_offsets_outside_the_file(self):
-        data = bytearray(make_link(r"C:\\Example", "app.exe"))
+        data = bytearray(make_link(r"C:\Example", "app.exe"))
         struct.pack_into("<I", data, 0x4C + 16, 0xFFFFFFF0)
         self.assertIsNone(parse_shell_link_target(data))
 
