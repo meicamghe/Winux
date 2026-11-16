@@ -345,7 +345,7 @@ class ApplicationRunnerTests(unittest.TestCase):
         invalid_values = (
             "not-a-list",
             ["valid", 42],
-            ["bad\\x00argument"],
+            ["bad\x00argument"],
         )
         for arguments in invalid_values:
             with self.subTest(arguments=arguments):
