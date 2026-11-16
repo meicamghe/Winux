@@ -20,14 +20,14 @@ def _read_c_string(data, offset, unicode_offset=0):
         return None
     if unicode_offset:
         end = start
-        while end + 1 < len(data) and data[end:end + 2] != b"\\x00\\x00":
+        while end + 1 < len(data) and data[end:end + 2] != bytes([0, 0]):
             end += 2
         raw = data[start:end]
         try:
             return raw.decode("utf-16le")
         except UnicodeDecodeError:
             return None
-    end = data.find(b"\\x00", start)
+    end = data.find(bytes([0]), start)
     if end < 0:
         return None
     return data[start:end].decode("cp1252", errors="replace")
