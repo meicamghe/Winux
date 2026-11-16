@@ -32,8 +32,10 @@ class ApplicationCliTests(unittest.TestCase):
                 "Example",
             ],
         ):
-            with patch("builtins.print"):
-                main()
+            with patch("winux.core.applications.ApplicationManager.info", return_value={"DisplayName": "Example App"}):
+                with patch("builtins.input", return_value="y"):
+                    with patch("builtins.print"):
+                        main()
 
         uninstall.assert_called_once_with(
             "test-prefix",
@@ -65,8 +67,10 @@ class ApplicationCliTests(unittest.TestCase):
                 "Example",
             ],
         ):
-            with patch("builtins.print"):
-                main()
+            with patch("winux.core.applications.ApplicationManager.info", return_value={"DisplayName": "Example App"}):
+                with patch("builtins.input", return_value="y"):
+                    with patch("builtins.print"):
+                        main()
 
         uninstall.assert_called_once_with(
             "test-prefix",
