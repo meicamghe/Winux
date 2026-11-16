@@ -279,7 +279,7 @@ class ApplicationManager:
 
         applications = list(grouped.values())
 
-        for record in found.values():
+        for record in applications:
             icon_path = self._windows_path_to_linux(
                 prefix_path,
                 record.get("DisplayIcon"),
