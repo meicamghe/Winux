@@ -307,7 +307,7 @@ class InstallerExecutionTests(unittest.TestCase):
         for arguments in (
             "not-a-list",
             ["/S", 42],
-            ["bad\\x00argument"],
+            ["bad\x00argument"],
         ):
             with self.subTest(arguments=arguments):
                 with self.assertRaises((TypeError, ValueError)):
