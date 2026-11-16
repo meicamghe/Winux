@@ -309,8 +309,60 @@ class InstallerCliTests(unittest.TestCase):
                     prefix_name="test-prefix",
                     timeout=3600,
                     verification_profile=profile,
+                    installer_args=[],
                 )
 
+
+
+
+    @patch("winux.core.installer.Installer")
+    def test_install_command_forwards_repeated_installer_arguments(self, installer_class):
+        installer = installer_class.return_value
+        installer.install.return_value = {
+            "process_status": "SUCCESS",
+            "verification_status": "PENDING",
+            "verification_details": "not requested",
+            "install_id": "test-install",
+            "log": "/tmp/test.log",
+        }
+
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "winux", "install", "setup.exe",
+                "--prefix", "test-prefix",
+                "--installer-arg", "/S",
+                "--installer-arg", "/D=C:\\Apps\\Example",
+            ],
+        ):
+            with patch("builtins.print"):
+                main()
+
+        installer.install.assert_called_once_with(
+            installer_file="setup.exe",
+            prefix_name="test-prefix",
+            timeout=3600,
+            verification_profile=None,
+            installer_args=["/S", "/D=C:\\Apps\\Example"],
+        )
+
+    @patch("winux.core.installer.Installer")
+    def test_batch_install_rejects_cli_installer_arguments(self, installer_class):
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "winux", "install",
+                "--manifest", "batch.json",
+                "--prefix", "test-prefix",
+                "--installer-arg", "/S",
+            ],
+        ):
+            with self.assertRaisesRegex(ValueError, "inside the manifest"):
+                main()
+
+        installer_class.return_value.install_batch.assert_not_called()
 
 
 class ApplicationRunCliTests(unittest.TestCase):
