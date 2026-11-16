@@ -262,6 +262,44 @@ class ProcessCliTests(unittest.TestCase):
         self.assertIn("1", rendered)
 
 
+class PrefixRuntimeCliTests(unittest.TestCase):
+    @patch("winux.core.prefix.PrefixManager")
+    def test_prefix_create_displays_selected_runtime(self, manager_class):
+        manager = manager_class.return_value
+        manager.create.return_value = Path("/tmp/winux/prefixes/office")
+        manager.get_architecture.return_value = "win64"
+        manager.get_runtime.return_value.name = "wine-staging"
+
+        with patch.object(
+            sys,
+            "argv",
+            ["winux", "prefix", "create", "office", "--runtime", "wine-staging"],
+        ):
+            with patch("builtins.print") as output:
+                main()
+
+        manager.create.assert_called_once_with(
+            "office", architecture="x64", runtime_name="wine-staging"
+        )
+        self.assertIn("wine-staging", str(output.call_args_list))
+
+    @patch("winux.core.prefix.PrefixManager")
+    def test_prefix_info_displays_bound_runtime(self, manager_class):
+        manager = manager_class.return_value
+        manager.get_path.return_value = Path("/tmp/winux/prefixes/office")
+        manager.get_architecture.return_value = "win64"
+        manager.get_runtime.return_value.name = "wine-stable"
+
+        with patch.object(
+            sys, "argv", ["winux", "prefix", "info", "office"]
+        ):
+            with patch("builtins.print") as output:
+                main()
+
+        manager.get_runtime.assert_called_once_with("office")
+        self.assertIn("wine-stable", str(output.call_args_list))
+
+
 class InstallerCliTests(unittest.TestCase):
 
     def test_install_command_loads_and_forwards_verification_profile(self):
