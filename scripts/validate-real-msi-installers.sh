@@ -43,10 +43,19 @@ cat > "$work_dir/fixture.wxs.in" <<'EOF'
     <Feature Id="Complete" Title="Winux MSI Fixture" Level="1">
       <ComponentRef Id="MainComponent" />
       <ComponentRef Id="ArpComponent" />
+      <ComponentRef Id="ArpComponent" />
     </Feature>
     <DirectoryRef Id="INSTALLDIR">
       <Component Id="MainComponent" Guid="*" Win64="@WIN64@">
         <File Id="FixtureExe" Source="fixture.exe" KeyPath="yes" />
+      </Component>
+      <!-- Keep ARP registration in a 32-bit component so x86 and x64 MSI
+           fixtures expose uninstall metadata through the same registry view. -->
+      <Component Id="ArpComponent" Guid="*" Win64="no">
+        <RegistryValue Root="HKLM" Key="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\[ProductCode]" Type="string" Name="DisplayName" Value="Winux MSI Fixture" KeyPath="yes" />
+        <RegistryValue Root="HKLM" Key="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\[ProductCode]" Type="string" Name="Publisher" Value="Winux CI" />
+        <RegistryValue Root="HKLM" Key="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\[ProductCode]" Type="string" Name="InstallLocation" Value="[INSTALLDIR]" />
+        <RegistryValue Root="HKLM" Key="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\[ProductCode]" Type="string" Name="UninstallString" Value="msiexec.exe /x [ProductCode] /qn" />
       </Component>
     </DirectoryRef>
   </Product>
