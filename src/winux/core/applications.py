@@ -168,15 +168,24 @@ class ApplicationManager:
             # DisplayIcon may point to an .ico, .dll, or another resource.
             # Never expose those files as launch targets: only an existing
             # Windows executable can be selected from this registry value.
-            record["executable_path"] = (
-                str(icon_path)
-                if (
-                    icon_path
-                    and icon_path.suffix.casefold() == ".exe"
-                    and icon_path.is_file()
-                )
-                else None
+            executable_is_valid = bool(
+                icon_path
+                and icon_path.suffix.casefold() == ".exe"
+                and icon_path.is_file()
             )
+            record["executable_path"] = (
+                str(icon_path) if executable_is_valid else None
+            )
+            if executable_is_valid:
+                record["executable_status"] = "ready"
+            elif not record.get("DisplayIcon"):
+                record["executable_status"] = "not_registered"
+            elif icon_path is None:
+                record["executable_status"] = "invalid_registry_path"
+            elif icon_path.suffix.casefold() != ".exe":
+                record["executable_status"] = "resource_not_executable"
+            else:
+                record["executable_status"] = "executable_missing"
 
             record["install_path"] = (
                 str(install_path) if install_path and install_path.exists()
@@ -225,6 +234,7 @@ class ApplicationManager:
             "InstallLocation",
             "install_path",
             "executable_path",
+            "executable_status",
             "registry_id",
             "registry_key",
         ]
