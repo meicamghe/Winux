@@ -51,7 +51,7 @@ cat > "$work_dir/fixture.wxs.in" <<'EOF'
     </DirectoryRef>
     <DirectoryRef Id="TARGETDIR">
       <Component Id="ArpComponent" Guid="*" Win64="@WIN64@">
-        <RegistryKey Root="HKLM" Key="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\[ProductCode]" Action="createAndRemoveOnUninstall">
+        <RegistryKey Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]">
           <RegistryValue Type="string" Name="DisplayName" Value="Winux MSI Fixture" KeyPath="yes" />
           <RegistryValue Type="string" Name="Publisher" Value="Winux CI" />
           <RegistryValue Type="string" Name="InstallLocation" Value="[INSTALLDIR]" />
