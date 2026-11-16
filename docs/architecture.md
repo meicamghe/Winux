@@ -320,3 +320,7 @@ The design specification, public API, implementation boundaries, and remaining
 gaps are maintained in [LOCAL-IPC-DESIGN.md](LOCAL-IPC-DESIGN.md). The generic
 transport has hosted-CI coverage; no EMWAT-specific adapter or end-to-end
 workflow is claimed.
+
+## Prefix backup and restore
+
+Prefix backup and restore are being implemented as a security-sensitive lifecycle feature. The format, hostile-archive validation rules, symlink policy, runtime-binding requirements, atomic restore publication, and required adversarial tests are specified in [PREFIX-BACKUP-RESTORE.md](PREFIX-BACKUP-RESTORE.md). The specification is a design contract, not a claim that the CLI or archive implementation already exists.
