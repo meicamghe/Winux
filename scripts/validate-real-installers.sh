@@ -35,6 +35,7 @@ Name "Winux WoW64 Installer Fixture"
 OutFile "fixture-setup.exe"
 InstallDir "$LOCALAPPDATA\\WinuxFixture"
 RequestExecutionLevel user
+SilentInstall silent
 Section "Install"
   SetOutPath "$INSTDIR"
   File "fixture.exe"
