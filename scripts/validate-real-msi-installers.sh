@@ -115,6 +115,13 @@ expected = Path(os.environ["EXPECTED_EXECUTABLE"]).resolve()
 apps = manager.list(prefix)
 matches = [app for app in apps if app.get("DisplayName") == "Winux MSI Fixture"]
 if not matches:
+    print("DEBUG: complete application inventory:", apps)
+    for key in ApplicationManager.UNINSTALL_KEYS:
+        result = manager.runtime_manager.get().query_registry(
+            manager.prefix_manager.get_path(prefix), key,
+            capture_output=True, text=True, timeout=60,
+        )
+        print(f"DEBUG REGISTRY {key}: returncode={result.returncode}\\n{result.stdout}")
     raise SystemExit("No MSI uninstall inventory record was discovered")
 commands = {
     (app.get("QuietUninstallString") or app.get("UninstallString") or "").strip()
