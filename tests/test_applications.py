@@ -258,6 +258,101 @@ HKEY_CURRENT_USER\\Software\\App\\Two
             with self.assertRaises(LookupError):
                 self.manager.info("test-prefix", "missing")
 
+    def test_msi_product_code_requires_msiexec_and_extracts_guid(self):
+        product_code = "{12345678-1234-5678-9ABC-1234567890AB}"
+        record = {
+            "UninstallString": (
+                '"C:\\\\Windows\\\\System32\\\\msiexec.exe" '
+                f'/I{product_code}'
+            )
+        }
+        self.assertEqual(
+            self.manager._msi_product_code(record), product_code
+        )
+        self.assertIsNone(self.manager._msi_product_code({
+            "UninstallString": f'"C:\\\\Apps\\\\remove.exe" /x{product_code}'
+        }))
+
+    def test_list_deduplicates_msi_registry_views_by_product_code(self):
+        product_code = "{12345678-1234-5678-9ABC-1234567890AB}"
+        records = [
+            {
+                "registry_key": (
+                    r"HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion"
+                    r"\\Uninstall\\ProductNative"
+                ),
+                "registry_id": "ProductNative",
+                "DisplayName": "Example MSI",
+                "UninstallString": f'msiexec.exe /I{product_code}',
+            },
+            {
+                "registry_key": (
+                    r"HKEY_LOCAL_MACHINE\\Software\\WOW6432Node\\Microsoft"
+                    r"\\Windows\\CurrentVersion\\Uninstall\\ProductWow"
+                ),
+                "registry_id": "ProductWow",
+                "DisplayName": "Example MSI",
+                "UninstallString": f'msiexec.exe /x {product_code} /qn',
+            },
+        ]
+        with (
+            patch.object(self.manager, "_query_registry", return_value=records),
+            patch.object(self.runtime, "query_registry", return_value=Mock(
+                returncode=0, stdout="", stderr=""
+            )),
+            patch(
+                "winux.core.applications.DesktopManager.discover_start_menu_shortcuts",
+                return_value={"shortcuts": []},
+            ),
+        ):
+            applications = self.manager.list("test-prefix")
+
+        self.assertEqual(len(applications), 1)
+        self.assertEqual(applications[0]["DisplayName"], "Example MSI")
+        self.assertEqual(
+            set(applications[0]["registry_ids"]),
+            {"ProductNative", "ProductWow"},
+        )
+        self.assertEqual(len(applications[0]["uninstall_commands"]), 2)
+
+    def test_info_finds_msi_application_by_secondary_registry_id(self):
+        application = {
+            "registry_id": "ProductNative",
+            "registry_ids": ["ProductNative", "ProductWow"],
+            "DisplayName": "Example MSI",
+        }
+        with patch.object(self.manager, "list", return_value=[application]):
+            self.assertIs(
+                self.manager.info("test-prefix", "productwow"), application
+            )
+
+    def test_list_does_not_merge_non_msi_entries_with_same_display_name(self):
+        records = [
+            {
+                "registry_key": r"HKEY_LOCAL_MACHINE\\Software\\VendorA\\Uninstall\\A",
+                "registry_id": "A",
+                "DisplayName": "Shared Name",
+            },
+            {
+                "registry_key": r"HKEY_LOCAL_MACHINE\\Software\\VendorB\\Uninstall\\B",
+                "registry_id": "B",
+                "DisplayName": "Shared Name",
+            },
+        ]
+        with (
+            patch.object(self.manager, "_query_registry", return_value=records),
+            patch.object(self.runtime, "query_registry", return_value=Mock(
+                returncode=0, stdout="", stderr=""
+            )),
+            patch(
+                "winux.core.applications.DesktopManager.discover_start_menu_shortcuts",
+                return_value={"shortcuts": []},
+            ),
+        ):
+            applications = self.manager.list("test-prefix")
+
+        self.assertEqual(len(applications), 2)
+
 
     def test_uninstall_rejects_invalid_timeouts_before_lookup(self):
         invalid_timeouts = (

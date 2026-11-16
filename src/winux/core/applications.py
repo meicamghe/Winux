@@ -189,6 +189,35 @@ class ApplicationManager:
         add_candidate()
         return candidates
 
+    def _msi_product_code(self, record):
+        """Return an MSI ProductCode only for a registered msiexec command."""
+        import shlex
+
+        for field in ("QuietUninstallString", "UninstallString"):
+            command = record.get(field)
+            if not isinstance(command, str) or not command.strip():
+                continue
+            try:
+                args = shlex.split(command, posix=False)
+            except ValueError:
+                continue
+            if not args:
+                continue
+            executable = args[0].strip('"')
+            if PureWindowsPath(executable).name.casefold() not in (
+                "msiexec", "msiexec.exe"
+            ):
+                continue
+            match = re.search(
+                r"\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-"
+                r"[0-9a-f]{4}-[0-9a-f]{12}\}",
+                command,
+                flags=re.IGNORECASE,
+            )
+            if match:
+                return match.group(0).upper()
+        return None
+
     def list(self, prefix_name):
         prefix_path = self.prefix_manager.get_path(prefix_name)
         runtime = self.prefix_manager.get_runtime(prefix_name)
@@ -203,15 +232,54 @@ class ApplicationManager:
                 if not name:
                     continue
 
-                identity = (
-                    record.get("registry_key", "").lower()
-                )
-
+                identity = record.get("registry_key", "").lower()
                 found[identity] = record
 
-        applications = []
-
+        # MSI product registrations can appear in both native and WOW6432Node
+        # uninstall views. Collapse only records sharing the same ProductCode;
+        # similarly named non-MSI applications remain independent entries.
+        grouped = {}
         for record in found.values():
+            product_code = self._msi_product_code(record)
+            identity = (
+                ("msi", product_code) if product_code
+                else ("registry", record.get("registry_key", "").casefold())
+            )
+            if identity not in grouped:
+                primary = dict(record)
+                primary["registry_ids"] = [record.get("registry_id")]
+                primary["registry_keys"] = [record.get("registry_key")]
+                primary["uninstall_commands"] = [
+                    {
+                        "registry_id": record.get("registry_id"),
+                        "quiet": record.get("QuietUninstallString"),
+                        "normal": record.get("UninstallString"),
+                    }
+                ]
+                grouped[identity] = primary
+                continue
+
+            primary = grouped[identity]
+            registry_id = record.get("registry_id")
+            registry_key = record.get("registry_key")
+            if registry_id and registry_id not in primary["registry_ids"]:
+                primary["registry_ids"].append(registry_id)
+            if registry_key and registry_key not in primary["registry_keys"]:
+                primary["registry_keys"].append(registry_key)
+            primary["uninstall_commands"].append({
+                "registry_id": registry_id,
+                "quiet": record.get("QuietUninstallString"),
+                "normal": record.get("UninstallString"),
+            })
+            # Fill metadata missing from the first registry view without
+            # overwriting values already selected for the displayed product.
+            for field in self.FIELDS:
+                if not primary.get(field) and record.get(field):
+                    primary[field] = record[field]
+
+        applications = list(grouped.values())
+
+        for record in applications:
             icon_path = self._windows_path_to_linux(
                 prefix_path,
                 record.get("DisplayIcon"),
@@ -248,8 +316,6 @@ class ApplicationManager:
                 str(install_path) if install_path and install_path.exists()
                 else None
             )
-
-            applications.append(record)
 
         known_executables = {
             str(Path(item["executable_path"]).resolve())
@@ -459,7 +525,14 @@ class ApplicationManager:
         applications = self.list(prefix_name)
 
         for application in applications:
-            if application["registry_id"].lower() == application_id.lower():
+            registry_ids = application.get(
+                "registry_ids", [application.get("registry_id")]
+            )
+            if any(
+                isinstance(registry_id, str)
+                and registry_id.casefold() == application_id.casefold()
+                for registry_id in registry_ids
+            ):
                 return application
 
         raise LookupError(
@@ -482,7 +555,22 @@ class ApplicationManager:
 
         application = self.info(prefix_name, application_id)
 
-        command = (
+        uninstall_commands = application.get("uninstall_commands", [])
+        command = next(
+            (
+                entry.get("quiet")
+                for entry in uninstall_commands
+                if entry.get("quiet")
+            ),
+            None,
+        ) or next(
+            (
+                entry.get("normal")
+                for entry in uninstall_commands
+                if entry.get("normal")
+            ),
+            None,
+        ) or (
             application.get("QuietUninstallString")
             or application.get("UninstallString")
         )
