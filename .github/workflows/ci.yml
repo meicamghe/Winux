@@ -87,9 +87,30 @@ jobs:
       - name: Test verification
         run: timeout --signal=TERM --kill-after=15s 4m python -c 'import faulthandler, unittest; faulthandler.dump_traceback_later(60, repeat=True); suite=unittest.defaultTestLoader.discover("tests", pattern="test_verification.py"); result=unittest.TextTestRunner(verbosity=2).run(suite); raise SystemExit(not result.wasSuccessful())'
 
+  test-wow64-matrix:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        application_architecture: [x86, x64]
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install project
+        run: python -m pip install -e .
+      - name: Validate ${{ matrix.application_architecture }} installer compatibility
+        env:
+          WINUX_MATRIX_ARCHITECTURE: ${{ matrix.application_architecture }}
+        run: python -m unittest discover -s tests -p test_wow64_matrix.py -v
+
   package:
     runs-on: ubuntu-24.04
-    needs: [test-core, test-runtime, test-services]
+    needs: [test-core, test-runtime, test-services, test-wow64-matrix]
     timeout-minutes: 15
     steps:
       - name: Check out source
