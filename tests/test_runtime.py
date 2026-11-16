@@ -327,7 +327,7 @@ class RuntimeTests(unittest.TestCase):
 
     def test_wine_install_rejects_invalid_argument_collections(self):
         runtime = WineRuntime()
-        for arguments in ("not-a-list", ["/S", 3], ["bad\\x00argument"]):
+        for arguments in ("not-a-list", ["/S", 3], ["bad\x00argument"]):
             with self.subTest(arguments=arguments):
                 with patch("winux.runtime.wine.subprocess.run") as run:
                     with self.assertRaises((TypeError, ValueError)):
