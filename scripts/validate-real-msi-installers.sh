@@ -114,9 +114,33 @@ prefix = os.environ["PREFIX_NAME"]
 expected = Path(os.environ["EXPECTED_EXECUTABLE"]).resolve()
 apps = manager.list(prefix)
 matches = [app for app in apps if app.get("DisplayName") == "Winux MSI Fixture"]
-if len(matches) != 1:
-    raise SystemExit(f"Expected one MSI uninstall record, found {len(matches)}")
-manager.uninstall(prefix, matches[0]["registry_id"], timeout=120)
+if not matches:
+    raise SystemExit("No MSI uninstall inventory record was discovered")
+commands = {
+    (app.get("QuietUninstallString") or app.get("UninstallString") or "").strip()
+    for app in matches
+}
+commands.discard("")
+if len(commands) != 1:
+    details = [
+        {
+            "registry_key": app.get("registry_key"),
+            "registry_id": app.get("registry_id"),
+            "UninstallString": app.get("UninstallString"),
+            "QuietUninstallString": app.get("QuietUninstallString"),
+        }
+        for app in matches
+    ]
+    raise SystemExit(
+        f"Expected one logical MSI uninstall command across registry views; "
+        f"found {len(commands)} commands in {len(matches)} records: {details}"
+    )
+selected = next(
+    app for app in matches
+    if (app.get("QuietUninstallString") or app.get("UninstallString") or "").strip()
+)
+print(f"MSI inventory records: {len(matches)}; using {selected['registry_key']}")
+manager.uninstall(prefix, selected["registry_id"], timeout=120)
 if expected.exists():
     raise SystemExit(f"MSI uninstaller left executable behind: {expected}")
 remaining = [app for app in manager.list(prefix) if app.get("DisplayName") == "Winux MSI Fixture"]
