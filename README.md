@@ -30,7 +30,10 @@ Implemented capabilities include:
 - Application information retrieval.
 - Launching installed Windows applications.
 - Installation and execution logging.
-- Basic desktop shortcut integration.
+- Linux desktop-entry integration.
+- Validated Windows Start Menu shortcut discovery through a conservative Shell Link parser.
+- x86 and x64 application execution in a real Wine WoW64 prefix, verified in hosted CI.
+- Real NSIS EXE installer integration in hosted CI, including installation, Start Menu discovery, and launch through the Winux application runner.
 
 Both x86 and x64 Windows applications are considered in the compatibility design.
 

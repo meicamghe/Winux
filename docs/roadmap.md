@@ -14,9 +14,10 @@ The current codebase includes:
 - Wine availability check.
 - Windows prefix creation, listing, inspection, and deletion.
 - EXE/MSI installation workflow with architecture detection, locking, and installation logs.
-- Installed-application discovery through Windows uninstall registry entries.
+- Installed-application discovery through Windows uninstall registry entries and validated Windows Start Menu shortcuts.
 - Application information lookup and launching.
-- Initial desktop-entry integration work.
+- Linux desktop-entry integration work.
+- Real x86/x64 Wine WoW64 smoke validation and NSIS EXE install/discover/launch integration in hosted CI.
 
 The current design uses 64-bit Wine prefixes with WoW64 to support both 32-bit (x86) and 64-bit (x64) Windows applications. Actual compatibility depends on Wine, the application, and required Windows components. Separate pure 32-bit prefix creation is not a current requirement.
 
@@ -44,6 +45,7 @@ The current design uses 64-bit Wine prefixes with WoW64 to support both 32-bit (
 - [x] Detect installer and application architecture where possible.
 - [x] Record installation logs and identifiers.
 - [x] Discover installed applications from prefix registry data.
+- [x] Discover and launch applications through validated Windows Start Menu shortcuts.
 - [x] Display application details.
 - [x] Launch an installed application in its associated prefix.
 - [ ] Add an application manifest/database for Winux-managed installations.
@@ -57,12 +59,13 @@ The current design uses 64-bit Wine prefixes with WoW64 to support both 32-bit (
 
 **Goal:** Improve diagnostics and make application behavior easier to troubleshoot.
 
-- [ ] Validate package files before installation.
+- [x] Validate EXE/MSI signatures and installer architecture metadata before installation.
 - [ ] Detect common missing Wine dependencies and explain them.
 - [ ] Capture process exit status and structured launch diagnostics.
 - [ ] Add per-application environment and launch settings.
 - [ ] Handle duplicate application names and shortcut collisions.
-- [ ] Test x86 and x64 applications in the supported WoW64 prefix model.
+- [x] Test x86 and x64 PE executables in one real WoW64 prefix in hosted CI.
+- [x] Test real x86/x64 NSIS EXE installation, Start Menu discovery, and launch through Winux in hosted CI.
 - [ ] Document known limitations, including drivers, kernel components, and Windows services.
 
 **Exit criteria:** Common installation and launch failures are diagnosable, and supported architecture behavior is covered by repeatable tests.

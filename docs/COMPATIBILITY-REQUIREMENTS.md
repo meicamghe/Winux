@@ -159,14 +159,17 @@ prefix. A separate opt-in runtime script compiles PE32 and PE32+ smoke
 executables and runs them in one disposable win64 prefix:
 scripts/validate-wine-wow64.sh.
 
-The hosted matrix verifies Winux's architecture policy only. The real Wine
-smoke script has not yet been executed on a Wine-enabled host, so no claim of
-actual x86/x64 application execution is made.
+Hosted CI has now executed the real Wine smoke script on Ubuntu 24.04: PE32
+and PE32+ applications both launched successfully in the same win64 prefix.
+The separate NSIS fixture also validates x86/x64 installation, Start Menu
+discovery, and launch through Winux's ApplicationRunner. These fixtures prove
+those specific paths, not universal application compatibility.
 
 ## Windows Start Menu discovery update (2026-11-16)
 
 A conservative Shell Link parser and Start Menu discovery API are now
 implemented. It accepts only existing local EXE targets contained in the
 selected prefix. Relative, network, IDList-only, malformed, symlinked, and
-out-of-prefix targets are ignored. Candidate integration into the main
-application inventory remains pending.
+out-of-prefix targets are ignored. Validated candidates are integrated into
+the main application inventory, deduplicated against registry-discovered
+applications, and covered by hosted x86/x64 install-discover-launch tests.
