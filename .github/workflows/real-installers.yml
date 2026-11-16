@@ -1,0 +1,38 @@
+name: Real Windows Installer Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: winux-real-installer-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  real-exe-installers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Install Wine, NSIS and Windows cross-compilers
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            wine wine64 wine32:i386 nsis p7zip-full \
+            gcc-mingw-w64-i686 gcc-mingw-w64-x86-64
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Winux
+        run: python -m pip install .
+      - name: Install and launch real x86/x64 Windows applications
+        run: timeout --signal=TERM --kill-after=15s 20m bash scripts/validate-real-installers.sh
