@@ -199,7 +199,10 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
         from winux.platform.runtime import _wine_version_warning
 
         self.assertIn("unknown", _wine_version_warning("custom build 11.22"))
-        self.assertIsNone(_wine_version_warning("wine-11.22 (Staging)"))
+        self.assertIn(
+            "does not confirm",
+            _wine_version_warning("wine-11.22 (Staging)"),
+        )
 
 
 if __name__ == "__main__":
