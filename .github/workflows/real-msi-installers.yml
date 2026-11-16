@@ -1,0 +1,39 @@
+name: Real Windows MSI Installer Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: winux-real-msi-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  real-msi-installers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Install Wine, MSI authoring tools and cross-compilers
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          # wixl is packaged separately from msitools on Ubuntu 24.04.
+          sudo apt-get install -y --no-install-recommends \
+            wine wine64 wine32:i386 msitools wixl \
+            gcc-mingw-w64-i686 gcc-mingw-w64-x86-64
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Winux
+        run: python -m pip install .
+      - name: Install and launch real x86/x64 Windows MSI applications
+        run: timeout --signal=TERM --kill-after=15s 20m bash scripts/validate-real-msi-installers.sh
