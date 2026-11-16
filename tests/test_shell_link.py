@@ -20,6 +20,29 @@ def make_link(base, suffix=""):
     return header + info + base_bytes + suffix_bytes
 
 
+def make_unicode_link(base, suffix=""):
+    header = struct.pack("<I", 0x4C) + CLSID + struct.pack("<I", 0x2)
+    header += bytes(0x4C - len(header))
+    base_ansi = base.encode("cp1252", errors="replace") + bytes([0])
+    suffix_ansi = suffix.encode("cp1252", errors="replace") + bytes([0])
+    base_wide = base.encode("utf-16le") + bytes(2)
+    suffix_wide = suffix.encode("utf-16le") + bytes(2)
+    base_wide_offset = 0x24 + len(base_ansi) + len(suffix_ansi)
+    suffix_wide_offset = base_wide_offset + len(base_wide)
+    info_size = suffix_wide_offset + len(suffix_wide)
+    info = struct.pack("<III", info_size, 0x24, 0x1)
+    info += struct.pack(
+        "<IIIIII",
+        0,
+        0x24,
+        0,
+        0x24 + len(base_ansi),
+        base_wide_offset,
+        suffix_wide_offset,
+    )
+    return header + info + base_ansi + suffix_ansi + base_wide + suffix_wide
+
+
 class ShellLinkTests(unittest.TestCase):
     def test_parses_absolute_local_target_and_suffix(self):
         data = make_link(r"C:\Program Files\Example", "app.exe")
@@ -35,6 +58,18 @@ class ShellLinkTests(unittest.TestCase):
         self.assertIsNone(parse_shell_link_target(data))
         data = bytearray(make_link(r"C:\Example", "app.exe"))
         struct.pack_into("<I", data, 20, 0)
+        self.assertIsNone(parse_shell_link_target(data))
+
+    def test_parses_unicode_linkinfo_paths(self):
+        data = make_unicode_link(r"C:\\Program Files\\例子", "应用.exe")
+        self.assertEqual(
+            parse_shell_link_target(data),
+            r"C:\\Program Files\\例子\\应用.exe",
+        )
+
+    def test_rejects_linkinfo_offsets_outside_the_file(self):
+        data = bytearray(make_link(r"C:\\Example", "app.exe"))
+        struct.pack_into("<I", data, 0x4C + 16, 0xFFFFFFF0)
         self.assertIsNone(parse_shell_link_target(data))
 
     def test_resolves_only_existing_exe_inside_prefix(self):
