@@ -190,6 +190,7 @@ The following milestones represent the planned development direction:
 - [ ] Winux OS image and installer
 
 - [Application compatibility requirements and EMWAT-derived Engine gaps](docs/COMPATIBILITY-REQUIREMENTS.md)
+- [Wine upstream integration policy and compatibility boundaries](docs/WINE-INTEGRATION.md)
 
 ## Compatibility
 
