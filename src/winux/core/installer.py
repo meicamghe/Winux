@@ -317,6 +317,22 @@ class Installer:
 
         raise ValueError("Unsupported installer format")
 
+    @staticmethod
+    def _validate_architecture_compatibility(installer_architecture, prefix_architecture):
+        """Reject 64-bit Windows installers in 32-bit prefixes."""
+        if prefix_architecture not in ("win32", "win64"):
+            raise ValueError(
+                f"Unsupported Wine prefix architecture: {prefix_architecture}"
+            )
+        if installer_architecture == "x64" and prefix_architecture != "win64":
+            raise ValueError(
+                "64-bit Windows installers require a win64 Wine prefix"
+            )
+        if installer_architecture not in ("x86", "x64"):
+            raise ValueError(
+                f"Unsupported installer architecture: {installer_architecture}"
+            )
+
     def install(
         self,
         installer_file,
@@ -369,6 +385,9 @@ class Installer:
             raise RuntimeError(f"Runtime is not available: {runtime.name}")
 
         prefix_architecture = self.prefix_manager.get_architecture(prefix_name)
+        self._validate_architecture_compatibility(
+            installer_architecture, prefix_architecture
+        )
 
         install_id = uuid.uuid4().hex[:12]
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")

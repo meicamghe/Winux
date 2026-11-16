@@ -35,6 +35,30 @@ class InstallerArchitectureTests(unittest.TestCase):
         path.write_bytes(header)
         return path
 
+    def test_architecture_compatibility_allows_x86_on_win32_and_win64(self):
+        self.installer._validate_architecture_compatibility("x86", "win32")
+        self.installer._validate_architecture_compatibility("x86", "win64")
+
+    def test_architecture_compatibility_allows_x64_on_win64(self):
+        self.installer._validate_architecture_compatibility("x64", "win64")
+
+    def test_architecture_compatibility_rejects_x64_on_win32(self):
+        with self.assertRaisesRegex(ValueError, "require a win64"):
+            self.installer._validate_architecture_compatibility("x64", "win32")
+
+    def test_architecture_compatibility_rejects_unknown_architectures(self):
+        for installer_architecture, prefix_architecture in (
+            ("arm64", "win64"),
+            ("x86", "winarm64"),
+        ):
+            with self.subTest(
+                installer=installer_architecture, prefix=prefix_architecture
+            ):
+                with self.assertRaisesRegex(ValueError, "architecture"):
+                    self.installer._validate_architecture_compatibility(
+                        installer_architecture, prefix_architecture
+                    )
+
     def test_get_exe_architecture_detects_x86(self):
         source = self.make_pe(self.home / "x86.exe", "x86")
         self.assertEqual(self.installer._get_exe_architecture(source), "x86")
