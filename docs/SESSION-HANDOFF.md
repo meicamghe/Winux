@@ -1276,3 +1276,56 @@ inventing EMWAT-specific protocol behavior.
 - Added `--yes` for deliberate non-interactive automation.
 - CLI regression tests cover cancellation, the explicit bypass, and uppercase
   confirmation. Hosted CI must pass before merging.
+
+## 2026-11-16 - Installer lifecycle, runtime selection, and project status
+
+### Merged and verified
+
+- PR #23 added explicit EXE/MSI installer argument forwarding to the installer
+  engine, runtime, CLI, and batch manifests. CI passed.
+- PR #24 added an interactive uninstall confirmation and an explicit
+  `--yes` non-interactive override. CI passed.
+- PR #25 normalized MSI uninstall commands that incorrectly use
+  `msiexec /I{ProductCode}` to uninstall mode without changing unrelated
+  commands. CI passed.
+- PR #27 added a non-blocking Wine version diagnostic. Versions below 11.0
+  receive a WoW64 warning; unparseable versions are reported as unknown.
+- PR #28 added per-prefix runtime selection and metadata persistence.
+- PR #29 added official WineHQ Stable 11 integration coverage, including
+  real x86 and x64 PE smoke tests.
+- PR #31 added `winux app audit` for inventory status counts and missing
+  executable targets.
+- PR #32 displays the selected runtime in prefix creation and prefix info.
+- PR #33 documents the Wine/Winux responsibility boundary and prefix policy.
+- PR #30 added real EXE/MSI install-discover-launch-uninstall lifecycle tests.
+  The NSIS EXE fixture and MSI fixtures for both x86 and x64 passed; uninstall
+  removed the installed files and registry inventory records. The MSI fixture
+  exposed two registry-view records for one product code; the integration test
+  validates the shared product identity and successful cleanup.
+- PR #36 added the README project maturity map. Its percentages are explicitly
+  indicative estimates, not coverage or compatibility guarantees.
+
+### Current verified baseline
+
+- PR #30 merge commit: `0e9050873193b056519b19399de0bcefe4196032`.
+- PR #36 merge commit: `d0e1950cee3858f74ff64d745f7a8bcd3a085712`.
+- Real installer workflows, WineHQ Stable 11 integration, distro Wine
+  integration, x86/x64 WoW64 smoke tests, core/runtime/services tests, and
+  package build all passed on the PR #30 head before merge.
+- The hosted real MSI lifecycle tests reported successful install, launch,
+  uninstall, file removal, and inventory cleanup for both architectures.
+
+### Next engineering priorities
+
+1. Review and improve logical MSI inventory representation: registry-view
+   duplicates for the same Windows Installer ProductCode should not appear as
+   separate user-facing applications, while retaining enough underlying
+   registry metadata to uninstall reliably.
+2. Expand real application verification beyond installer exit status and
+   process launch; distinguish installed, launchable, workflow-tested, and
+   integration-tested states.
+3. Continue cross-distribution Engine portability work before starting the
+   graphical Desktop or OS image.
+4. Keep COM/OLE, Office automation, genuine Windows services, and printing
+   explicitly classified as application-specific integration work; do not
+   claim general Wine support without end-to-end evidence.
