@@ -18,9 +18,9 @@ class ApplicationManager:
     )
 
     APP_PATHS_KEYS = (
-        r"HKLM\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths",
-        r"HKLM\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\App Paths",
-        r"HKCU\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths",
+        r"HKLM\Software\Microsoft\Windows\CurrentVersion\App Paths",
+        r"HKLM\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths",
+        r"HKCU\Software\Microsoft\Windows\CurrentVersion\App Paths",
     )
 
     FIELDS = {
@@ -178,7 +178,7 @@ class ApplicationManager:
             if current_key is None:
                 continue
             match = re.match(
-                r"^\\s+\\(Default\\)\\s+REG_\\w+\\s*(.*)$",
+                r"^\s+\(Default\)\s+REG_\w+\s*(.*)$",
                 line,
                 flags=re.IGNORECASE,
             )
