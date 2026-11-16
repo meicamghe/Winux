@@ -51,10 +51,10 @@ cat > "$work_dir/fixture.wxs.in" <<'EOF'
       <!-- Keep ARP registration in a 32-bit component so x86 and x64 MSI
            fixtures expose uninstall metadata through the same registry view. -->
       <Component Id="ArpComponent" Guid="*" Win64="no">
-        <RegistryValue Root="HKLM" Key="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\[ProductCode]" Type="string" Name="DisplayName" Value="Winux MSI Fixture" KeyPath="yes" />
-        <RegistryValue Root="HKLM" Key="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\[ProductCode]" Type="string" Name="Publisher" Value="Winux CI" />
-        <RegistryValue Root="HKLM" Key="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\[ProductCode]" Type="string" Name="InstallLocation" Value="[INSTALLDIR]" />
-        <RegistryValue Root="HKLM" Key="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\[ProductCode]" Type="string" Name="UninstallString" Value="msiexec.exe /x [ProductCode] /qn" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]" Type="string" Name="DisplayName" Value="Winux MSI Fixture" KeyPath="yes" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]" Type="string" Name="Publisher" Value="Winux CI" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]" Type="string" Name="InstallLocation" Value="[INSTALLDIR]" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]" Type="string" Name="UninstallString" Value="msiexec.exe /x [ProductCode] /qn" />
       </Component>
     </DirectoryRef>
   </Product>
@@ -176,10 +176,10 @@ done
 
 echo "PASS: real MSI installer workflow completed for x86 and x64 applications"
       <Component Id="ArpComponent" Guid="*" Win64="no">
-        <RegistryValue Root="HKLM" Key="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\[ProductCode]" Type="string" Name="DisplayName" Value="Winux MSI Fixture" KeyPath="yes" />
-        <RegistryValue Root="HKLM" Key="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\[ProductCode]" Type="string" Name="Publisher" Value="Winux CI" />
-        <RegistryValue Root="HKLM" Key="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\[ProductCode]" Type="string" Name="InstallLocation" Value="[INSTALLDIR]" />
-        <RegistryValue Root="HKLM" Key="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\[ProductCode]" Type="string" Name="UninstallString" Value="msiexec.exe /x [ProductCode] /qn" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]" Type="string" Name="DisplayName" Value="Winux MSI Fixture" KeyPath="yes" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]" Type="string" Name="Publisher" Value="Winux CI" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]" Type="string" Name="InstallLocation" Value="[INSTALLDIR]" />
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductCode]" Type="string" Name="UninstallString" Value="msiexec.exe /x [ProductCode] /qn" />
       </Component>
 
     </DirectoryRef>
