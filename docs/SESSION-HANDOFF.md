@@ -1,6 +1,6 @@
 # Winux — Project Handoff
 
-Last reviewed: 2026-11-15
+Last reviewed: 2026-11-16
 
 This file is the compact continuity record for future development sessions. It complements the README and architecture documents; it does not replace source code, tests, or detailed design records.
 
@@ -34,11 +34,12 @@ The README and `docs/architecture.md` describe an early Engine implementation. R
 - Wine environment detection
 - Prefix creation and management
 - EXE/MSI installation workflow
-- Installed application discovery through Wine registry data
-- Application metadata lookup
-- Launching installed applications
+- Installed application discovery through uninstall registry data, Windows App Paths, and validated Start Menu Shell Link shortcuts
+- Conservative executable-target validation and MSI inventory deduplication by ProductCode
+- Application metadata lookup, inventory audit, and CSV/JSON export
+- Launching installed applications through the selected prefix runtime
 - Installation and execution logs
-- Basic desktop shortcut integration
+- Linux desktop-entry integration for discovered Wine launchers
 
 Current CLI examples documented in the repository:
 
@@ -1359,3 +1360,19 @@ inventing EMWAT-specific protocol behavior.
 - Continue with explicit inventory/export presentation of secondary registry identifiers, then design safe prefix backup/restore and migration.
 - Continue cross-distribution runtime/backend validation before starting Winux Desktop or Winux OS.
 - COM/OLE, Office automation, genuine Windows services, and printing remain application-specific integration work; this PR does not change those compatibility boundaries.
+
+## 2026-11-16 - Application discovery resilience
+
+### Verified repository state
+
+- Main is at `002365c5a3e12c18a59e2e33df22e0cb8149e8ab` before this follow-up.
+- Registry uninstall entries are supplemented by Windows App Paths registrations and validated Start Menu `.lnk` targets.
+- App Paths candidates require an existing `.exe` resolved inside the prefix's real `drive_c`; Start Menu targets and shortcut files are independently revalidated before inclusion.
+- Registry `DisplayIcon` resources such as `.ico` and `.dll` are not treated as launch targets.
+- CI run 247 for commit `197b1a24a417a1bca3d283e76f6330e0db99df92` completed successfully, including all three test groups and the package job.
+
+### Follow-up hardening
+
+- App Paths is an optional enrichment source. A registry query timeout or process-launch failure must not discard applications already found in the primary uninstall inventory.
+- Added regression coverage for preserving the uninstall inventory when App Paths queries time out.
+- This remains repository/CI validation; it does not prove arbitrary Windows applications or real Wine environments work on the user's machine.

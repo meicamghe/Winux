@@ -1,5 +1,6 @@
 import csv
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -130,6 +131,32 @@ HKEY_CURRENT_USER\\Software\\App\\Two
         )
         self.assertEqual(
             self.manager._parse_app_paths(output, self.prefix_path), []
+        )
+
+    def test_list_keeps_uninstall_inventory_when_app_paths_query_times_out(self):
+        records = [{
+            "registry_key": r"HKEY_LOCAL_MACHINE\\Software\\App\\Example",
+            "registry_id": "Example",
+            "DisplayName": "Example App",
+        }]
+        self.runtime.query_registry.side_effect = subprocess.TimeoutExpired(
+            cmd=["wine", "reg", "query"], timeout=60
+        )
+        with (
+            patch.object(self.manager, "_query_registry", return_value=records),
+            patch(
+                "winux.core.applications.DesktopManager.discover_start_menu_shortcuts",
+                return_value={"shortcuts": []},
+            ),
+        ):
+            applications = self.manager.list("test-prefix")
+
+        self.assertEqual(len(applications), 1)
+        self.assertEqual(applications[0]["DisplayName"], "Example App")
+        self.assertEqual(applications[0]["executable_status"], "not_registered")
+        self.assertEqual(
+            self.runtime.query_registry.call_count,
+            len(self.manager.APP_PATHS_KEYS),
         )
 
     def test_list_deduplicates_registry_records_and_resolves_paths(self):
