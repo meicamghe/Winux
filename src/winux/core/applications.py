@@ -298,8 +298,10 @@ class ApplicationManager:
             executable_key = str(executable)
             if executable_key in known_executables:
                 continue
-            shortcut_path = Path(shortcut["shortcut"])
             try:
+                shortcut_path = Path(shortcut["shortcut"]).resolve(strict=True)
+                if shortcut_path.suffix.casefold() != ".lnk" or not shortcut_path.is_file():
+                    continue
                 relative_shortcut = shortcut_path.relative_to(
                     drive_c
                 ).as_posix()
@@ -364,6 +366,7 @@ class ApplicationManager:
             "executable_status",
             "registry_id",
             "registry_key",
+            "discovery_source",
         ]
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
