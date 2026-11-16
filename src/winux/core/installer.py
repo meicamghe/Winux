@@ -333,14 +333,28 @@ class Installer:
                 f"Unsupported installer architecture: {installer_architecture}"
             )
 
+    @staticmethod
+    def _validate_installer_arguments(arguments):
+        if arguments is None:
+            return []
+        if not isinstance(arguments, (list, tuple)):
+            raise TypeError("Installer arguments must be a list or tuple of strings")
+        if any(not isinstance(argument, str) for argument in arguments):
+            raise TypeError("Installer arguments must contain only strings")
+        if any("\\x00" in argument for argument in arguments):
+            raise ValueError("Installer arguments must not contain NUL characters")
+        return list(arguments)
+
     def install(
         self,
         installer_file,
         prefix_name,
         timeout=3600,
         verification_profile=None,
+        installer_args=None,
     ):
         self._validate_timeout(timeout)
+        installer_args = self._validate_installer_arguments(installer_args)
 
         if verification_profile is not None:
             self.verification_manager.validate_profile(
@@ -435,12 +449,17 @@ class Installer:
                     log.flush()
 
                     try:
+                        install_options = {
+                            "stdout": log,
+                            "stderr": subprocess.STDOUT,
+                            "timeout": timeout,
+                        }
+                        if installer_args:
+                            install_options["args"] = installer_args
                         result = runtime.install(
                             prefix_path,
                             source,
-                            stdout=log,
-                            stderr=subprocess.STDOUT,
-                            timeout=timeout,
+                            **install_options,
                         )
 
                         if result.returncode != 0:
@@ -691,6 +710,16 @@ class Installer:
                     f"Application #{index} has an unsupported installer type"
                 )
 
+            installer_args = item.get("installer_args")
+            try:
+                installer_args = self._validate_installer_arguments(
+                    installer_args
+                )
+            except (TypeError, ValueError) as error:
+                raise ValueError(
+                    f"Application #{index} has invalid installer_args: {error}"
+                ) from error
+
             verification_profile = item.get("verification_profile")
 
             if verification_profile is not None:
@@ -708,6 +737,7 @@ class Installer:
                 "file": str(source),
                 "timeout": timeout,
                 "verification_profile": verification_profile,
+                "installer_args": installer_args,
             })
 
         results = []
@@ -719,6 +749,7 @@ class Installer:
                     prefix_name=prefix_name,
                     timeout=item["timeout"],
                     verification_profile=item["verification_profile"],
+                    installer_args=item["installer_args"],
                 )
 
                 results.append({
