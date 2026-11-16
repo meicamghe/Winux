@@ -78,6 +78,13 @@ for architecture in x86 x64; do
   (cd "$work_dir" && wixl -a "$architecture" -o "fixture-$architecture.msi" fixture.wxs)
   msi="$work_dir/fixture-$architecture.msi"
   echo "MSI SUMMARY: $(msiinfo suminfo "$msi" | tr "\n" ";")"
+  echo "MSI REGISTRY TABLE ($architecture):"
+  msiinfo export "$msi" Registry || {
+    echo "FAIL: unable to inspect MSI Registry table" >&2
+    exit 1
+  }
+  echo "MSI COMPONENT TABLE ($architecture):"
+  msiinfo export "$msi" Component
   echo "MSI FIXTURE FILES:"
   ls -la "$work_dir"
   msiinfo suminfo "$msi" | grep -Eiq "Template.*(Intel|x64)"
