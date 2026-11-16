@@ -1,8 +1,6 @@
 # Winux
 
-**A Linux compatibility platform for running Windows applications.**
-
-Winux is an open-source project that aims to make running Windows applications on Linux easier through an integrated compatibility engine, application management, and desktop integration.
+**A Linux compatibility platform for running Windows applications.** Winux is an open-source project that aims to make running Windows applications on Linux easier through an integrated compatibility engine, application management, and desktop integration.
 
 ## Project Vision
 
@@ -157,6 +155,7 @@ The following milestones represent the planned development direction:
 - [ ] Winux OS image and installer
 
 - [Application compatibility requirements and EMWAT-derived Engine gaps](docs/COMPATIBILITY-REQUIREMENTS.md)
+- [Wine upstream integration policy and compatibility boundaries](docs/WINE-INTEGRATION.md)
 
 ## Compatibility
 
@@ -214,7 +213,6 @@ Manager services are fully supported by Wine.
 The service subsystem is an initial implementation. Actual compatibility
 with specific Windows services and applications must be tested separately.
 
-
 ## Launching Applications with Arguments
 
 Pass document paths or other application arguments after the application ID, using
@@ -226,7 +224,6 @@ winux app run --prefix office ExampleApp -- "C:\\Users\\Public\\Documents\\repor
 
 Arguments are passed as individual process arguments without shell expansion.
 Winux rejects non-string values and NUL characters before starting the process.
-
 
 ## Installer Arguments
 
