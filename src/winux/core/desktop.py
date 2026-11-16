@@ -102,14 +102,33 @@ class DesktopManager:
 
         for entry in self.applications_dir.rglob("*.desktop"):
             try:
+                if entry.is_symlink() or not entry.is_file():
+                    continue
                 content = entry.read_text(encoding="utf-8")
-
-                if prefix_path not in content:
+                declared_prefix = self._launcher_prefix(content)
+                if declared_prefix is None:
+                    continue
+                try:
+                    resolved_prefix = Path(declared_prefix).resolve(strict=True)
+                except OSError:
+                    continue
+                if str(resolved_prefix) != prefix_path:
                     continue
 
                 destination = self.desktop_dir / entry.name
 
-                if destination.resolve() != entry.resolve():
+                if destination.exists() or destination.is_symlink():
+                    if destination.is_symlink() or not destination.is_file():
+                        errors.append(
+                            f"{entry.name}: destination exists and is not a regular file"
+                        )
+                        continue
+                    if destination.read_text(encoding="utf-8") != content:
+                        errors.append(
+                            f"{entry.name}: destination already exists; refusing to overwrite"
+                        )
+                        continue
+                elif destination.resolve() != entry.resolve():
                     shutil.copy2(entry, destination)
 
                 destination.chmod(
