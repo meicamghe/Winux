@@ -715,3 +715,49 @@ class ApplicationUninstallCliTests(unittest.TestCase):
         manager.uninstall.assert_called_once_with(
             "test-prefix", "Example", timeout=300
         )
+
+
+class ApplicationRegistryViewCliTests(unittest.TestCase):
+    @patch("winux.core.applications.ApplicationManager")
+    def test_app_list_displays_all_registry_ids_and_keys(self, manager_class):
+        manager = manager_class.return_value
+        manager.list.return_value = [{
+            "DisplayName": "MSI Example",
+            "registry_id": "native-id",
+            "registry_ids": ["native-id", "wow-id"],
+            "registry_keys": ["native-key", "wow-key"],
+        }]
+
+        with patch.object(sys, "argv", ["winux", "app", "list", "--prefix", "office"]):
+            with patch("builtins.print") as output:
+                main()
+
+        rendered = str(output.call_args_list)
+        self.assertIn("native-id", rendered)
+        self.assertIn("wow-id", rendered)
+        self.assertIn("native-key", rendered)
+        self.assertIn("wow-key", rendered)
+
+    @patch("winux.core.applications.ApplicationManager")
+    def test_app_info_displays_uninstall_commands_for_each_registry_view(self, manager_class):
+        manager = manager_class.return_value
+        manager.info.return_value = {
+            "DisplayName": "MSI Example",
+            "registry_id": "native-id",
+            "registry_key": "native-key",
+            "registry_ids": ["native-id", "wow-id"],
+            "registry_keys": ["native-key", "wow-key"],
+            "uninstall_commands": [
+                {"registry_id": "native-id", "quiet": None, "normal": "msiexec /I{ABC}"},
+                {"registry_id": "wow-id", "quiet": "msiexec /x {ABC} /qn", "normal": None},
+            ],
+        }
+
+        with patch.object(sys, "argv", ["winux", "app", "info", "--prefix", "office", "native-id"]):
+            with patch("builtins.print") as output:
+                main()
+
+        rendered = str(output.call_args_list)
+        self.assertIn("wow-id", rendered)
+        self.assertIn("wow-key", rendered)
+        self.assertIn("msiexec /x {ABC} /qn", rendered)
