@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path, PureWindowsPath
 
 from winux.core.prefix import PrefixManager
+from winux.core.desktop import DesktopManager
 from winux.runtime.manager import RuntimeManager
 
 
@@ -273,6 +274,56 @@ class ApplicationManager:
                 known_executables.add(executable)
                 applications.append(candidate)
 
+        # Windows Start Menu shortcuts provide another explicit launch-target
+        # source. Revalidate containment here before exposing candidates.
+        try:
+            shortcut_result = DesktopManager.discover_start_menu_shortcuts(
+                prefix_path
+            )
+        except (OSError, ValueError):
+            shortcut_result = {"shortcuts": []}
+
+        drive_c = (Path(prefix_path) / "drive_c").resolve(strict=True)
+        for shortcut in shortcut_result.get("shortcuts", []):
+            try:
+                executable = Path(shortcut["executable_path"]).resolve(strict=True)
+                executable.relative_to(drive_c)
+            except (KeyError, OSError, ValueError):
+                continue
+            if (
+                executable.suffix.casefold() != ".exe"
+                or not executable.is_file()
+            ):
+                continue
+            executable_key = str(executable)
+            if executable_key in known_executables:
+                continue
+            try:
+                shortcut_path = Path(shortcut["shortcut"]).resolve(strict=True)
+                if shortcut_path.suffix.casefold() != ".lnk" or not shortcut_path.is_file():
+                    continue
+                relative_shortcut = shortcut_path.relative_to(
+                    drive_c
+                ).as_posix()
+            except (OSError, ValueError):
+                # A shortcut can disappear between discovery and inventory.
+                continue
+            registry_id = f"start-menu:{relative_shortcut}"
+            known_executables.add(executable_key)
+            applications.append({
+                "registry_key": f"StartMenu\\{relative_shortcut}",
+                "registry_id": registry_id,
+                "DisplayName": shortcut.get("name") or executable.stem,
+                "DisplayVersion": None,
+                "Publisher": None,
+                "InstallLocation": str(executable.parent),
+                "install_path": str(executable.parent),
+                "DisplayIcon": str(executable),
+                "executable_path": str(executable),
+                "executable_status": "ready",
+                "discovery_source": "start_menu",
+            })
+
         return sorted(
             applications,
             key=lambda item: item.get("DisplayName", "").lower(),
@@ -316,6 +367,7 @@ class ApplicationManager:
             "executable_status",
             "registry_id",
             "registry_key",
+            "discovery_source",
         ]
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
