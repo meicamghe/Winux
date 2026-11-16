@@ -41,6 +41,20 @@ Section "Install"
   File "fixture.exe"
   CreateDirectory "$SMPROGRAMS\\WinuxFixture"
   CreateShortCut "$SMPROGRAMS\\WinuxFixture\\Winux Fixture.lnk" "$INSTDIR\\fixture.exe"
+  WriteUninstaller "$INSTDIR\\uninstall.exe"
+  WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinuxFixture" "DisplayName" "Winux EXE Fixture"
+  WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinuxFixture" "DisplayIcon" "$INSTDIR\\fixture.exe"
+  WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinuxFixture" "InstallLocation" "$INSTDIR"
+  WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinuxFixture" "UninstallString" '"$INSTDIR\\uninstall.exe"'
+SectionEnd
+
+Section "Uninstall"
+  Delete "$INSTDIR\\fixture.exe"
+  Delete "$INSTDIR\\uninstall.exe"
+  RMDir "$INSTDIR"
+  Delete "$SMPROGRAMS\\WinuxFixture\\Winux Fixture.lnk"
+  RMDir "$SMPROGRAMS\\WinuxFixture"
+  DeleteRegKey HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinuxFixture"
 SectionEnd
 EOF
 
@@ -76,6 +90,28 @@ for architecture in x86 x64; do
     WINEPREFIX="$prefix_path" WINEDEBUG=-all timeout --signal=TERM --kill-after=5s 45s wine "$installed"
   )
   test -s "$(dirname "$installed")/fixture-ran.txt"
+
+  echo "UNINSTALL: $architecture EXE application through Winux"
+  PREFIX_NAME="$prefix" EXPECTED_EXECUTABLE="$installed" python - <<'PY'
+import os
+from pathlib import Path
+from winux.core.applications import ApplicationManager
+
+manager = ApplicationManager()
+prefix = os.environ["PREFIX_NAME"]
+expected = Path(os.environ["EXPECTED_EXECUTABLE"]).resolve()
+apps = manager.list(prefix)
+matches = [app for app in apps if app.get("DisplayName") == "Winux EXE Fixture"]
+if len(matches) != 1:
+    raise SystemExit(f"Expected one EXE uninstall record, found {len(matches)}")
+manager.uninstall(prefix, matches[0]["registry_id"], timeout=120)
+if expected.exists():
+    raise SystemExit(f"Uninstaller left executable behind: {expected}")
+remaining = [app for app in manager.list(prefix) if app.get("DisplayName") == "Winux EXE Fixture"]
+if remaining:
+    raise SystemExit(f"Stale EXE inventory record remains: {remaining}")
+print("PASS: EXE uninstall removed files and registry inventory")
+PY
 
   echo "DISCOVER: Start Menu shortcut for $architecture application"
   rm -f "$(dirname "$installed")/fixture-ran.txt"
