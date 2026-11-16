@@ -1148,3 +1148,38 @@ inventing EMWAT-specific protocol behavior.
   applications whose registry icon points to a resource still need a verified
   launch target from another source (for example, validated Start Menu links).
 - Hosted CI verification is pending.
+
+
+## 2026-11-16 - Application discovery and desktop launcher validation
+
+### Implemented
+
+- Merged PR #2: installed-application inventory now reports why a registered
+  executable target is unavailable; CLI list/info and JSON/CSV export expose
+  the diagnostic status.
+- Merged PR #3: added machine, 32-bit-view, and per-user Windows App Paths
+  discovery. Only existing EXE targets safely contained in the selected
+  prefix are accepted; duplicate targets are removed.
+- Merged PR #4: Wine desktop launchers are matched by their parsed and
+  resolved WINEPREFIX, not by a substring in file contents. Symlinked source
+  launchers are ignored and conflicting user desktop files are not overwritten.
+
+### Verification
+
+- PR #2 Run 248 passed all three test groups and package build/CLI smoke test.
+- PR #3 Run 251 passed core, runtime, services, package build, and CLI smoke test.
+- PR #4 Run 252 passed core, runtime, services, package build, and CLI smoke test.
+- Main Run 249 passed after PR #2 merge. Main Run 253 was cancelled by the
+  subsequent PR #4 merge; Main Run 254 is the current post-merge verification.
+- These hosted tests do not launch actual Windows applications or prove
+  x86/x64 Wine compatibility.
+
+### Next priorities
+
+1. Validate Run 254 and keep the main branch green.
+2. Implement tested Windows Start Menu Shell Link parsing, with strict path
+   containment and no arbitrary executable guessing.
+3. Build an integration matrix for x86/x64 prefixes and installers across
+   supported Wine/WoW64 configurations.
+4. Validate launch behavior against real applications, recording failures
+   separately from parser and package test results.

@@ -1,34 +1,63 @@
 # Application discovery and launch-target diagnostics
 
-Winux currently inventories installed applications from the Windows uninstall
-registry keys. The `DisplayIcon` value is only a hint: it may identify an icon,
-DLL, or other resource rather than the program entry point.
+Winux inventories installed applications from Windows uninstall registry keys
+and registered Windows App Paths entries. It also discovers Wine-generated
+desktop launchers for a selected prefix.
+
+## Uninstall registry inventory
+
+The uninstall registry remains the primary source for application identity,
+version, publisher, install location, and uninstall command. `DisplayIcon` is
+only a hint: it may identify an icon, DLL, or other resource rather than the
+program entry point.
+
+## Windows App Paths
+
+Winux queries machine-wide, 32-bit-view, and per-user App Paths roots. It
+interprets each registration's default value as a candidate executable and
+accepts it only when the value maps to an existing `.exe` within the selected
+prefix. Identical executable targets are deduplicated against uninstall
+inventory records.
+
+The App Paths parser is separate from uninstall registry parsing because the
+default registry value has different semantics. Missing files, non-EXE
+resources, paths outside the prefix, and invalid drive paths are not exposed
+as launch targets.
 
 ## Launch-target status
 
-Each inventory record exposes:
+Inventory records expose a diagnostic `executable_status`:
 
 | Status | Meaning |
 |---|---|
-| `ready` | `DisplayIcon` resolves to an existing `.exe` inside the prefix |
-| `not_registered` | No `DisplayIcon` value is registered |
-| `invalid_registry_path` | The value cannot be safely mapped inside the prefix |
-| `resource_not_executable` | The value points to a non-`.exe` resource |
-| `executable_missing` | The value names an `.exe`, but that file is absent |
+| `ready` | A registered candidate resolves to an existing `.exe` inside the prefix |
+| `not_registered` | No `DisplayIcon` launch candidate is registered |
+| `invalid_registry_path` | The registered path cannot be safely mapped inside the prefix |
+| `resource_not_executable` | The registered value points to a non-`.exe` resource |
+| `executable_missing` | The registered value names an `.exe`, but that file is absent |
 
-These statuses are diagnostic, not compatibility claims. In particular,
-`ready` confirms only that a candidate file exists; it does not prove that
-the executable is the application's primary entry point or that it runs.
+These statuses are diagnostic, not compatibility claims. `ready` confirms
+only that a candidate file exists; it does not prove that the executable is
+the application's primary entry point or that it runs.
 
-## Next discovery sources
+## Wine desktop launchers
 
-Add sources incrementally and keep each candidate independently validated:
+Winux parses the `Exec` field of Wine-generated desktop entries without
+executing the command. It extracts the declared `WINEPREFIX` and compares its
+resolved path exactly with the requested prefix; substring matches are not
+accepted. Symlinked source entries and malformed launchers are ignored.
 
-1. Wine-generated desktop launchers, with strict prefix matching and safe
-   parsing of the executable command.
-2. Windows Start Menu shortcuts, after a tested Shell Link parser is available.
-3. Windows App Paths registry entries, with explicit handling of default
-   registry values and per-user versus machine scope.
+Desktop integration uses the same exact-prefix validation. If a destination
+already exists and differs from the source, Winux refuses to overwrite it.
+This protects unrelated user-owned desktop entries.
+
+## Remaining discovery work
+
+1. Parse Windows Start Menu `.lnk` files using a tested Shell Link parser.
+2. Improve candidate association where App Paths registrations and uninstall
+   records refer to the same product under different names.
+3. Add real Wine/WoW64 integration tests for x86 and x64 launchers and
+   installers on supported distributions.
 
 Do not recursively select an arbitrary `.exe` from an install directory:
 large applications commonly contain helpers, updaters, crash handlers, and
@@ -36,6 +65,7 @@ uninstallers. Ambiguous candidates must remain unresolved instead of guessing.
 
 ## Validation boundary
 
-Unit tests cover path containment and status classification. Hosted CI does
-not launch Wine applications. Real x86/x64 launch validation remains a
-separate integration test on supported Wine/WoW64 builds.
+Hosted CI covers parsing, path containment, status classification, launcher
+prefix matching, and safe desktop-file collision handling. Hosted CI does not
+launch Wine applications or create real Windows prefixes. Real x86/x64
+runtime compatibility remains a separate integration requirement.
