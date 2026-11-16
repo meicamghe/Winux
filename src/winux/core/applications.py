@@ -329,6 +329,27 @@ class ApplicationManager:
             key=lambda item: item.get("DisplayName", "").lower(),
         )
 
+    def audit(self, prefix_name):
+        """Summarize application inventory and identify missing executable targets."""
+        applications = self.list(prefix_name)
+        stale = [
+            application
+            for application in applications
+            if application.get("executable_status") == "executable_missing"
+        ]
+        counts = {}
+        for application in applications:
+            status = application.get("executable_status", "unknown")
+            counts[status] = counts.get(status, 0) + 1
+
+        return {
+            "prefix": prefix_name,
+            "total": len(applications),
+            "stale_count": len(stale),
+            "status_counts": counts,
+            "stale": stale,
+        }
+
     def search(self, prefix_name, query):
         if not isinstance(query, str) or not query.strip():
             raise ValueError("Search query must not be empty")
