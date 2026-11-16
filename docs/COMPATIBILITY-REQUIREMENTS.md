@@ -150,3 +150,23 @@ Every Wine subprocess receives the selected prefix as an absolute WINEPREFIX pat
 ## Wine environment architecture isolation
 
 Wine subprocesses use the explicitly selected absolute `WINEPREFIX`. An inherited shell-level `WINEARCH` is removed from ordinary Wine operations to avoid leaking an unrelated prefix-creation setting. Prefix initialization sets `WINEARCH` explicitly for the selected prefix. This environment isolation does not by itself prove that a given Wine build supports every x86 or x64 application; verify the actual WoW64 runtime and application workflow.
+
+## x86/x64 WoW64 validation update (2026-11-16)
+
+Winux's policy/unit-test matrix now exercises x86 and x64 installer/application
+architecture selection as separate CI legs, both targeting a win64 WoW64
+prefix. A separate opt-in runtime script compiles PE32 and PE32+ smoke
+executables and runs them in one disposable win64 prefix:
+scripts/validate-wine-wow64.sh.
+
+The hosted matrix verifies Winux's architecture policy only. The real Wine
+smoke script has not yet been executed on a Wine-enabled host, so no claim of
+actual x86/x64 application execution is made.
+
+## Windows Start Menu discovery update (2026-11-16)
+
+A conservative Shell Link parser and Start Menu discovery API are now
+implemented. It accepts only existing local EXE targets contained in the
+selected prefix. Relative, network, IDList-only, malformed, symlinked, and
+out-of-prefix targets are ignored. Candidate integration into the main
+application inventory remains pending.

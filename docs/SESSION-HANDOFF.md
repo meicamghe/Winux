@@ -1183,3 +1183,37 @@ inventing EMWAT-specific protocol behavior.
    supported Wine/WoW64 configurations.
 4. Validate launch behavior against real applications, recording failures
    separately from parser and package test results.
+
+## 2026-11-16 - WoW64 matrix and Start Menu discovery
+
+### Merged work
+
+- PR #5 merged documentation/handoff updates after all four CI jobs passed.
+- PR #7 added a two-leg x86/x64 compatibility policy matrix. Both matrix legs,
+  all test groups, and package build passed in Run 269.
+- PR #8 added scripts/validate-wine-wow64.sh and
+  docs/WOW64-RUNTIME-VALIDATION.md. The script builds PE32 and PE32+
+  smoke binaries, initializes a disposable win64 prefix, and attempts to run
+  both in the same Wine environment. Hosted CI validated packaging only; the
+  script itself was not executed because this environment has no Wine runner.
+- PR #6 added safe Windows Shell Link parsing and Start Menu shortcut
+  discovery. It also corrected quoted desktop Exec parsing. Run 274 passed
+  core, runtime, services, and package checks.
+
+### Current main verification
+
+- PR #7 merged as b1956bc1f7faac2045acd11c6c5117359eca578c.
+- PR #8 merged as 28a6f953e133f16dedc47e2d75218eba4e6c432b.
+- PR #6 merged as 981142a73c1bed845064a8dec2b12b9d6a4fe983.
+- Post-merge Main Run 43812489764 is in progress; Main Run 43812515550 is
+  pending. Do not treat either as green until all jobs finish.
+
+### Next parallel priorities
+
+1. Integrate validated Start Menu candidates into application inventory with
+   executable-path deduplication and product association.
+2. Execute the real WoW64 smoke script on a Wine-enabled host; capture Wine
+   build/version and x86/x64 outcomes independently.
+3. Extend installer regression fixtures for MSI and PE architecture
+   identification and reject mismatched application payloads where detectable.
+4. Validate real application launch, not only existence of a registered EXE.
