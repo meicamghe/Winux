@@ -183,6 +183,45 @@ HKEY_CURRENT_USER\\Software\\App\\Two
             applications = self.manager.list("test-prefix")
         self.assertEqual(applications[0]["executable_path"], str(app_exe))
 
+    def test_list_reports_why_executable_is_unavailable(self):
+        app_dir = self.prefix_path / "drive_c" / "Program Files" / "Example"
+        app_dir.mkdir(parents=True)
+        icon = app_dir / "app.ico"
+        icon.touch()
+        records = [{
+            "registry_key": r"HKEY_LOCAL_MACHINE\\Software\\App\\Example",
+            "registry_id": "Example",
+            "DisplayName": "Example App",
+            "DisplayIcon": r"C:\\Program Files\\Example\\app.ico",
+        }]
+        with patch.object(self.manager, "_query_registry", return_value=records):
+            application = self.manager.list("test-prefix")[0]
+        self.assertIsNone(application["executable_path"])
+        self.assertEqual(
+            application["executable_status"], "resource_not_executable"
+        )
+
+    def test_list_marks_missing_executable(self):
+        records = [{
+            "registry_key": r"HKEY_LOCAL_MACHINE\\Software\\App\\Example",
+            "registry_id": "Example",
+            "DisplayName": "Example App",
+            "DisplayIcon": r"C:\\Program Files\\Example\\app.exe",
+        }]
+        with patch.object(self.manager, "_query_registry", return_value=records):
+            application = self.manager.list("test-prefix")[0]
+        self.assertEqual(application["executable_status"], "executable_missing")
+
+    def test_list_marks_missing_display_icon(self):
+        records = [{
+            "registry_key": r"HKEY_LOCAL_MACHINE\\Software\\App\\Example",
+            "registry_id": "Example",
+            "DisplayName": "Example App",
+        }]
+        with patch.object(self.manager, "_query_registry", return_value=records):
+            application = self.manager.list("test-prefix")[0]
+        self.assertEqual(application["executable_status"], "not_registered")
+
     def test_info_finds_application_by_registry_id_case_insensitively(self):
         expected = {"registry_id": "Example", "DisplayName": "Example App"}
         with patch.object(self.manager, "list", return_value=[expected]):
