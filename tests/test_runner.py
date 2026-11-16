@@ -96,6 +96,7 @@ class ApplicationRunnerTests(unittest.TestCase):
         self.runtime.run.assert_called_once_with(
             self.prefix_path,
             self.executable,
+            args=[],
             cwd=str(self.executable.parent),
         )
         process.wait.assert_called_once_with()
@@ -212,6 +213,7 @@ class ApplicationRunnerTests(unittest.TestCase):
 
         self.assertEqual(args, (self.prefix_path, self.executable))
         self.assertEqual(kwargs["cwd"], str(self.executable.parent))
+        self.assertEqual(kwargs["args"], [])
         self.assertEqual(kwargs["stdin"], -3)
         self.assertEqual(kwargs["stderr"], -2)
         self.assertTrue(kwargs["start_new_session"])
@@ -311,6 +313,48 @@ class ApplicationRunnerTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             self.runner.run("test-prefix", "Missing")
 
+        self.runtime.run.assert_not_called()
+
+    def test_run_passes_application_arguments_without_shell_expansion(self):
+        arguments = ["document with spaces.docx", "--readonly", "$(touch unsafe)"]
+        self.runner.run("test-prefix", "Example", args=arguments)
+
+        self.assertEqual(
+            self.runtime.run.call_args.kwargs["args"],
+            arguments,
+        )
+
+    def test_run_foreground_passes_application_arguments(self):
+        process = Mock()
+        process.wait.return_value = 0
+        self.runtime.run.return_value = process
+        arguments = ["report.docx", "--print"]
+
+        self.runner.run_foreground(
+            "test-prefix",
+            "Example",
+            args=arguments,
+        )
+
+        self.assertEqual(
+            self.runtime.run.call_args.kwargs["args"],
+            arguments,
+        )
+
+    def test_application_arguments_reject_invalid_values(self):
+        invalid_values = (
+            "not-a-list",
+            ["valid", 42],
+            ["bad\\x00argument"],
+        )
+        for arguments in invalid_values:
+            with self.subTest(arguments=arguments):
+                with self.assertRaises((TypeError, ValueError)):
+                    self.runner.run(
+                        "test-prefix",
+                        "Example",
+                        args=arguments,
+                    )
         self.runtime.run.assert_not_called()
 
 
