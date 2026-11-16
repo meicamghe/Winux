@@ -25,6 +25,7 @@ jobs:
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
+          # wixl is packaged separately from msitools on Ubuntu 24.04.
           sudo apt-get install -y --no-install-recommends \
             wine wine64 wine32:i386 msitools wixl \
             gcc-mingw-w64-i686 gcc-mingw-w64-x86-64
