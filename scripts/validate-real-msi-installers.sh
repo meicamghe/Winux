@@ -43,7 +43,6 @@ cat > "$work_dir/fixture.wxs.in" <<'EOF'
     <Feature Id="Complete" Title="Winux MSI Fixture" Level="1">
       <ComponentRef Id="MainComponent" />
       <ComponentRef Id="ArpComponent" />
-      <ComponentRef Id="ArpComponent" />
     </Feature>
     <DirectoryRef Id="INSTALLDIR">
       <Component Id="MainComponent" Guid="*" Win64="@WIN64@">
