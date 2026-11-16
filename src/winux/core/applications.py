@@ -156,7 +156,7 @@ class ApplicationManager:
                 or not executable.is_file()
             ):
                 return
-            registry_id = current_key.rsplit("\\\\", 1)[-1]
+            registry_id = current_key.rstrip("\\\\").rsplit("\\\\", 1)[-1]
             candidates.append({
                 "registry_key": current_key,
                 "registry_id": registry_id,
@@ -256,10 +256,16 @@ class ApplicationManager:
             if item.get("executable_path")
         }
         for key in self.APP_PATHS_KEYS:
-            result = self._query_registry(prefix_path, key, runtime=runtime)
-            # Registry query parsing for App Paths is intentionally separate:
-            # the default value is the executable, not an uninstall record.
-            raw_output = getattr(result, "stdout", "")
+            result = runtime.query_registry(
+                prefix_path,
+                key,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            # App Paths stores its executable in the default registry value,
+            # so it needs a parser distinct from uninstall inventory records.
+            raw_output = result.stdout if result.returncode == 0 else ""
             for candidate in self._parse_app_paths(raw_output, prefix_path):
                 executable = candidate["executable_path"]
                 if executable in known_executables:
