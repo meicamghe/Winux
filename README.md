@@ -39,6 +39,39 @@ Both x86 and x64 Windows applications are considered in the compatibility design
 
 Actual application compatibility depends on Wine, application requirements, and the Linux environment.
 
+
+## Project Maturity Map
+
+Winux is being developed in six maturity areas. The percentages below are
+**indicative engineering estimates**, not automated coverage metrics, release
+readiness scores, or guarantees that arbitrary Windows applications will work.
+They summarize the current repository state and the remaining work.
+
+| Area | Estimated maturity | Current position |
+|---|---:|---|
+| **Engine foundation** | **90%** | Core runtime abstraction, Wine integration, prefix lifecycle, diagnostics, and platform boundaries are in place. More runtime implementations and broader distribution validation remain. |
+| **Application lifecycle** | **80%** | EXE/MSI installation, application discovery, launch, uninstall safeguards, inventory audit, process handling, managed services, and desktop-entry integration exist. Backup/restore, migration, and broader end-to-end lifecycle coverage remain. |
+| **Compatibility and reliability** | **65%** | Automated tests, x86/x64 WoW64 smoke validation, and selected real-installer integration tests exist. Application-specific workflows, COM/OLE, Office automation, genuine Windows services, printing, and recovery still need dedicated validation or adapters. |
+| **Linux distribution portability** | **30%** | Runtime and service backend boundaries are being separated from platform-specific implementations. Multiple distro/package-manager backends and a repeatable cross-distro test matrix remain. |
+| **Winux Desktop** | **0%** | Product direction and UI scope are identified; the graphical application manager and settings interface have not been implemented. |
+| **Winux OS** | **0%** | The installable image/distribution is a later stage and has not been started. |
+
+### Development sequence
+
+1. **Harden the Engine** — complete lifecycle safety, runtime selection, diagnostics,
+   and reproducible x86/x64 installer and launch validation.
+2. **Prove portability** — implement and test platform backends across multiple
+   Linux distributions before depending on one distro's package manager.
+3. **Build Winux Desktop** — add the graphical application manager and settings
+   interface on top of stable Engine APIs.
+4. **Package Winux OS** — create the bootable image and installer only after the
+   Engine and Desktop are dependable.
+
+**Current focus: Engine reliability and cross-distribution portability.**
+The Desktop and OS stages are intentionally deferred; their 0% values mean
+implementation has not started, not that they are abandoned.
+
+
 ## Architecture
 
 ```text
