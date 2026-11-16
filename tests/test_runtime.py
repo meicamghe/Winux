@@ -290,5 +290,54 @@ class RuntimeTests(unittest.TestCase):
             manager.set_default("unavailable-runtime")
 
 
+
+    def test_wine_install_forwards_arguments_for_exe_and_msi(self):
+        runtime = WineRuntime()
+        for installer, tool, expected in (
+            (
+                Path("/tmp/setup.exe"),
+                "wine",
+                ["/usr/bin/wine", "/tmp/setup.exe", "/S", "/D=C:\\Apps\\Example"],
+            ),
+            (
+                Path("/tmp/setup.msi"),
+                "msiexec",
+                ["/usr/bin/msiexec", "/i", "/tmp/setup.msi", "/qn", "/norestart"],
+            ),
+        ):
+            with self.subTest(installer=installer.suffix):
+                with (
+                    patch.object(runtime, "_find", return_value=f"/usr/bin/{tool}"),
+                    patch("winux.runtime.wine.subprocess.run") as run,
+                ):
+                    runtime.install(
+                        Path("/prefix"),
+                        installer,
+                        args=(
+                            ["/S", "/D=C:\\Apps\\Example"]
+                            if installer.suffix == ".exe"
+                            else ["/qn", "/norestart"]
+                        ),
+                        timeout=60,
+                    )
+
+                self.assertEqual(run.call_args.args[0], expected)
+                self.assertEqual(run.call_args.kwargs["env"]["WINEPREFIX"], "/prefix")
+                self.assertEqual(run.call_args.kwargs["timeout"], 60)
+
+    def test_wine_install_rejects_invalid_argument_collections(self):
+        runtime = WineRuntime()
+        for arguments in ("not-a-list", ["/S", 3], ["bad\\x00argument"]):
+            with self.subTest(arguments=arguments):
+                with patch("winux.runtime.wine.subprocess.run") as run:
+                    with self.assertRaises((TypeError, ValueError)):
+                        runtime.install(
+                            Path("/prefix"),
+                            Path("/tmp/setup.exe"),
+                            args=arguments,
+                        )
+                run.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
