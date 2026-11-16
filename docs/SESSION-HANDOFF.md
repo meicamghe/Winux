@@ -1217,3 +1217,27 @@ inventing EMWAT-specific protocol behavior.
 3. Extend installer regression fixtures for MSI and PE architecture
    identification and reject mismatched application payloads where detectable.
 4. Validate real application launch, not only existence of a registered EXE.
+
+
+## 2026-11-16 - Start Menu inventory and Shell Link hardening
+
+### Implemented
+
+- Integrated validated Windows Start Menu shortcuts into the main application
+  inventory, retaining a distinct discovery source and deduplicating resolved
+  executable targets against existing inventory records.
+- Expanded Shell Link regression coverage for Unicode paths and malformed
+  LinkInfo offsets.
+- Hardened Shell Link parsing so string offsets cannot point into the LinkInfo
+  structure header or outside the declared LinkInfo block.
+- Kept discovery conservative: only validated local EXE targets inside the
+  selected prefix are accepted; ambiguous targets are not guessed.
+
+### Verification boundary
+
+- PR #10 Run 284, PR #11 Run 286, and PR #13 Run 287 passed all configured test
+  groups, WoW64 x86/x64 matrix jobs, and package checks.
+- Main Run 288 was still in progress at the last check.
+- Hosted CI does not prove that arbitrary Windows applications, MSI/EXE
+  installers, services, COM/OLE, printers, or application workflows run
+  successfully under Wine. Real Wine/WoW64 execution remains required.
