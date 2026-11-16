@@ -312,6 +312,40 @@ class InstallerCliTests(unittest.TestCase):
                 )
 
 
+
+class ApplicationRunCliTests(unittest.TestCase):
+    @patch("winux.core.runner.ApplicationRunner.run")
+    def test_run_command_forwards_arguments_after_separator(self, run):
+        run.return_value = {
+            "application": "Example App",
+            "pid": 1234,
+            "process_id": "process-id",
+            "executable": "/prefix/app.exe",
+            "log": "/tmp/app.log",
+        }
+
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "winux", "app", "run",
+                "--prefix", "test-prefix",
+                "Example",
+                "--",
+                "document with spaces.docx",
+                "--readonly",
+            ],
+        ):
+            with patch("builtins.print"):
+                main()
+
+        run.assert_called_once_with(
+            "test-prefix",
+            "Example",
+            args=["document with spaces.docx", "--readonly"],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
 

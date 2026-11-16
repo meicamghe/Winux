@@ -12,6 +12,18 @@ from winux.runtime.manager import RuntimeManager
 
 
 class ApplicationRunner:
+    @staticmethod
+    def _normalize_arguments(args):
+        if args is None:
+            return []
+        if not isinstance(args, (list, tuple)):
+            raise TypeError("Application arguments must be a list or tuple of strings")
+        if any(not isinstance(argument, str) for argument in args):
+            raise TypeError("Application arguments must contain only strings")
+        if any("\x00" in argument for argument in args):
+            raise ValueError("Application arguments must not contain NUL characters")
+        return list(args)
+
     def __init__(self, runtime_manager=None, process_manager=None):
         self.runtime_manager = (
             runtime_manager if runtime_manager is not None else RuntimeManager()
@@ -132,12 +144,13 @@ class ApplicationRunner:
 
         return prefix_path, runtime, application, executable
 
-    def run_foreground(self, prefix_name, application_id):
+    def run_foreground(self, prefix_name, application_id, args=None):
         """Run an installed application and wait for its exit.
 
         Standard streams are inherited so systemd can capture the output.
         This method deliberately does not detach the process.
         """
+        arguments = self._normalize_arguments(args)
         prefix_path, runtime, _application, executable = (
             self._resolve_application(prefix_name, application_id)
         )
@@ -145,12 +158,14 @@ class ApplicationRunner:
         process = runtime.run(
             prefix_path,
             executable,
+            args=arguments,
             cwd=str(executable.parent),
         )
 
         return process.wait()
 
-    def run(self, prefix_name, application_id):
+    def run(self, prefix_name, application_id, args=None):
+        arguments = self._normalize_arguments(args)
         prefix_path, runtime, application, executable = (
             self._resolve_application(prefix_name, application_id)
         )
@@ -162,6 +177,7 @@ class ApplicationRunner:
             process = runtime.run(
                 prefix_path,
                 executable,
+                args=arguments,
                 cwd=str(executable.parent),
                 stdin=-3,
                 stdout=output,

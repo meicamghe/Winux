@@ -28,7 +28,7 @@ Implemented capabilities include:
 - EXE and MSI installer support.
 - Windows application discovery through registry information.
 - Application information retrieval.
-- Launching installed Windows applications.
+- Launching installed Windows applications, including forwarding command-line arguments safely.
 - Installation and execution logging.
 - Linux desktop-entry integration.
 - Validated Windows Start Menu shortcut discovery through a conservative Shell Link parser.
@@ -213,3 +213,16 @@ Manager services are fully supported by Wine.
 
 The service subsystem is an initial implementation. Actual compatibility
 with specific Windows services and applications must be tested separately.
+
+
+## Launching Applications with Arguments
+
+Pass document paths or other application arguments after the application ID, using
+`--` to separate Winux options from arguments intended for the Windows program:
+
+```bash
+winux app run --prefix office ExampleApp -- "C:\\Users\\Public\\Documents\\report.docx" /readonly
+```
+
+Arguments are passed as individual process arguments without shell expansion.
+Winux rejects non-string values and NUL characters before starting the process.

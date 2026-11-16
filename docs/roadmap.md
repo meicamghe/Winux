@@ -48,6 +48,7 @@ The current design uses 64-bit Wine prefixes with WoW64 to support both 32-bit (
 - [x] Discover and launch applications through validated Windows Start Menu shortcuts.
 - [x] Display application details.
 - [x] Launch an installed application in its associated prefix.
+- [x] Forward validated command-line arguments to GUI and foreground application launches.
 - [ ] Add an application manifest/database for Winux-managed installations.
 - [ ] Improve uninstall and repair workflows.
 - [ ] Add integration tests using redistributable test applications.
@@ -62,7 +63,7 @@ The current design uses 64-bit Wine prefixes with WoW64 to support both 32-bit (
 - [x] Validate EXE/MSI signatures and installer architecture metadata before installation.
 - [ ] Detect common missing Wine dependencies and explain them.
 - [ ] Capture process exit status and structured launch diagnostics.
-- [ ] Add per-application environment and launch settings.
+- [ ] Add persistent per-application environment and launch settings.
 - [ ] Handle duplicate application names and shortcut collisions.
 - [x] Test x86 and x64 PE executables in one real WoW64 prefix in hosted CI.
 - [x] Test real x86/x64 NSIS EXE installation, Start Menu discovery, and launch through Winux in hosted CI.
