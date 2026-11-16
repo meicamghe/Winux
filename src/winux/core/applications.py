@@ -17,6 +17,12 @@ class ApplicationManager:
         r"HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall",
     )
 
+    APP_PATHS_KEYS = (
+        r"HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths",
+        r"HKLM\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\App Paths",
+        r"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths",
+    )
+
     FIELDS = {
         "DisplayName",
         "DisplayVersion",
@@ -132,6 +138,56 @@ class ApplicationManager:
 
         return resolved
 
+    def _parse_app_paths(self, output, prefix_path):
+        """Return only App Paths registrations with safe, existing EXE targets."""
+        candidates = []
+        current_key = None
+        default_value = None
+
+        def add_candidate():
+            if not current_key or not default_value:
+                return
+            executable = self._windows_path_to_linux(
+                prefix_path, default_value
+            )
+            if (
+                executable is None
+                or executable.suffix.casefold() != ".exe"
+                or not executable.is_file()
+            ):
+                return
+            registry_id = current_key.rsplit("\\\\", 1)[-1]
+            candidates.append({
+                "registry_key": current_key,
+                "registry_id": registry_id,
+                "DisplayName": Path(registry_id).stem,
+                "DisplayIcon": default_value,
+                "executable_path": str(executable),
+                "executable_status": "ready",
+                "install_path": str(executable.parent),
+                "discovery_source": "app_paths",
+            })
+
+        for line in output.splitlines():
+            line = line.rstrip()
+            if line.startswith("HKEY_"):
+                add_candidate()
+                current_key = line.strip()
+                default_value = None
+                continue
+            if current_key is None:
+                continue
+            match = re.match(
+                r"^\\s+\\(Default\\)\\s+REG_\\w+\\s*(.*)$",
+                line,
+                flags=re.IGNORECASE,
+            )
+            if match:
+                default_value = match.group(1).strip()
+
+        add_candidate()
+        return candidates
+
     def list(self, prefix_name):
         prefix_path = self.prefix_manager.get_path(prefix_name)
         runtime = self.prefix_manager.get_runtime(prefix_name)
@@ -193,6 +249,23 @@ class ApplicationManager:
             )
 
             applications.append(record)
+
+        known_executables = {
+            str(Path(item["executable_path"]).resolve())
+            for item in applications
+            if item.get("executable_path")
+        }
+        for key in self.APP_PATHS_KEYS:
+            result = self._query_registry(prefix_path, key, runtime=runtime)
+            # Registry query parsing for App Paths is intentionally separate:
+            # the default value is the executable, not an uninstall record.
+            raw_output = getattr(result, "stdout", "")
+            for candidate in self._parse_app_paths(raw_output, prefix_path):
+                executable = candidate["executable_path"]
+                if executable in known_executables:
+                    continue
+                known_executables.add(executable)
+                applications.append(candidate)
 
         return sorted(
             applications,
