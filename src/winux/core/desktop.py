@@ -5,6 +5,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from winux.core.shell_link import resolve_shell_link_target
+
 
 class DesktopManager:
     def __init__(self):
@@ -45,7 +47,7 @@ class DesktopManager:
             return None
 
         try:
-            arguments = shlex.split(command, posix=False)
+            arguments = shlex.split(command, posix=True)
         except ValueError:
             return None
 
@@ -88,6 +90,52 @@ class DesktopManager:
                 errors.append(f"{entry.name}: {error}")
 
         return {"launchers": discovered, "errors": errors}
+
+    def discover_start_menu_shortcuts(self, prefix_path, start_menu_roots=None):
+        """Discover only .lnk files resolving to existing EXEs in this prefix."""
+        prefix = Path(prefix_path).expanduser().resolve()
+        drive_c = prefix / "drive_c"
+        if drive_c.is_symlink() or not drive_c.is_dir():
+            return {"shortcuts": [], "errors": ["Invalid prefix drive_c"]}
+
+        if start_menu_roots is None:
+            roots = [
+                drive_c / "ProgramData/Microsoft/Windows/Start Menu/Programs",
+            ]
+            users = drive_c / "users"
+            if users.is_dir() and not users.is_symlink():
+                roots.extend(
+                    user / "AppData/Roaming/Microsoft/Windows/Start Menu/Programs"
+                    for user in users.iterdir()
+                    if user.is_dir() and not user.is_symlink()
+                )
+        else:
+            roots = [Path(root) for root in start_menu_roots]
+
+        shortcuts = []
+        errors = []
+        for root in roots:
+            if root.is_symlink() or not root.is_dir():
+                continue
+            for entry in root.rglob("*.lnk"):
+                try:
+                    if entry.is_symlink() or not entry.is_file():
+                        continue
+                    target = resolve_shell_link_target(entry.read_bytes(), prefix)
+                    if target is None:
+                        continue
+                    shortcuts.append({
+                        "name": entry.stem,
+                        "shortcut": str(entry),
+                        "executable_path": str(target),
+                        "prefix": str(prefix),
+                        "discovery_source": "start_menu",
+                    })
+                except (OSError, UnicodeError) as error:
+                    errors.append(f"{entry.name}: {error}")
+
+        shortcuts.sort(key=lambda item: item["name"].casefold())
+        return {"shortcuts": shortcuts, "errors": errors}
 
     def integrate_prefix(self, prefix_path):
         prefix_path = str(Path(prefix_path).resolve())

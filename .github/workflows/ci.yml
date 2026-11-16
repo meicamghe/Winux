@@ -34,6 +34,10 @@ jobs:
         run: timeout --signal=TERM --kill-after=15s 4m python -c 'import faulthandler, unittest; faulthandler.dump_traceback_later(60, repeat=True); suite=unittest.defaultTestLoader.discover("tests", pattern="test_cli.py"); result=unittest.TextTestRunner(verbosity=2).run(suite); raise SystemExit(not result.wasSuccessful())'
       - name: Test installer
         run: timeout --signal=TERM --kill-after=15s 4m python -c 'import faulthandler, unittest; faulthandler.dump_traceback_later(60, repeat=True); suite=unittest.defaultTestLoader.discover("tests", pattern="test_installer.py"); result=unittest.TextTestRunner(verbosity=2).run(suite); raise SystemExit(not result.wasSuccessful())'
+      - name: Test desktop integration
+        run: timeout --signal=TERM --kill-after=15s 4m python -c 'import faulthandler, unittest; faulthandler.dump_traceback_later(60, repeat=True); suite=unittest.defaultTestLoader.discover("tests", pattern="test_desktop*.py"); result=unittest.TextTestRunner(verbosity=2).run(suite); raise SystemExit(not result.wasSuccessful())'
+      - name: Test Shell Link parser
+        run: timeout --signal=TERM --kill-after=15s 4m python -c 'import faulthandler, unittest; faulthandler.dump_traceback_later(60, repeat=True); suite=unittest.defaultTestLoader.discover("tests", pattern="test_shell_link.py"); result=unittest.TextTestRunner(verbosity=2).run(suite); raise SystemExit(not result.wasSuccessful())'
       - name: Test local bridge core
         run: timeout --signal=TERM --kill-after=15s 4m python -c 'import faulthandler, unittest; faulthandler.dump_traceback_later(60, repeat=True); suite=unittest.defaultTestLoader.discover("tests", pattern="test_local_bridge.py"); result=unittest.TextTestRunner(verbosity=2).run(suite); raise SystemExit(not result.wasSuccessful())'
       - name: Test local bridge server
