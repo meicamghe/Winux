@@ -1241,3 +1241,26 @@ inventing EMWAT-specific protocol behavior.
 - Hosted CI does not prove that arbitrary Windows applications, MSI/EXE
   installers, services, COM/OLE, printers, or application workflows run
   successfully under Wine. Real Wine/WoW64 execution remains required.
+
+
+## 2026-11-16 - Real Wine/WoW64 runtime CI
+
+### Implemented and verified
+
+- Added a dedicated Ubuntu 24.04 CI job that installs Wine 64-bit and 32-bit
+  runtime packages plus MinGW x86/x64 cross-compilers.
+- The job builds minimal PE32 and PE32+ Windows executables, initializes one
+  real win64 Wine prefix, and launches both binaries in that same prefix.
+- Added `wineserver` to the smoke script's required-tool checks so the
+  cleanup capability is verified before the test starts.
+- PR #16 merged after the full CI run passed:
+  https://github.com/meicamghe/Winux/actions/runs/43813840549
+
+### Verification boundary
+
+- Real x86 and x64 executable smoke tests passed on the Ubuntu 24.04 CI runner.
+- The Python x86/x64 architecture matrix and all core/runtime/services/package
+  jobs also passed in that run.
+- This does not establish compatibility for arbitrary EXE/MSI installers,
+  application-specific APIs, COM/OLE automation, Windows services, printers,
+  or recovery workflows. Those require application-level integration tests.

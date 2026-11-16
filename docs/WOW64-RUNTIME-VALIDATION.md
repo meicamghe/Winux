@@ -31,3 +31,22 @@ installers, services, COM/OLE, printers, or application-specific workflows.
 
 A timeout or nonzero exit is reported as a failure for the affected architecture.
 Do not treat a green unit-test matrix as a substitute for this real runtime test.
+
+## Automated real-runtime CI
+
+The repository CI now includes a dedicated Ubuntu 24.04 job that installs
+Wine with both the 64-bit and 32-bit runtime packages and the two MinGW
+cross-compilers, then runs this script automatically. This is separate from
+the fast Python architecture matrix: the job creates a real win64 prefix and
+launches actual PE32 and PE32+ binaries.
+
+Verified result on 2026-11-16:
+
+- Workflow run 291: all jobs passed, including
+  `test-real-wine-wow64`, `test-wow64-matrix (x86)`,
+  `test-wow64-matrix (x64)`, and package/CLI smoke tests.
+- Run: https://github.com/meicamghe/Winux/actions/runs/43813840549
+
+This proves that the tested Ubuntu runner's installed Wine configuration can
+run both minimal executable architectures in one win64 prefix. It does not
+prove that any particular third-party application or installer is compatible.
