@@ -6,20 +6,20 @@ from winux.core.prefix import PrefixManager
 
 
 class Wow64ArchitectureMatrixTests(unittest.TestCase):
-    def test_x86_and_x64_installers_are_accepted_by_win64_wow64_prefix(self):
-        installer_architecture = os.environ["WINUX_MATRIX_ARCHITECTURE"]
-            with self.subTest(installer_architecture=installer_architecture):
-                Installer._validate_architecture_compatibility(
-                    installer_architecture, "win64"
-                )
+    def test_selected_installer_architecture_is_accepted_by_win64_prefix(self):
+        architecture = os.environ["WINUX_MATRIX_ARCHITECTURE"]
+        self.assertIn(architecture, ("x86", "x64"))
+        Installer._validate_architecture_compatibility(architecture, "win64")
 
-    def test_both_application_architectures_normalize_to_win64_prefix(self):
-        application_architecture = os.environ["WINUX_MATRIX_ARCHITECTURE"]
-            with self.subTest(application_architecture=application_architecture):
-                self.assertEqual(
-                    PrefixManager.normalize_architecture(object.__new__(PrefixManager), application_architecture),
-                    "win64",
-                )
+    def test_selected_application_architecture_uses_win64_prefix(self):
+        architecture = os.environ["WINUX_MATRIX_ARCHITECTURE"]
+        self.assertIn(architecture, ("x86", "x64"))
+        self.assertEqual(
+            PrefixManager.normalize_architecture(
+                object.__new__(PrefixManager), architecture
+            ),
+            "win64",
+        )
 
     def test_unknown_architectures_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "Unsupported installer architecture"):
