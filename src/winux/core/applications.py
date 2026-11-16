@@ -3,6 +3,7 @@ import json
 import math
 import os
 import re
+import subprocess
 import tempfile
 from pathlib import Path, PureWindowsPath
 
@@ -323,16 +324,24 @@ class ApplicationManager:
             if item.get("executable_path")
         }
         for key in self.APP_PATHS_KEYS:
-            result = runtime.query_registry(
-                prefix_path,
-                key,
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
+            try:
+                result = runtime.query_registry(
+                    prefix_path,
+                    key,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                )
+            except (OSError, subprocess.SubprocessError):
+                # App Paths is an enrichment source, not the primary inventory.
+                # A missing registry tool or a timeout must not hide applications
+                # already found through the uninstall registry.
+                continue
             # App Paths stores its executable in the default registry value,
             # so it needs a parser distinct from uninstall inventory records.
-            raw_output = result.stdout if result.returncode == 0 else ""
+            raw_output = (
+                (result.stdout or "") if result.returncode == 0 else ""
+            )
             for candidate in self._parse_app_paths(raw_output, prefix_path):
                 executable = candidate["executable_path"]
                 if executable in known_executables:
