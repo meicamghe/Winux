@@ -131,6 +131,11 @@ def main():
     )
     app_run_parser.add_argument("--prefix", required=True)
     app_run_parser.add_argument("application_id")
+    app_run_parser.add_argument(
+        "arguments",
+        nargs=argparse.REMAINDER,
+        help="Arguments passed to the Windows application (use -- before arguments)",
+    )
 
     app_uninstall_parser = app_commands.add_parser(
         "uninstall",
@@ -329,9 +334,14 @@ def main():
             elif args.app_command == "run":
                 from winux.core.runner import ApplicationRunner
 
+                application_arguments = args.arguments
+                if application_arguments[:1] == ["--"]:
+                    application_arguments = application_arguments[1:]
+
                 result = ApplicationRunner().run(
                     args.prefix,
-                    args.application_id
+                    args.application_id,
+                    args=application_arguments,
                 )
 
                 print("[OK] Application started.")
