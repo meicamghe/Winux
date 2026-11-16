@@ -261,6 +261,7 @@ def main():
                 )
                 print(f"[OK] Prefix created: {path}")
                 print(f"Architecture: {manager.get_architecture(args.name)}")
+                print(f"Runtime: {manager.get_runtime(args.name).name}")
 
             elif args.prefix_command == "list":
                 prefixes = manager.list()
@@ -282,6 +283,7 @@ def main():
                 path = manager.get_path(args.name)
                 print(f"Name: {args.name}")
                 print(f"Architecture: {manager.get_architecture(args.name)}")
+                print(f"Runtime: {manager.get_runtime(args.name).name}")
                 print(f"Path: {path}")
 
         elif args.command == "app":
