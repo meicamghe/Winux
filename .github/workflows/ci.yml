@@ -89,7 +89,7 @@ jobs:
 
   package:
     runs-on: ubuntu-24.04
-    needs: [test-core, test-runtime, test-services]
+    needs: [test-core, test-runtime, test-services, test-wow64-matrix]
     timeout-minutes: 15
     steps:
       - name: Check out source
