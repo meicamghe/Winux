@@ -103,9 +103,9 @@ jobs:
           python-version: "3.11"
       - name: Install project
         run: python -m pip install -e .
-      - name: Validate \${{ matrix.application_architecture }} installer compatibility
+      - name: Validate ${{ matrix.application_architecture }} installer compatibility
         env:
-          WINUX_MATRIX_ARCHITECTURE: \${{ matrix.application_architecture }}
+          WINUX_MATRIX_ARCHITECTURE: ${{ matrix.application_architecture }}
         run: python -m unittest discover -s tests -p test_wow64_matrix.py -v
 
   package:
