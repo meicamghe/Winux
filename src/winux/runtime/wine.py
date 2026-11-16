@@ -76,7 +76,7 @@ class WineRuntime(Runtime):
             raise TypeError("Wine arguments must be a list or tuple of strings")
         if any(not isinstance(argument, str) for argument in args):
             raise TypeError("Wine arguments must contain only strings")
-        if any("\\x00" in argument for argument in args):
+        if any("\x00" in argument for argument in args):
             raise ValueError("Wine arguments must not contain NUL characters")
         return list(args)
 
