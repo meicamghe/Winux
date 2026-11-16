@@ -407,6 +407,32 @@ HKEY_CURRENT_USER\\Software\\App\\Two
                     self.manager.uninstall("test-prefix", "Example")
 
 
+    def test_audit_reports_missing_executable_inventory(self):
+        applications = [
+            {"DisplayName": "Healthy", "executable_status": "ready"},
+            {"DisplayName": "Stale App", "registry_id": "stale", "executable_status": "executable_missing"},
+            {"DisplayName": "No launch target", "executable_status": "not_registered"},
+        ]
+        with patch.object(self.manager, "list", return_value=applications):
+            report = self.manager.audit("test-prefix")
+
+        self.assertEqual(report["total"], 3)
+        self.assertEqual(report["stale_count"], 1)
+        self.assertEqual(report["status_counts"], {
+            "ready": 1,
+            "executable_missing": 1,
+            "not_registered": 1,
+        })
+        self.assertEqual(report["stale"][0]["registry_id"], "stale")
+
+    def test_audit_returns_empty_report_for_empty_inventory(self):
+        with patch.object(self.manager, "list", return_value=[]):
+            report = self.manager.audit("test-prefix")
+
+        self.assertEqual(report["total"], 0)
+        self.assertEqual(report["stale_count"], 0)
+        self.assertEqual(report["stale"], [])
+
     def test_search_matches_name_case_insensitively(self):
         applications = [
             {"DisplayName": "Mozilla Firefox", "Publisher": "Mozilla", "DisplayVersion": "128"},
