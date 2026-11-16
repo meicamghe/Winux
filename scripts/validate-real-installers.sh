@@ -45,6 +45,7 @@ Section "Install"
   WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinuxFixture" "DisplayName" "Winux EXE Fixture"
   WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinuxFixture" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinuxFixture" "UninstallString" '"$INSTDIR\\uninstall.exe"'
+  WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinuxFixture" "QuietUninstallString" '"$INSTDIR\\uninstall.exe" /S'
 SectionEnd
 
 Section "Uninstall"
