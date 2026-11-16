@@ -47,7 +47,7 @@ class DesktopManager:
             return None
 
         try:
-            arguments = shlex.split(command, posix=False)
+            arguments = shlex.split(command, posix=True)
         except ValueError:
             return None
 
