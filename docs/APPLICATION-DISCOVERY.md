@@ -79,9 +79,11 @@ prefix's drive_c. Symlinked shortcut files, malformed links, relative-only
 links, network targets, IDList-only links, missing targets, and paths outside
 the prefix are ignored rather than guessed.
 
-The discovery API currently returns shortcut candidates separately; merging
-these candidates into the primary application inventory and associating them
-with uninstall/App Paths records remains follow-up work.
+Start Menu shortcut candidates are now merged into the primary application
+inventory with a distinct `start_menu` discovery source. The inventory
+deduplicates resolved executable targets against existing uninstall and App
+Paths records. Shortcut discovery remains conservative: ambiguous, missing,
+network, relative-only, symlinked, or out-of-prefix targets are not guessed.
 
 ## Updated verification
 
@@ -89,3 +91,16 @@ with uninstall/App Paths records remains follow-up work.
   Its Run 274 passed core, runtime, services, and package checks.
 - The PR also exposed and fixed a pre-existing desktop Exec parsing issue:
   quoted WINEPREFIX values are now parsed with POSIX shell quoting rules.
+
+## Recent implementation and verification (2026-11-16)
+
+- PR #10 integrated validated Start Menu shortcut targets into the application
+  inventory; Run 284 passed all test groups and package/CLI smoke checks.
+- PR #11 added Unicode Shell Link path and malformed-offset regression
+  coverage; Run 286 passed all test groups and package checks.
+- PR #13 hardened LinkInfo offset validation against offsets inside the
+  structure header or outside the declared LinkInfo block; Run 287 passed.
+- Main CI after PR #13 is Run 288. It was still running at the last status
+  check; do not describe it as green until its package job completes.
+- Unit/CI architecture matrix jobs for x86 and x64 passed. These tests do not
+  substitute for executing Windows binaries under a real Wine/WoW64 build.
