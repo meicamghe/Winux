@@ -98,7 +98,7 @@ class WineRuntime(Runtime):
             raise TypeError("Installer arguments must be a list or tuple of strings")
         elif any(not isinstance(argument, str) for argument in args):
             raise TypeError("Installer arguments must contain only strings")
-        elif any("\\x00" in argument for argument in args):
+        elif any("\x00" in argument for argument in args):
             raise ValueError("Installer arguments must not contain NUL characters")
         else:
             arguments = list(args)
