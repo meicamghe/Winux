@@ -1376,3 +1376,11 @@ inventing EMWAT-specific protocol behavior.
 - App Paths is an optional enrichment source. A registry query timeout or process-launch failure must not discard applications already found in the primary uninstall inventory.
 - Added regression coverage for preserving the uninstall inventory when App Paths queries time out.
 - This remains repository/CI validation; it does not prove arbitrary Windows applications or real Wine environments work on the user's machine.
+
+
+## 2026-11-16 - Separate executable discovery from execution evidence
+
+- Application inventory's `executable_status=ready` means only that Winux found an existing executable target inside the prefix.
+- It does not mean that the program was launched successfully or that its real workflow works.
+- CLI application list/info output now labels this as **Executable discovery** and explicitly reports **Execution test: NOT TESTED**.
+- Real installation/launch/workflow integration results remain separate evidence and must not be inferred from inventory discovery.
