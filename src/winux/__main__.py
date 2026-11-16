@@ -280,6 +280,7 @@ def main():
                     print(f"Version:    {app.get('DisplayVersion') or 'Unknown'}")
                     print(f"Publisher:  {app.get('Publisher') or 'Unknown'}")
                     print(f"Executable: {app.get('executable_path') or 'Not found'}")
+                    print(f"Launch status: {app.get('executable_status', 'unknown')}")
                     print(f"Registry ID: {app.get('registry_id')}")
 
             elif args.app_command == "search":
@@ -320,6 +321,7 @@ def main():
                 print(f"Registry ID:      {app.get('registry_id')}")
                 print(f"Registry Key:     {app.get('registry_key')}")
                 print(f"Executable:       {app.get('executable_path') or 'Not found'}")
+                print(f"Launch status:    {app.get('executable_status', 'unknown')}")
                 print(f"Install Location: {app.get('install_path') or 'Not found'}")
                 print(f"Uninstall:        {app.get('UninstallString') or 'Not available'}")
                 print(f"Website:          {app.get('URLInfoAbout') or 'Not available'}")
