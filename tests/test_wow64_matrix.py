@@ -16,7 +16,7 @@ class Wow64ArchitectureMatrixTests(unittest.TestCase):
         for application_architecture in ("x86", "x64"):
             with self.subTest(application_architecture=application_architecture):
                 self.assertEqual(
-                    PrefixManager().normalize_architecture(application_architecture),
+                    PrefixManager.normalize_architecture(object.__new__(PrefixManager), application_architecture),
                     "win64",
                 )
 
