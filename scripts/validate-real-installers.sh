@@ -43,7 +43,6 @@ Section "Install"
   CreateShortCut "$SMPROGRAMS\\WinuxFixture\\Winux Fixture.lnk" "$INSTDIR\\fixture.exe"
   WriteUninstaller "$INSTDIR\\uninstall.exe"
   WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinuxFixture" "DisplayName" "Winux EXE Fixture"
-  WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinuxFixture" "DisplayIcon" "$INSTDIR\\fixture.exe"
   WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinuxFixture" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\WinuxFixture" "UninstallString" '"$INSTDIR\\uninstall.exe"'
 SectionEnd
