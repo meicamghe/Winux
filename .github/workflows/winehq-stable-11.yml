@@ -1,0 +1,57 @@
+name: WineHQ Stable 11 Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: winux-winehq11-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  winehq-stable-11:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install official WineHQ stable packages
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo mkdir -pm755 /etc/apt/keyrings
+          sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
+          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources
+          sudo apt-get update
+          sudo apt-get install --install-recommends -y winehq-stable
+      - name: Verify Wine 11 or newer
+        run: |
+          wine --version
+          python3 - <<'PY'
+          import re
+          import subprocess
+          version = subprocess.check_output(["wine", "--version"], text=True).strip()
+          match = re.search(r"wine[- ]?(\d+)\.(\d+)", version, re.I)
+          if not match or tuple(map(int, match.groups())) < (11, 0):
+              raise SystemExit(f"Expected Wine 11.0+, got: {version}")
+          print(f"PASS: {version}")
+          PY
+      - name: Install real installer test dependencies
+        run: |
+          sudo apt-get install -y --no-install-recommends nsis p7zip-full msitools wixl gcc-mingw-w64-i686 gcc-mingw-w64-x86-64
+          python -m pip install .
+      - name: Validate real x86/x64 EXE installers on WineHQ stable
+        run: timeout --signal=TERM --kill-after=15s 20m bash scripts/validate-real-installers.sh
+      - name: Validate real x86/x64 MSI installers on WineHQ stable
+        run: timeout --signal=TERM --kill-after=15s 20m bash scripts/validate-real-msi-installers.sh
+      - name: Validate x86/x64 PE execution on WineHQ stable
+        run: timeout --signal=TERM --kill-after=15s 12m bash scripts/validate-wine-wow64.sh
