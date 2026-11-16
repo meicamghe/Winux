@@ -57,6 +57,12 @@ def main():
     )
     install_parser.add_argument("--prefix", required=True)
     install_parser.add_argument(
+        "--installer-arg",
+        action="append",
+        default=[],
+        help="Argument passed to the Windows installer; repeat to add more arguments",
+    )
+    install_parser.add_argument(
         "--verification-profile",
         help="JSON file containing post-installation verification checks"
     )
@@ -517,6 +523,11 @@ def main():
             from winux.core.installer import Installer
 
             if args.manifest:
+                if args.installer_arg:
+                    raise ValueError(
+                        "Use installer_args inside the manifest, not --installer-arg"
+                    )
+
                 if args.file:
                     raise ValueError(
                         "Use either an installer file or --manifest, not both"
@@ -603,6 +614,7 @@ def main():
                     prefix_name=args.prefix,
                     timeout=args.timeout,
                     verification_profile=verification_profile,
+                    installer_args=args.installer_arg,
                 )
 
                 print("[OK] Installer process completed.")

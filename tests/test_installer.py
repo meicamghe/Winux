@@ -291,6 +291,33 @@ class InstallerExecutionTests(unittest.TestCase):
         lock_file = self.installer.lock_dir / "test-prefix.lock"
         self.assertEqual(lock_file.stat().st_mode & 0o777, 0o600)
 
+
+    def test_install_forwards_valid_installer_arguments(self):
+        run_patch = self.prepare_install()
+        arguments = ["/S", "/D=C:\\Apps\\Example"]
+        self.installer.install(
+            self.source,
+            "test-prefix",
+            installer_args=arguments,
+        )
+        self.assertEqual(run_patch.call_args.kwargs["args"], arguments)
+
+    def test_install_rejects_invalid_installer_arguments_before_runtime(self):
+        self.prepare_install()
+        for arguments in (
+            "not-a-list",
+            ["/S", 42],
+            ["bad\x00argument"],
+        ):
+            with self.subTest(arguments=arguments):
+                with self.assertRaises((TypeError, ValueError)):
+                    self.installer.install(
+                        self.source,
+                        "test-prefix",
+                        installer_args=arguments,
+                    )
+        self.runtime.install.assert_not_called()
+
     def test_install_records_failure_when_runtime_returns_nonzero(self):
         self.prepare_install(returncode=7)
         with self.assertRaisesRegex(RuntimeError, "exited with code 7"):
@@ -641,6 +668,54 @@ class InstallerBatchTests(unittest.TestCase):
                         )
 
                 mock_install.assert_not_called()
+
+
+    def test_batch_forwards_per_application_installer_arguments(self):
+        self.write_manifest([
+            {
+                "file": str(self.file1),
+                "installer_args": ["/S", "/D=C:\\Apps\\One"],
+            },
+            {
+                "file": str(self.file2),
+                "installer_args": ["/qn", "/norestart"],
+            },
+        ])
+
+        with patch.object(
+            self.installer,
+            "install",
+            return_value={"success": True, "install_id": "test"},
+        ) as mock_install:
+            result = self.installer.install_batch(
+                self.manifest,
+                "test-prefix",
+            )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(
+            mock_install.call_args_list[0].kwargs["installer_args"],
+            ["/S", "/D=C:\\Apps\\One"],
+        )
+        self.assertEqual(
+            mock_install.call_args_list[1].kwargs["installer_args"],
+            ["/qn", "/norestart"],
+        )
+
+    def test_batch_rejects_invalid_installer_arguments_before_any_install(self):
+        self.write_manifest([
+            {"file": str(self.file1)},
+            {"file": str(self.file2), "installer_args": ["/S", 7]},
+        ])
+
+        with patch.object(self.installer, "install") as mock_install:
+            with self.assertRaisesRegex(ValueError, "invalid installer_args"):
+                self.installer.install_batch(
+                    self.manifest,
+                    "test-prefix",
+                )
+
+        mock_install.assert_not_called()
 
     def test_batch_rejects_invalid_timeout(self):
         self.write_manifest([

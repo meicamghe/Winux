@@ -42,6 +42,7 @@ The current design uses 64-bit Wine prefixes with WoW64 to support both 32-bit (
 **Goal:** Install, discover, inspect, and launch Windows applications through Winux.
 
 - [x] Install EXE and MSI packages.
+- [x] Forward validated installer arguments for EXE/MSI and batch-manifest installs.
 - [x] Detect installer and application architecture where possible.
 - [x] Record installation logs and identifiers.
 - [x] Discover installed applications from prefix registry data.

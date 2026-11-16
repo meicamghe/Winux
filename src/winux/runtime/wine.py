@@ -91,13 +91,24 @@ class WineRuntime(Runtime):
             **kwargs,
         )
 
-    def install(self, prefix_path: Path, installer: Path, **kwargs):
+    def install(self, prefix_path: Path, installer: Path, args=None, **kwargs):
+        if args is None:
+            arguments = []
+        elif not isinstance(args, (list, tuple)):
+            raise TypeError("Installer arguments must be a list or tuple of strings")
+        elif any(not isinstance(argument, str) for argument in args):
+            raise TypeError("Installer arguments must contain only strings")
+        elif any("\x00" in argument for argument in args):
+            raise ValueError("Installer arguments must not contain NUL characters")
+        else:
+            arguments = list(args)
+
         extension = installer.suffix.lower()
 
         if extension == ".exe":
-            command = [self._find("wine"), str(installer)]
+            command = [self._find("wine"), str(installer), *arguments]
         elif extension == ".msi":
-            command = [self._find("msiexec"), "/i", str(installer)]
+            command = [self._find("msiexec"), "/i", str(installer), *arguments]
         else:
             raise ValueError("Unsupported installer format")
 
