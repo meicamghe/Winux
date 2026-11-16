@@ -1329,3 +1329,33 @@ inventing EMWAT-specific protocol behavior.
 4. Keep COM/OLE, Office automation, genuine Windows services, and printing
    explicitly classified as application-specific integration work; do not
    claim general Wine support without end-to-end evidence.
+
+
+## 2026-11-16 - Logical MSI inventory deduplication and full installer validation
+
+### Implemented
+
+- PR #38 merged ProductCode-based MSI inventory grouping.
+- Native and WOW6432Node uninstall registrations are represented as one logical application only when their registered `msiexec` commands contain the same MSI ProductCode.
+- The logical record preserves every contributing registry ID, registry key, and quiet/normal uninstall command variant.
+- `ApplicationManager.info` resolves every retained registry ID, so `app info` and `app uninstall` can use a secondary registry-view identifier.
+- Non-MSI records are not grouped by display name or publisher.
+- Added unit coverage for ProductCode extraction, dual-view deduplication, secondary-ID lookup, and same-name non-MSI isolation.
+
+### Verification
+
+- PR #38: https://github.com/meicamghe/Winux/pull/38
+- Merge commit: `689558f07299e296088e6e88e147ad6a551e9820`.
+- Final head: `8012b956869d1ea3914e57eb6c6aae793b0989ea`.
+- Winux CI run 362 passed: core/application tests, CLI, installer, desktop, Shell Link, local bridge, runtime, services, x86/x64 matrix, real WoW64 execution, and package build.
+- Real Windows EXE integration run 66 passed for x86 and x64, including Start Menu discovery, launch, uninstall, and removal of files and registry inventory.
+- Real Windows MSI integration run 58 passed for x86 and x64, including install, discovery, launch, uninstall, and cleanup.
+- WineHQ Stable 11 integration run 31 passed, including real EXE and MSI installer workflows and x86/x64 PE execution.
+- The first CI attempt exposed an inventory iteration regression (a record was appended to the list currently being iterated). The issue was fixed in commit `8012b95`; all final workflow runs above passed on that corrected head.
+
+### Current verified baseline and next priorities
+
+- MSI registry-view deduplication is implemented and verified by unit tests and the real x86/x64 installer lifecycle workflows.
+- Continue with explicit inventory/export presentation of secondary registry identifiers, then design safe prefix backup/restore and migration.
+- Continue cross-distribution runtime/backend validation before starting Winux Desktop or Winux OS.
+- COM/OLE, Office automation, genuine Windows services, and printing remain application-specific integration work; this PR does not change those compatibility boundaries.
