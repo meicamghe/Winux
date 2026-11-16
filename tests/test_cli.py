@@ -589,3 +589,87 @@ class DoctorCliTests(unittest.TestCase):
             with patch("winux.platform.runtime.check_runtime", return_value=True) as check:
                 main()
         check.assert_called_once_with()
+
+
+
+class ApplicationUninstallCliTests(unittest.TestCase):
+    def setUp(self):
+        self.application = {"DisplayName": "Example App"}
+
+    @patch("winux.core.applications.ApplicationManager")
+    def test_uninstall_requires_confirmation_by_default(self, manager_class):
+        manager = manager_class.return_value
+        manager.info.return_value = self.application
+
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "winux", "app", "uninstall",
+                "--prefix", "test-prefix",
+                "Example",
+            ],
+        ):
+            with patch("builtins.input", return_value="n") as prompt:
+                with patch("builtins.print"):
+                    main()
+
+        prompt.assert_called_once()
+        manager.info.assert_called_once_with("test-prefix", "Example")
+        manager.uninstall.assert_not_called()
+
+    @patch("winux.core.applications.ApplicationManager")
+    def test_uninstall_yes_skips_confirmation(self, manager_class):
+        manager = manager_class.return_value
+        manager.info.return_value = self.application
+        manager.uninstall.return_value = {
+            "success": True,
+            "application": "Example App",
+            "prefix": "test-prefix",
+        }
+
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "winux", "app", "uninstall",
+                "--prefix", "test-prefix",
+                "Example",
+                "--yes",
+            ],
+        ):
+            with patch("builtins.input") as prompt:
+                with patch("builtins.print"):
+                    main()
+
+        prompt.assert_not_called()
+        manager.uninstall.assert_called_once_with(
+            "test-prefix", "Example", timeout=300
+        )
+
+    @patch("winux.core.applications.ApplicationManager")
+    def test_uninstall_confirmation_accepts_uppercase_yes(self, manager_class):
+        manager = manager_class.return_value
+        manager.info.return_value = self.application
+        manager.uninstall.return_value = {
+            "success": True,
+            "application": "Example App",
+            "prefix": "test-prefix",
+        }
+
+        with patch.object(
+            sys,
+            "argv",
+            [
+                "winux", "app", "uninstall",
+                "--prefix", "test-prefix",
+                "Example",
+            ],
+        ):
+            with patch("builtins.input", return_value="Y"):
+                with patch("builtins.print"):
+                    main()
+
+        manager.uninstall.assert_called_once_with(
+            "test-prefix", "Example", timeout=300
+        )
