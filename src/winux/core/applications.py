@@ -317,8 +317,6 @@ class ApplicationManager:
                 else None
             )
 
-            applications.append(record)
-
         known_executables = {
             str(Path(item["executable_path"]).resolve())
             for item in applications
