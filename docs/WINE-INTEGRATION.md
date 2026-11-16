@@ -92,13 +92,30 @@ belongs behind a Linux-native backend and an application-specific adapter.
 | Uninstall command execution | `WineRuntime.uninstall()` |
 | Process lifecycle | Winux process/service managers plus Wine's `wineserver` |
 
-## Next validation work
+## Continuous integration coverage
 
-- Run the real x86/x64 smoke test against at least one Wine 11.x build as well
-  as the existing distribution-provided CI Wine build.
+The repository now has dedicated CI coverage for:
+
+- The distribution-provided Wine runtime, including x86 and x64 PE execution
+  smoke tests in 64-bit WoW64 prefixes.
+- Official WineHQ stable packages on Ubuntu 24.04, with an explicit Wine 11.0+
+  version assertion and real x86/x64 EXE and MSI installer fixtures.
+- EXE and MSI installation and launch workflows, with uninstall lifecycle
+  checks being validated separately from basic install success.
+- Application inventory status, including explicit detection of registered
+  executables that are missing from the prefix.
+
+A green installer job proves only the tested fixture's behavior on that CI
+runtime. It does not establish compatibility for arbitrary Windows installers
+or applications. In particular, registry-based uninstall discovery can differ
+between x86 and x64 MSI packages and must be tested rather than assumed.
+
+## Remaining validation work
+
 - Record Wine version and relevant package/runtime details in CI artifacts.
-- Add real MSI and EXE install/uninstall lifecycle checks where stable,
-  redistributable test fixtures are available.
+- Complete and stabilize MSI uninstall registration checks for both package
+  architectures; a successful MSI install does not guarantee a usable
+  Add/Remove Programs entry.
 - Keep application-specific COM/OLE, Windows service, and printer tests out of
   generic runtime smoke tests; give each a separate compatibility fixture.
 - Revisit this policy when Wine upstream changes WoW64, prefix, or service
