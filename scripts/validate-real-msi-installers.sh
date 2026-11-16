@@ -103,7 +103,28 @@ for architecture in x86 x64; do
     WINEPREFIX="$prefix_path" WINEDEBUG=-all timeout --signal=TERM --kill-after=5s 45s wine "$installed"
   )
   test -s "$(dirname "$installed")/msi-fixture-ran.txt"
-  echo "PASS: Winux installed and launched MSI $architecture application"
+  echo "UNINSTALL: $architecture MSI application through Winux"
+  PREFIX_NAME="$prefix" EXPECTED_EXECUTABLE="$installed" python - <<'PY'
+import os
+from pathlib import Path
+from winux.core.applications import ApplicationManager
+
+manager = ApplicationManager()
+prefix = os.environ["PREFIX_NAME"]
+expected = Path(os.environ["EXPECTED_EXECUTABLE"]).resolve()
+apps = manager.list(prefix)
+matches = [app for app in apps if app.get("DisplayName") == "Winux MSI Fixture"]
+if len(matches) != 1:
+    raise SystemExit(f"Expected one MSI uninstall record, found {len(matches)}")
+manager.uninstall(prefix, matches[0]["registry_id"], timeout=120)
+if expected.exists():
+    raise SystemExit(f"MSI uninstaller left executable behind: {expected}")
+remaining = [app for app in manager.list(prefix) if app.get("DisplayName") == "Winux MSI Fixture"]
+if remaining:
+    raise SystemExit(f"Stale MSI inventory record remains: {remaining}")
+print("PASS: MSI uninstall removed files and registry inventory")
+PY
+  echo "PASS: Winux installed, launched and uninstalled MSI $architecture application"
 done
 
 echo "PASS: real MSI installer workflow completed for x86 and x64 applications"
