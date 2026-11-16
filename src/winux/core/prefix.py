@@ -242,16 +242,21 @@ class PrefixManager:
                 pass
             raise
 
-    def create(self, name, architecture="win64"):
+    def create(self, name, architecture="win64", runtime_name=None):
         self.validate_name(name)
         architecture = self.normalize_architecture(architecture)
         self._ensure_base_dir()
 
-        runtime = self.runtime_manager.get()
+        selected_runtime = (
+            self.runtime_manager.get_default_name()
+            if runtime_name is None
+            else runtime_name
+        )
+        runtime = self.runtime_manager.get(selected_runtime)
 
         if not runtime.is_available():
             raise RuntimeError(
-                f"Runtime is not available: {self.runtime_manager.get_default_name()}"
+                f"Runtime is not available: {selected_runtime}"
             )
 
         path = self.base_dir / name

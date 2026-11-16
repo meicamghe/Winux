@@ -36,6 +36,10 @@ def main():
         default="x64",
         help="Prefix architecture (default: x64)"
     )
+    create_parser.add_argument(
+        "--runtime",
+        help="Compatibility runtime to bind to this prefix (default: configured runtime)",
+    )
 
     prefix_commands.add_parser("list")
 
@@ -252,7 +256,8 @@ def main():
             if args.prefix_command == "create":
                 path = manager.create(
                     args.name,
-                    architecture=args.arch
+                    architecture=args.arch,
+                    runtime_name=args.runtime,
                 )
                 print(f"[OK] Prefix created: {path}")
                 print(f"Architecture: {manager.get_architecture(args.name)}")
