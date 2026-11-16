@@ -523,6 +523,11 @@ def main():
             from winux.core.installer import Installer
 
             if args.manifest:
+                if args.installer_arg:
+                    raise ValueError(
+                        "Use installer_args inside the manifest, not --installer-arg"
+                    )
+
                 if args.file:
                     raise ValueError(
                         "Use either an installer file or --manifest, not both"
