@@ -25,7 +25,7 @@ Implemented capabilities include:
 - Wine environment detection.
 - Expanded read-only runtime diagnostics through `winux doctor`, including MSI/NSIS inspection tools.
 - Windows prefix creation and management.
-- EXE and MSI installer support.
+- EXE and MSI installer support, including explicit argument forwarding for silent or customized installs.
 - Windows application discovery through registry information.
 - Application information retrieval.
 - Launching installed Windows applications, including forwarding command-line arguments safely.
@@ -226,3 +226,27 @@ winux app run --prefix office ExampleApp -- "C:\\Users\\Public\\Documents\\repor
 
 Arguments are passed as individual process arguments without shell expansion.
 Winux rejects non-string values and NUL characters before starting the process.
+
+
+## Installer Arguments
+
+Winux can pass explicit arguments to an EXE or MSI installer without invoking a shell.
+Repeat `--installer-arg` to preserve argument order:
+
+```bash
+winux install setup.exe --prefix office --installer-arg /S --installer-arg '/D=C:\\Apps\\Office'
+winux install package.msi --prefix office --installer-arg /qn --installer-arg /norestart
+```
+
+Batch installation manifests may define an `installer_args` string array for each application:
+
+```json
+{
+  "applications": [
+    {"file": "setup.exe", "installer_args": ["/S"]},
+    {"file": "package.msi", "installer_args": ["/qn", "/norestart"]}
+  ]
+}
+```
+
+Installer switches are vendor-specific; Winux forwards them unchanged and does not guess silent-install options.
