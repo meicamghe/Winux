@@ -495,8 +495,8 @@ class ApplicationManager:
         # code, never for arbitrary executables or MSI package paths.
         if PureWindowsPath(args[0]).name.casefold() in ("msiexec", "msiexec.exe"):
             product_code = re.compile(
-                r"^\\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-"
-                r"[0-9a-f]{4}-[0-9a-f]{12}\\}$",
+                r"\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-"
+                r"[0-9a-f]{4}-[0-9a-f]{12}\}$",
                 re.IGNORECASE,
             )
             for index, argument in enumerate(args[1:], start=1):
