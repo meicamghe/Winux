@@ -141,6 +141,48 @@ HKEY_CURRENT_USER\\Software\\App\\Two
         )
         self.manager.prefix_manager.get_path.assert_called_once_with("test-prefix")
 
+    def test_list_does_not_treat_icon_resources_as_executables(self):
+        app_dir = self.prefix_path / "drive_c" / "Program Files" / "Example"
+        app_dir.mkdir(parents=True)
+        icon = app_dir / "app.ico"
+        icon.touch()
+        dll = app_dir / "app.dll"
+        dll.touch()
+
+        for display_icon in (
+            r"C:\\Program Files\\Example\\app.ico",
+            r"C:\\Program Files\\Example\\app.dll",
+        ):
+            records = [{
+                "registry_key": r"HKEY_LOCAL_MACHINE\\Software\\App\\Example",
+                "registry_id": "Example",
+                "DisplayName": "Example App",
+                "DisplayIcon": display_icon,
+                "InstallLocation": r"C:\\Program Files\\Example",
+            }]
+            with self.subTest(display_icon=display_icon):
+                with patch.object(self.manager, "_query_registry", return_value=records):
+                    applications = self.manager.list("test-prefix")
+                self.assertEqual(len(applications), 1)
+                self.assertIsNone(applications[0]["executable_path"])
+                self.assertEqual(applications[0]["install_path"], str(app_dir))
+
+    def test_list_accepts_exe_display_icon_case_insensitively(self):
+        app_exe = (
+            self.prefix_path / "drive_c" / "Program Files" / "Example" / "APP.EXE"
+        )
+        app_exe.parent.mkdir(parents=True)
+        app_exe.touch()
+        records = [{
+            "registry_key": r"HKEY_LOCAL_MACHINE\\Software\\App\\Example",
+            "registry_id": "Example",
+            "DisplayName": "Example App",
+            "DisplayIcon": r"C:\\Program Files\\Example\\APP.EXE,0",
+        }]
+        with patch.object(self.manager, "_query_registry", return_value=records):
+            applications = self.manager.list("test-prefix")
+        self.assertEqual(applications[0]["executable_path"], str(app_exe))
+
     def test_info_finds_application_by_registry_id_case_insensitively(self):
         expected = {"registry_id": "Example", "DisplayName": "Example App"}
         with patch.object(self.manager, "list", return_value=[expected]):

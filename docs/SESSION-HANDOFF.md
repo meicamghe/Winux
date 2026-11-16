@@ -1134,3 +1134,17 @@ inventing EMWAT-specific protocol behavior.
 ### Next priority
 
 - Continue with real x86/x64 prefix and installer validation on supported Wine/WoW64 builds, then improve application discovery and executable resolution.
+
+
+## 2026-11-16 - Executable target validation
+
+- Application inventory no longer treats every existing `DisplayIcon` file as
+  an executable. Registry values may point to icon resources (`.ico`), DLLs,
+  or other non-launchable files; Winux now exposes a launch target from this
+  field only when it resolves to an existing `.exe` file.
+- Added regression coverage for ICO/DLL rejection and case-insensitive EXE
+  acceptance, including the common icon-index suffix.
+- This is a conservative safety improvement, not full executable discovery:
+  applications whose registry icon points to a resource still need a verified
+  launch target from another source (for example, validated Start Menu links).
+- Hosted CI verification is pending.
