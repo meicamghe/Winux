@@ -30,10 +30,10 @@ class StartMenuDiscoveryTests(unittest.TestCase):
             executable.parent.mkdir(parents=True)
             executable.write_bytes(b"MZ")
             (menu / "Example.lnk").write_bytes(
-                make_link(r"C:\\Program Files\\Example", "app.exe")
+                make_link(r"C:\Program Files\Example", "app.exe")
             )
             (menu / "Missing.lnk").write_bytes(
-                make_link(r"C:\\Program Files\\Example", "missing.exe")
+                make_link(r"C:\Program Files\Example", "missing.exe")
             )
             manager = object.__new__(DesktopManager)
             result = manager.discover_start_menu_shortcuts(prefix)
@@ -49,7 +49,7 @@ class StartMenuDiscoveryTests(unittest.TestCase):
             menu = drive / "ProgramData/Microsoft/Windows/Start Menu/Programs"
             menu.mkdir(parents=True)
             target = root / "external.lnk"
-            target.write_bytes(make_link(r"C:\\Example", "app.exe"))
+            target.write_bytes(make_link(r"C:\Example", "app.exe"))
             (menu / "linked.lnk").symlink_to(target)
             manager = object.__new__(DesktopManager)
             result = manager.discover_start_menu_shortcuts(prefix)
