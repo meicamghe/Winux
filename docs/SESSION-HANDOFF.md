@@ -1359,3 +1359,12 @@ inventing EMWAT-specific protocol behavior.
 - Continue with explicit inventory/export presentation of secondary registry identifiers, then design safe prefix backup/restore and migration.
 - Continue cross-distribution runtime/backend validation before starting Winux Desktop or Winux OS.
 - COM/OLE, Office automation, genuine Windows services, and printing remain application-specific integration work; this PR does not change those compatibility boundaries.
+
+
+## 2026-11-16 - MSI export and prefix recovery roadmap
+
+- PR #40 merged as `002365c5a3e12c18a59e2e33df22e0cb8149e8ab`; grouped MSI registry IDs, keys, and uninstall command variants are now exposed in CLI details and JSON/CSV exports.
+- All four PR #40 workflows passed, including distro Wine WoW64, WineHQ Stable 11, and real x86/x64 EXE/MSI installer integrations.
+- Next Engine reliability milestone: secure Prefix Backup/Restore. The design contract is in `docs/PREFIX-BACKUP-RESTORE.md`.
+- Restore must reject hostile archive paths and unsafe links, preserve runtime binding, validate the resulting prefix, and publish atomically without overwriting an existing prefix. Cross-runtime migration is explicitly separate.
+- The specification is documentation only; implementation and adversarial tests remain pending.
