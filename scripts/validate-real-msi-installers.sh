@@ -34,7 +34,7 @@ cat > "$work_dir/fixture.wxs.in" <<'EOF'
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Product Id="*" Name="Winux MSI Fixture" Language="1033" Version="1.0.0" Manufacturer="Winux CI" UpgradeCode="8F0E5D6A-2C4C-4A41-A9D2-0E44F2D6A2A1">
     <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
-    <MediaTemplate />
+    <Media Id="1" Cabinet="fixture.cab" EmbedCab="yes" />
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="@PROGRAMFILES@" Name="ProgramFiles">
         <Directory Id="INSTALLDIR" Name="WinuxMsiFixture" />
@@ -72,6 +72,8 @@ for architecture in x86 x64; do
   (cd "$work_dir" && wixl -a "$architecture" -o "fixture-$architecture.msi" fixture.wxs)
   msi="$work_dir/fixture-$architecture.msi"
   echo "MSI SUMMARY: $(msiinfo suminfo "$msi" | tr "\n" ";")"
+  echo "MSI FIXTURE FILES:"
+  ls -la "$work_dir"
   msiinfo suminfo "$msi" | grep -Eiq "Template.*(Intel|x64)"
 
   prefix="msi-$architecture"
