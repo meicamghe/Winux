@@ -99,7 +99,9 @@ Installer success and application compatibility are different things: a successf
 
 ### Application manager — `core/applications.py`
 
-The application manager discovers installed applications by reading Windows uninstall registry information inside a prefix. It exposes application metadata such as display name, version, publisher, registry identifier, executable path, and installation path when available. Registry-derived Windows paths must be absolute C: paths and are resolved within the prefix's real `drive_c` directory; drive-relative paths, parent traversal, and a symlinked drive root are rejected. Uninstall operations validate finite positive timeouts and require a non-empty string command before invoking Wine.
+The application manager discovers installed applications by reading Windows uninstall registry information inside a prefix. It exposes application metadata such as display name, version, publisher, registry identifier, executable path, and installation path when available. Registry-derived Windows paths must be absolute C: paths and are resolved within the prefix's real `drive_c` directory; drive-relative paths, parent traversal, and a symlinked drive root are rejected.
+
+Windows Installer entries are grouped into one logical inventory item only when their registered `msiexec` uninstall commands identify the same ProductCode. This handles duplicate native/WOW6432Node registry views without merging unrelated non-MSI applications that happen to share a display name. The logical record retains all contributing registry IDs and keys plus each view's quiet and normal uninstall command. Application lookup and uninstall accept any retained registry ID; uninstall prefers an available quiet command and otherwise uses a normal command. MSI `/I{ProductCode}` commands are normalized to uninstall mode by the existing uninstall path.
 
 ### Application runner — `core/runner.py`
 
