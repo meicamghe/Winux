@@ -483,5 +483,36 @@ class PrefixManagerTests(unittest.TestCase):
         self.assertFalse((self.manager.base_dir / "to-delete").exists())
 
 
+    def test_create_can_select_non_default_runtime(self):
+        runtime_b = Mock()
+        runtime_b.name = "runtime-b"
+        runtime_b.is_available.return_value = True
+
+        def initialize(path, architecture):
+            (path / "drive_c").mkdir()
+            (path / "system.reg").write_text("WINE REGISTRY\\n", encoding="utf-8")
+            return subprocess.CompletedProcess(["runtime-b"], 0, "", "")
+
+        runtime_b.create_prefix.side_effect = initialize
+        self.runtime_manager.get.side_effect = lambda name=None: {
+            None: self.runtime,
+            "test-runtime": self.runtime,
+            "runtime-b": runtime_b,
+        }[name]
+
+        path = self.manager.create("selected-runtime", runtime_name="runtime-b")
+        metadata = json.loads(
+            (path / ".winux-prefix.json").read_text(encoding="utf-8")
+        )
+
+        self.assertEqual(metadata["runtime"], "runtime-b")
+        self.assertEqual(self.manager.get_runtime("selected-runtime"), runtime_b)
+        runtime_b.create_prefix.assert_called_once_with(path, "win64")
+
+    def test_create_rejects_unknown_selected_runtime(self):
+        with self.assertRaisesRegex(ValueError, "Unknown runtime"):
+            self.manager.create("unknown-selected-runtime", runtime_name="missing")
+
+
 if __name__ == "__main__":
     unittest.main()
