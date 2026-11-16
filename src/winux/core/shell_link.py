@@ -68,6 +68,18 @@ def parse_shell_link_target(data):
             "<II", data, link_info_offset + 28
         )
 
+    def valid_offset(offset):
+        return not offset or header_size <= offset < size
+
+    if (
+        not base_offset
+        or not valid_offset(base_offset)
+        or not valid_offset(suffix_offset)
+        or not valid_offset(base_unicode)
+        or not valid_offset(suffix_unicode)
+    ):
+        return None
+
     region = data[link_info_offset:link_info_offset + size]
     base = _read_c_string(region, base_offset, base_unicode)
     suffix = _read_c_string(region, suffix_offset, suffix_unicode)
