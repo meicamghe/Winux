@@ -83,7 +83,7 @@ class RuntimeTests(unittest.TestCase):
             "winux.runtime.wine.subprocess.Popen"
         ) as popen:
             with self.assertRaisesRegex(ValueError, "NUL"):
-                runtime.run(Path("/prefix"), Path("/app.exe"), args=["bad\\x00arg"])
+                runtime.run(Path("/prefix"), Path("/app.exe"), args=["bad\x00arg"])
         popen.assert_not_called()
 
     def test_wine_runtime_implements_interface(self):
