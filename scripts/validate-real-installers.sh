@@ -33,7 +33,7 @@ cat > "$work_dir/fixture.nsi" <<'EOF'
 !include "MUI2.nsh"
 Name "Winux WoW64 Installer Fixture"
 OutFile "fixture-setup.exe"
-InstallDir "$PROGRAMFILES\\WinuxFixture"
+InstallDir "$LOCALAPPDATA\\WinuxFixture"
 RequestExecutionLevel user
 Section "Install"
   SetOutPath "$INSTDIR"
@@ -58,12 +58,14 @@ for architecture in x86 x64; do
   timeout --signal=TERM --kill-after=5s 180s winux install "$setup" --prefix "$prefix" --timeout 120
 
   prefix_path="$HOME/.local/share/winux/prefixes/$prefix"
-  installed="$prefix_path/drive_c/Program Files/WinuxFixture/fixture.exe"
-  test -s "$installed" || {
-    echo "FAIL: installed executable missing for $architecture" >&2
-    find "$prefix_path/drive_c" -maxdepth 5 -type f -iname '*.exe' -print >&2 || true
+  mapfile -t installed_candidates < <(find "$prefix_path/drive_c" -type f -path '*/WinuxFixture/fixture.exe' -print)
+  if [[ "${#installed_candidates[@]}" -ne 1 ]]; then
+    echo "FAIL: expected one installed executable for $architecture, found ${#installed_candidates[@]}" >&2
+    find "$prefix_path/drive_c" -type f -iname 'fixture.exe' -print >&2 || true
     exit 1
-  }
+  fi
+  installed="${installed_candidates[0]}"
+  test -s "$installed"
 
   echo "LAUNCH: installed $architecture application"
   (
