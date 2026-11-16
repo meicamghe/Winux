@@ -305,7 +305,8 @@ class ApplicationManager:
                 relative_shortcut = shortcut_path.relative_to(
                     drive_c
                 ).as_posix()
-            except ValueError:
+            except (OSError, ValueError):
+                # A shortcut can disappear between discovery and inventory.
                 continue
             registry_id = f"start-menu:{relative_shortcut}"
             known_executables.add(executable_key)
