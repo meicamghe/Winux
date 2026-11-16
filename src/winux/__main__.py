@@ -108,6 +108,12 @@ def main():
     )
     app_list_parser.add_argument("--prefix", required=True)
 
+    app_audit_parser = app_commands.add_parser(
+        "audit",
+        help="Audit application inventory for missing executable files"
+    )
+    app_audit_parser.add_argument("--prefix", required=True)
+
     app_search_parser = app_commands.add_parser(
         "search",
         help="Search installed applications"
@@ -303,6 +309,21 @@ def main():
                     print(f"Executable: {app.get('executable_path') or 'Not found'}")
                     print(f"Launch status: {app.get('executable_status', 'unknown')}")
                     print(f"Registry ID: {app.get('registry_id')}")
+
+            elif args.app_command == "audit":
+                report = manager.audit(args.prefix)
+                print("Application Inventory Audit")
+                print("-" * 40)
+                print(f"Prefix:       {report['prefix']}")
+                print(f"Total:        {report['total']}")
+                print(f"Stale:        {report['stale_count']}")
+                for status, count in sorted(report["status_counts"].items()):
+                    print(f"{status}: {count}")
+                for app in report["stale"]:
+                    print(
+                        f"[STALE] {app.get('DisplayName') or 'Unknown'} "
+                        f"({app.get('registry_id')})"
+                    )
 
             elif args.app_command == "search":
                 applications = manager.search(args.prefix, args.query)
