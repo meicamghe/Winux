@@ -599,6 +599,50 @@ HKEY_CURRENT_USER\\Software\\App\\Two
             [],
         )
 
+    def test_export_json_includes_all_msi_registry_views(self):
+        applications = [{
+            "DisplayName": "MSI Example",
+            "registry_id": "native-id",
+            "registry_key": r"HKLM\\Software\\Uninstall\\native-id",
+            "registry_ids": ["native-id", "wow-id"],
+            "registry_keys": [
+                r"HKLM\\Software\\Uninstall\\native-id",
+                r"HKLM\\Software\\WOW6432Node\\Uninstall\\wow-id",
+            ],
+            "uninstall_commands": [
+                {"registry_id": "native-id", "quiet": None, "normal": "msiexec /I{ABC}"},
+                {"registry_id": "wow-id", "quiet": "msiexec /x {ABC} /qn", "normal": None},
+            ],
+        }]
+        output = Path(self.temp_dir.name) / "msi-inventory.json"
+
+        with patch.object(self.manager, "list", return_value=applications):
+            self.manager.export("test-prefix", output, "json")
+
+        record = json.loads(output.read_text(encoding="utf-8"))[0]
+        self.assertEqual(record["registry_ids"], ["native-id", "wow-id"])
+        self.assertEqual(len(record["registry_keys"]), 2)
+        self.assertEqual(record["uninstall_commands"][1]["quiet"], "msiexec /x {ABC} /qn")
+
+    def test_export_csv_serializes_msi_registry_views_as_json(self):
+        applications = [{
+            "DisplayName": "MSI Example",
+            "registry_ids": ["native-id", "wow-id"],
+            "registry_keys": [r"HKLM\\Software\\Uninstall\\native-id"],
+            "uninstall_commands": [
+                {"registry_id": "native-id", "quiet": None, "normal": "msiexec /I{ABC}"}
+            ],
+        }]
+        output = Path(self.temp_dir.name) / "msi-inventory.csv"
+
+        with patch.object(self.manager, "list", return_value=applications):
+            self.manager.export("test-prefix", output, "csv")
+
+        with output.open(encoding="utf-8", newline="") as file:
+            record = next(csv.DictReader(file))
+        self.assertEqual(json.loads(record["registry_ids"]), ["native-id", "wow-id"])
+        self.assertEqual(json.loads(record["uninstall_commands"])[0]["registry_id"], "native-id")
+
     def test_export_writes_json(self):
         applications = [
             {
