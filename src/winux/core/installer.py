@@ -341,7 +341,7 @@ class Installer:
             raise TypeError("Installer arguments must be a list or tuple of strings")
         if any(not isinstance(argument, str) for argument in arguments):
             raise TypeError("Installer arguments must contain only strings")
-        if any("\\x00" in argument for argument in arguments):
+        if any("\x00" in argument for argument in arguments):
             raise ValueError("Installer arguments must not contain NUL characters")
         return list(arguments)
 
