@@ -106,6 +106,32 @@ HKEY_CURRENT_USER\\Software\\App\\Two
             self.prefix_path / "drive_c" / "Program Files" / "Example" / "app.exe",
         )
 
+    def test_parse_app_paths_accepts_existing_executable_default_value(self):
+        executable = (
+            self.prefix_path / "drive_c" / "Program Files" / "Example" / "example.exe"
+        )
+        executable.parent.mkdir(parents=True)
+        executable.touch()
+        output = (
+            r"HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\example.exe"
+            + "\\n    (Default)    REG_SZ    C:\\\\Program Files\\\\Example\\\\example.exe\\n"
+        )
+        candidates = self.manager._parse_app_paths(output, self.prefix_path)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["executable_path"], str(executable))
+        self.assertEqual(candidates[0]["discovery_source"], "app_paths")
+
+    def test_parse_app_paths_rejects_missing_or_non_executable_targets(self):
+        output = (
+            r"HKEY_LOCAL_MACHINE\\Software\\App Paths\\missing.exe"
+            + "\\n    (Default)    REG_SZ    C:\\\\Missing\\\\missing.exe\\n"
+            + r"HKEY_LOCAL_MACHINE\\Software\\App Paths\\resource.exe"
+            + "\\n    (Default)    REG_SZ    C:\\\\Windows\\\\resource.dll\\n"
+        )
+        self.assertEqual(
+            self.manager._parse_app_paths(output, self.prefix_path), []
+        )
+
     def test_list_deduplicates_registry_records_and_resolves_paths(self):
         app_exe = (
             self.prefix_path / "drive_c" / "Program Files" / "Example" / "app.exe"
