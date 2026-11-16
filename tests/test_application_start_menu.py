@@ -14,6 +14,7 @@ class StartMenuInventoryTests(unittest.TestCase):
         self.drive = self.prefix / "drive_c"
         self.drive.mkdir(parents=True)
         self.runtime = type("Runtime", (), {
+            "is_available": lambda *_args, **_kwargs: True,
             "query_registry": lambda *_args, **_kwargs: type(
                 "Result", (), {"returncode": 0, "stdout": "", "stderr": ""}
             )()
