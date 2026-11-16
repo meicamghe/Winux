@@ -84,15 +84,14 @@ for architecture in x86 x64; do
   timeout --signal=TERM --kill-after=5s 180s winux install "$msi" --prefix "$prefix" --timeout 120
 
   prefix_path="$HOME/.local/share/winux/prefixes/$prefix"
-  installed="$prefix_path/drive_c/Program Files/WinuxMsiFixture/fixture.exe"
-  if [[ "$architecture" == "x64" ]]; then
-    installed="$prefix_path/drive_c/Program Files/WinuxMsiFixture/fixture.exe"
-  fi
-  test -s "$installed" || {
-    echo "FAIL: MSI-installed executable missing for $architecture" >&2
+  mapfile -t installed_candidates < <(find "$prefix_path/drive_c" -type f -path '*/WinuxMsiFixture/fixture.exe' -print)
+  if [[ "${#installed_candidates[@]}" -ne 1 ]]; then
+    echo "FAIL: expected one MSI-installed executable for $architecture, found ${#installed_candidates[@]}" >&2
     find "$prefix_path/drive_c" -type f -iname 'fixture.exe' -print >&2 || true
     exit 1
-  }
+  fi
+  installed="${installed_candidates[0]}"
+  test -s "$installed"
 
   echo "LAUNCH: installed MSI $architecture application"
   (
