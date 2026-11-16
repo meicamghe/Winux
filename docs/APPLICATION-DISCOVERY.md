@@ -69,3 +69,23 @@ Hosted CI covers parsing, path containment, status classification, launcher
 prefix matching, and safe desktop-file collision handling. Hosted CI does not
 launch Wine applications or create real Windows prefixes. Real x86/x64
 runtime compatibility remains a separate integration requirement.
+
+## Windows Start Menu shortcuts
+
+The Shell Link parser reads the local target from a validated LinkInfo block.
+Discovery considers machine-wide and per-user Start Menu folders and accepts
+only an existing .exe whose resolved path remains inside the selected
+prefix's drive_c. Symlinked shortcut files, malformed links, relative-only
+links, network targets, IDList-only links, missing targets, and paths outside
+the prefix are ignored rather than guessed.
+
+The discovery API currently returns shortcut candidates separately; merging
+these candidates into the primary application inventory and associating them
+with uninstall/App Paths records remains follow-up work.
+
+## Updated verification
+
+- PR #6 added the conservative Shell Link parser and Start Menu discovery.
+  Its Run 274 passed core, runtime, services, and package checks.
+- The PR also exposed and fixed a pre-existing desktop Exec parsing issue:
+  quoted WINEPREFIX values are now parsed with POSIX shell quoting rules.
