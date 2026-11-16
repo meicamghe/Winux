@@ -36,7 +36,7 @@ jobs:
           import re
           import subprocess
           version = subprocess.check_output(["wine", "--version"], text=True).strip()
-          match = re.search(r"wine[- ]?(\\d+)\\.(\\d+)", version, re.I)
+          match = re.search(r"wine[- ]?(\d+)\.(\d+)", version, re.I)
           if not match or tuple(map(int, match.groups())) < (11, 0):
               raise SystemExit(f"Expected Wine 11.0+, got: {version}")
           print(f"PASS: {version}")
