@@ -156,7 +156,7 @@ class ApplicationManager:
                 or not executable.is_file()
             ):
                 return
-            registry_id = current_key.rstrip("\\\\").rsplit("\\\\", 1)[-1]
+            registry_id = current_key.rstrip("\\").rsplit("\\", 1)[-1]
             candidates.append({
                 "registry_key": current_key,
                 "registry_id": registry_id,
