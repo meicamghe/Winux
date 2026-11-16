@@ -82,6 +82,21 @@ class StartMenuInventoryTests(unittest.TestCase):
         self.assertEqual(len(applications), 1)
         self.assertEqual(applications[0]["registry_id"], "Example")
 
+    def test_removed_shortcut_is_ignored_without_failing_inventory(self):
+        executable = self.drive / "Apps/Example/app.exe"
+        executable.parent.mkdir(parents=True)
+        executable.write_bytes(b"MZ")
+        candidate = self._shortcut(executable)
+        Path(candidate["shortcut"]).unlink()
+
+        with patch.object(
+            DesktopManager, "discover_start_menu_shortcuts",
+            return_value={"shortcuts": [candidate], "errors": []},
+        ):
+            applications = self.manager.list("test-prefix")
+
+        self.assertEqual(applications, [])
+
     def test_start_menu_candidate_outside_prefix_is_rejected(self):
         outside = Path(self.temp.name) / "outside.exe"
         outside.write_bytes(b"MZ")
