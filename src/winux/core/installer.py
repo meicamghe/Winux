@@ -1,7 +1,6 @@
 import json
 import math
 import re
-import fcntl
 import os
 import shutil
 import stat
@@ -13,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from winux.core.prefix import PrefixManager
+from winux.core.prefix_lock import prefix_operation_lock
 from winux.core.verification import VerificationManager
 from winux.runtime.manager import RuntimeManager
 
@@ -80,21 +80,6 @@ class Installer:
                 raise ValueError("Installer log path must be a regular file")
             os.fchmod(descriptor, 0o600)
             return os.fdopen(descriptor, "w", encoding="utf-8")
-        except Exception:
-            os.close(descriptor)
-            raise
-
-    @staticmethod
-    def _open_lock_file(path):
-        flags = os.O_RDWR | os.O_CREAT
-        flags |= getattr(os, "O_NOFOLLOW", 0)
-        flags |= getattr(os, "O_NONBLOCK", 0)
-        descriptor = os.open(path, flags, 0o600)
-        try:
-            if not __import__("stat").S_ISREG(os.fstat(descriptor).st_mode):
-                raise ValueError("Installer lock path must be a regular file")
-            os.fchmod(descriptor, 0o600)
-            return os.fdopen(descriptor, "r+b")
         except Exception:
             os.close(descriptor)
             raise
@@ -406,7 +391,6 @@ class Installer:
         install_id = uuid.uuid4().hex[:12]
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         log_file = self.log_dir / f"{timestamp}-{install_id}.log"
-        lock_file = self.lock_dir / f"{prefix_name}.lock"
 
         started = datetime.now(timezone.utc)
 
@@ -427,25 +411,8 @@ class Installer:
             log.flush()
 
             try:
-                with self._open_lock_file(lock_file) as lock:
-                    try:
-                        fcntl.flock(
-                            lock.fileno(),
-                            fcntl.LOCK_EX | fcntl.LOCK_NB
-                        )
-                    except BlockingIOError:
-                        error = (
-                            f"Another installation is using prefix: {prefix_name}"
-                        )
-                        log.write("\\nStatus: FAILED\\n")
-                        log.write(f"Error: {error}\\n")
-                        log.write(
-                            f"Finished: {datetime.now(timezone.utc).isoformat()}\\n"
-                        )
-                        log.flush()
-                        raise RuntimeError(error)
-
-                    log.write("Status: RUNNING\n")
+                with prefix_operation_lock(prefix_name, blocking=False):
+                    log.write("Status: RUNNING\\n")
                     log.flush()
 
                     try:
