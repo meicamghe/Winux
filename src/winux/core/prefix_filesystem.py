@@ -169,6 +169,8 @@ def scan_prefix_tree(prefix_path):
                 "mode": stat.S_IMODE(info.st_mode) & 0o755,
                 "size": info.st_size if kind == "file" else 0,
                 "mtime_ns": getattr(info, "st_mtime_ns", 0),
+                "ctime_ns": getattr(info, "st_ctime_ns", 0),
+                "nlink": info.st_nlink,
                 "device": info.st_dev,
                 "inode": info.st_ino,
             })
