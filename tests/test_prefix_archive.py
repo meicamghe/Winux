@@ -7,7 +7,7 @@ def make_container(payload, manifest, path):
     encoded=json.dumps(manifest,separators=(",",":")).encode()
     Path(path).write_bytes(MAGIC+len(payload).to_bytes(8,"big")+payload+len(encoded).to_bytes(8,"big")+encoded)
 def header(name,size,kind=b"0",mode=0o644):
-    b=bytearray(512); raw=name.encode(); b[:len(raw)]=raw
+    b=bytearray(512); name=name.rstrip("/") + ("/" if kind == b"5" else ""); raw=name.encode(); b[:len(raw)]=raw
     b[100:108]=f"{mode:07o}\0".encode(); b[108:116]=b"0000000\0"; b[116:124]=b"0000000\0"
     b[124:136]=f"{size:011o}\0".encode(); b[136:148]=b"00000000000\0"; b[148:156]=b"        "; b[156:157]=kind
     b[257:263]=b"ustar\0"; b[263:265]=b"00"; checksum=sum(b); b[148:156]=f"{checksum:06o}\0 ".encode(); return bytes(b)
