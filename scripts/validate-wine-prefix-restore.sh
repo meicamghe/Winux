@@ -16,7 +16,7 @@ if [[ "${WINUX_RESTORE_TEST_ISOLATED:-0}" != "1" ]]; then
   nobody_uid="$(id -u nobody)"
   if [[ "$(id -u)" != "$nobody_uid" ]]; then
     isolated_home="$(mktemp -d "${TMPDIR:-/tmp}/winux-restore-user.XXXXXX")"
-    chown nobody:"$(id -gn nobody)" "$isolated_home"
+    sudo chown nobody:"$(id -gn nobody)" "$isolated_home"
     chmod 700 "$isolated_home"
     trap 'rm -rf -- "$isolated_home"' EXIT
     set +e
