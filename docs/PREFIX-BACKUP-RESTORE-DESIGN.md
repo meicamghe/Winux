@@ -36,7 +36,7 @@ A usable prefix has a real, non-symlink `drive_c/`, a runtime-valid Wine registr
 
 Winux accepts both x86 and x64 application workflows through its current `win64` WoW64 prefix model. A backup must record the prefix architecture as `win64`; the architecture of an individual installed application is not a substitute for prefix architecture.
 
-Wine prefixes commonly contain symlinks under `dosdevices/`. In particular, `c:` represents the prefix's C: drive and `z:` commonly exposes the host root filesystem. These links are not ordinary portable application data. Blindly following or restoring them can archive host files or expose a different host after migration.
+Wine prefixes commonly contain symlinks under `dosdevices/`. Real WoW64 prefixes created by the hosted Ubuntu 24.04 CI runner were inspected on 2026-11-17 with both Wine 9.0 (Ubuntu `9.0~repack-4build3`) and Wine 11.0. Both contained the same observed layout: `c: -> ../drive_c`, `z: -> /`, and `com1` through `com32` mapped in order to `/dev/ttyS0` through `/dev/ttyS31`. These links are not ordinary portable application data. Blindly following or restoring them can archive host files or expose host devices after migration. This observation is evidence for that Wine build and runner; other supported Wine builds and platforms must be checked before the allow-list is finalized.
 
 ## 3. Archive format
 
@@ -73,7 +73,10 @@ The payload digest must be checked before the restore is published. The manifest
 ### 4.1 Prefix selection and quiescence
 
 - Resolve the requested prefix through PrefixManager's normal validation path; do not accept arbitrary user-supplied directory paths as managed prefixes.
-- Acquire the same per-prefix operation lock used by other prefix lifecycle operations, or introduce one shared lock contract before implementing backup.
+- Current-code audit (2026-11-17): `Installer` uses an exclusive per-prefix lock under `~/.local/share/winux/locks/<name>.lock`; `PrefixManager.create/delete` do not currently acquire it. Process and service managers have separate locks for their JSON state files, not for prefix contents. Therefore there is not yet a shared prefix-operation lock.
+- Before backup/restore is implemented, introduce one reusable per-prefix lock helper at the existing lock path and make every operation that mutates prefix contents participate in it (at minimum installer, application uninstall, prefix create/delete, backup, and restore). Keep process/service state-file locks distinct; do not mistake them for prefix locks.
+- Backup must acquire the prefix lock exclusively and non-blocking, then independently verify that no Wine processes are using the prefix. A lock alone cannot detect unmanaged Wine processes. Never kill Wine processes to make backup possible.
+- Prefix restore must reserve the destination name with the same lock and hold it through staging publication. Prefix create/delete must use the same helper so they cannot race with backup/restore.
 - Refuse backup when Winux can positively determine that the prefix is in use by a managed process or Wine process. Do not kill processes automatically.
 - If reliable process detection is unavailable, report that the snapshot cannot be proven quiescent and require an explicit, documented unsafe-snapshot override only if a later product decision approves it. The safe default is refusal.
 - Never run Wine or backup commands as root.
@@ -87,18 +90,20 @@ The payload digest must be checked before the restore is published. The manifest
 - Reject mount points or filesystem boundaries beneath the prefix by default; do not accidentally include separately mounted host data.
 - Reject files that change while being read (size, inode, mtime/ctime checks where available); abort and discard the incomplete archive.
 - Normalize archive member paths to POSIX relative paths. Reject absolute paths, empty path components where ambiguous, `.`, `..`, backslashes used as separators, NUL, and duplicate normalized paths.
+- Exclude `.winux-prefix.json` from the tar payload. Validate and capture its supported fields into the backup manifest; restore always writes fresh destination metadata. This prevents archive metadata from being treated as trusted executable state or duplicated as ordinary payload.
 - Do not follow directory symlinks, even when their target remains inside the prefix.
 
 ### 4.3 Wine drive symlinks
 
-The first implementation must not serialize arbitrary symlinks.
+The first implementation must not serialize arbitrary symlinks or follow any symlink.
 
-- Recognize only the expected Wine drive aliases directly under `dosdevices/`.
-- Validate the C: alias by resolving it without following outside the pinned prefix and confirming it points exactly to this prefix's real `drive_c`. Store it as a logical drive mapping, not as an arbitrary host path.
-- Recognize the Z: alias only as the conventional host-root mapping. Do not traverse it or serialize its absolute target. Record that a host-root mapping existed, then reconstruct it according to an explicit restore policy. Default restore behavior should recreate Wine's conventional Z: mapping to the destination host root, with this behavior clearly disclosed to the user.
-- Any other symlink, unexpected target, symlinked `dosdevices` directory, or ambiguous mapping causes backup refusal in version 1.
-- Restore creates the validated C: and Z: aliases itself; it never trusts symlink targets from archive entries.
-- If the actual Wine prefix layout on supported Wine builds differs from these assumptions, add a fixture from a real disposable prefix and revise this contract before enabling backup. Do not weaken validation to make an unknown link pass.
+- Recognize only the expected Wine aliases directly under a real, non-symlink `dosdevices/` directory. The exact allow-list is runtime/platform-specific and must be backed by disposable-prefix CI evidence.
+- Validate the C: alias by reading its link text without following it and confirming the normalized relative target is exactly `../drive_c`; independently verify that `drive_c/` is a real directory pinned inside this prefix. Store C: as a logical mapping, never as an arbitrary link target.
+- Recognize the Z: alias only when its link text is exactly `/`. Never resolve, traverse, or serialize its target. Record that the standard host-root mapping existed. Restore may recreate `z: -> /` only as an explicit, documented host-integration policy; the restore report must disclose that Windows applications can see the destination host filesystem through Wine's Z: drive. Provide a restore option to omit Z: for users who prefer isolation.
+- Recognize serial aliases only when the complete set and exact link texts match the tested Wine default: `com1 -> /dev/ttyS0` through `com32 -> /dev/ttyS31`. Treat these as logical Wine defaults, not portable data. Never resolve or traverse them during backup and never archive their link text as a general-purpose path. Restore must offer an explicit serial-device policy: recreate only this exact conventional mapping when requested, or omit all COM aliases. The default must be conservative (omit COM aliases) and the report must explain that serial-port integration may need reconfiguration.
+- Unknown symlinks, partial or unexpected COM mappings, other device targets (including `/dev/ttyUSB*`), unexpected C:/Z: targets, symlinked `dosdevices`, or ambiguous layouts cause backup refusal in version 1. Do not silently drop unknown links.
+- Restore creates only the logical aliases approved by the selected policy; it never trusts symlink targets from archive entries. Any reconstructed symlink is created by Winux after extraction using a fixed allow-listed target.
+- The 2026-11-17 Wine 9.0 and Wine 11.0 CI observations are not sufficient to claim all Wine builds or non-Linux platforms share this layout. Before enabling backup, collect fixtures for each supported Wine packaging family/version and relevant platform. Do not weaken validation to make an unknown link pass.
 
 ## 5. Resource and archive limits
 
@@ -201,7 +206,9 @@ winux prefix inspect-backup <archive>
 - `../`, absolute paths, Windows drive-prefixed names, backslashes, NUL, repeated separators, Unicode normalization collisions.
 - Symlinked destination root, parent, destination name, staging directory, and path replacement between validation and write.
 - Archive symlink followed by child member (must reject).
-- `dosdevices/c:` pointing outside prefix, `dosdevices/z:` targeting an unexpected path, unknown drive aliases, symlinked `dosdevices`.
+- `dosdevices/c:` with any link text other than `../drive_c`, `dosdevices/z:` with any link text other than `/`, unknown drive aliases, symlinked `dosdevices`.
+- Exact Wine-default `com1`–`com32` to `/dev/ttyS0`–`/dev/ttyS31` mappings; reject partial sets, reordered targets, `/dev/ttyUSB*`, and arbitrary device symlinks.
+- Restore policy tests: Z: omitted by isolation option or recreated only as `/`; COM mappings omitted by default and recreated only after explicit opt-in.
 - Confirm no test can read or archive a sentinel file outside the fixture prefix through a symlink.
 
 ### Transaction and recovery
@@ -223,7 +230,7 @@ winux prefix inspect-backup <archive>
 
 ## 10. Implementation sequence
 
-1. Add this design and review the actual symlink layout from disposable prefixes on supported Wine versions.
+1. Add this design and review the actual symlink layout from disposable prefixes on supported Wine versions. Initial evidence: Wine 9.0 and Wine 11.0 on Ubuntu 24.04 both create `c:`, `z:`, and `com1`–`com32` links; see the CI logs for PR #45.
 2. Introduce a shared prefix-operation lock and safe filesystem traversal helpers, with focused unit tests.
 3. Implement read-only backup writer and archive inspector; do not add restore in the same change.
 4. Add backup round-trip and adversarial archive tests.
