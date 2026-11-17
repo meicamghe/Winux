@@ -17,6 +17,29 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
 
     @patch("winux.platform.runtime.platform.machine", return_value="x86_64")
     @patch("winux.platform.runtime._command_status", return_value="/usr/bin/tool")
+    def test_distribution_and_host_metadata_are_reported(self):
+        host = {
+            "distribution": {
+                "id": "ubuntu",
+                "id_like": "debian",
+                "name": "Ubuntu 24.04 LTS",
+                "version_id": "24.04",
+            },
+            "package_managers": ["apt"],
+            "init_system": "systemd",
+        }
+        with (
+            patch("winux.platform.runtime.detect_host_environment", return_value=host),
+            patch("winux.platform.runtime._command_status", return_value="/usr/bin/tool"),
+            patch("winux.platform.runtime.subprocess.run", return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")),
+            patch("builtins.print") as output,
+        ):
+            self.assertTrue(check_runtime(self.manager))
+        rendered = " ".join(str(call) for call in output.call_args_list)
+        self.assertIn("Ubuntu 24.04 LTS 24.04 (ubuntu)", rendered)
+        self.assertIn("Init system: systemd", rendered)
+        self.assertIn("Package manager(s): apt", rendered)
+
     def test_all_core_tools_available(self, _commands, _machine):
         with patch("builtins.print"):
             self.assertTrue(check_runtime(self.manager))
