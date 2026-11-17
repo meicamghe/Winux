@@ -152,6 +152,51 @@ class ApplicationCliTests(unittest.TestCase):
         )
 
 
+    @patch(
+        "winux.core.applications.ApplicationManager.list",
+        return_value=[{
+            "DisplayName": "Example App",
+            "executable_path": "/prefix/drive_c/Program Files/Example/app.exe",
+            "executable_status": "ready",
+        }],
+    )
+    def test_app_list_distinguishes_executable_discovery_from_execution_test(self, list_apps):
+        with patch.object(
+            sys,
+            "argv",
+            ["winux", "app", "list", "--prefix", "test-prefix"],
+        ):
+            with patch("builtins.print") as output:
+                main()
+
+        rendered = str(output.call_args_list)
+        self.assertIn("Executable discovery: ready", rendered)
+        self.assertIn("Execution test: NOT TESTED", rendered)
+        self.assertNotIn("Launch status: ready", rendered)
+
+    @patch(
+        "winux.core.applications.ApplicationManager.info",
+        return_value={
+            "DisplayName": "Example App",
+            "executable_path": "/prefix/drive_c/Program Files/Example/app.exe",
+            "executable_status": "ready",
+        },
+    )
+    def test_app_info_does_not_present_discovery_as_a_launch_test(self, get_app):
+        with patch.object(
+            sys,
+            "argv",
+            ["winux", "app", "info", "--prefix", "test-prefix", "Example"],
+        ):
+            with patch("builtins.print") as output:
+                main()
+
+        rendered = str(output.call_args_list)
+        self.assertIn("Executable discovery: ready", rendered)
+        self.assertIn("Execution test:      NOT TESTED", rendered)
+        self.assertNotIn("Launch status:    ready", rendered)
+
+
 class ProcessCliTests(unittest.TestCase):
 
     @patch("winux.core.processes.ProcessManager.list")

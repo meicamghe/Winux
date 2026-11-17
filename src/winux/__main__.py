@@ -309,7 +309,8 @@ def main():
                     print(f"Version:    {app.get('DisplayVersion') or 'Unknown'}")
                     print(f"Publisher:  {app.get('Publisher') or 'Unknown'}")
                     print(f"Executable: {app.get('executable_path') or 'Not found'}")
-                    print(f"Launch status: {app.get('executable_status', 'unknown')}")
+                    print(f"Executable discovery: {app.get('executable_status', 'unknown')}")
+                    print("Execution test: NOT TESTED (discovery does not launch the application)")
                     print(f"Registry ID: {app.get('registry_id')}")
                     registry_ids = app.get("registry_ids") or [app.get("registry_id")]
                     registry_keys = app.get("registry_keys") or [app.get("registry_key")]
@@ -382,7 +383,8 @@ def main():
                         f"normal={command.get('normal') or 'none'})"
                     )
                 print(f"Executable:       {app.get('executable_path') or 'Not found'}")
-                print(f"Launch status:    {app.get('executable_status', 'unknown')}")
+                print(f"Executable discovery: {app.get('executable_status', 'unknown')}")
+                print("Execution test:      NOT TESTED (discovery does not launch the application)")
                 print(f"Install Location: {app.get('install_path') or 'Not found'}")
                 print(f"Uninstall:        {app.get('UninstallString') or 'Not available'}")
                 print(f"Website:          {app.get('URLInfoAbout') or 'Not available'}")
