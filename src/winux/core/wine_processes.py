@@ -31,7 +31,8 @@ def _read_environment(path):
             if key in values:
                 raise ValueError("duplicate WINEPREFIX environment entries")
             values[key] = os.fsdecode(value)
-    return values.get(b"WINEPREFIX")
+    value = values.get(b"WINEPREFIX")
+    return value if value else None
 
 
 def _is_wine_candidate(process_dir):
