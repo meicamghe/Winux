@@ -70,6 +70,18 @@ def _validate_member_path(value):
     return unicodedata.normalize("NFC", value)
 
 
+def _mount_id(descriptor):
+    """Return the Linux mount ID for an open object, failing closed if absent."""
+    try:
+        with open(f"/proc/self/fdinfo/{descriptor}", encoding="ascii") as info:
+            for line in info:
+                if line.startswith("mnt_id:"):
+                    return int(line.split(":", 1)[1].strip())
+    except (OSError, ValueError):
+        pass
+    raise PrefixScanError("Cannot verify filesystem mount boundary")
+
+
 def _same_object(before, after):
     return (
         before.st_dev == after.st_dev
@@ -79,6 +91,7 @@ def _same_object(before, after):
 
 
 def _scan_drive_links(directory_fd):
+    initial = os.fstat(directory_fd)
     names = sorted(os.listdir(directory_fd))
     links = {}
     for name in names:
@@ -101,6 +114,10 @@ def _scan_drive_links(directory_fd):
                 f"Unexpected target for Wine drive mapping {name}"
             )
         links[name] = target
+
+    final = os.fstat(directory_fd)
+    if (initial.st_mtime_ns, initial.st_ctime_ns) != (final.st_mtime_ns, final.st_ctime_ns):
+        raise PrefixScanError("dosdevices changed during scan")
 
     if links.get("c:") != "../drive_c":
         raise PrefixScanError("Wine dosdevices/c: mapping is missing")
@@ -126,6 +143,7 @@ def scan_prefix_tree(prefix_path):
         if root_info.st_mode & (stat.S_ISUID | stat.S_ISGID):
             raise PrefixScanError("Setuid/setgid prefix root is forbidden")
         root_device = root_info.st_dev
+        root_mount = _mount_id(root_fd)
 
         drive_info = os.stat("drive_c", dir_fd=root_fd, follow_symlinks=False)
         if not stat.S_ISDIR(drive_info.st_mode):
@@ -156,7 +174,7 @@ def scan_prefix_tree(prefix_path):
         def walk_directory(directory_fd, relative):
             nonlocal file_count, directory_count, total_bytes, drive_mappings
             directory_info = os.fstat(directory_fd)
-            if directory_info.st_dev != root_device:
+            if directory_info.st_dev != root_device or _mount_id(directory_fd) != root_mount:
                 raise PrefixScanError("Mounted filesystem inside prefix")
             if relative:
                 add_record(relative, "directory", directory_info)
@@ -193,6 +211,8 @@ def scan_prefix_tree(prefix_path):
                         opened = os.fstat(child_fd)
                         if not _same_object(info, opened):
                             raise PrefixScanError("dosdevices changed during scan")
+                        if _mount_id(child_fd) != root_mount:
+                            raise PrefixScanError("Mounted filesystem inside prefix")
                         drive_mappings = _scan_drive_links(child_fd)
                         add_record(child_relative, "directory", opened)
                         directory_count += 1
@@ -229,6 +249,8 @@ def scan_prefix_tree(prefix_path):
                             raise PrefixScanError(
                                 f"Directory changed during scan: {child_relative}"
                             )
+                        if _mount_id(child_fd) != root_mount:
+                            raise PrefixScanError("Mounted filesystem inside prefix")
                         walk_directory(child_fd, child_relative)
                     finally:
                         os.close(child_fd)
@@ -263,6 +285,8 @@ def scan_prefix_tree(prefix_path):
                         raise PrefixScanError(
                             f"File changed during scan: {child_relative}"
                         )
+                    if _mount_id(file_fd) != root_mount:
+                        raise PrefixScanError("Mounted filesystem inside prefix")
                     if not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1:
                         raise PrefixScanError(
                             f"Unsafe file object: {child_relative}"
@@ -279,6 +303,13 @@ def scan_prefix_tree(prefix_path):
                     add_record(child_relative, "file", opened)
                 finally:
                     os.close(file_fd)
+
+            final_directory_info = os.fstat(directory_fd)
+            if (directory_info.st_mtime_ns, directory_info.st_ctime_ns) != (
+                final_directory_info.st_mtime_ns,
+                final_directory_info.st_ctime_ns,
+            ):
+                raise PrefixScanError(f"Directory changed during scan: {relative or '.'}")
 
         walk_directory(root_fd, "")
         if drive_mappings is None:
