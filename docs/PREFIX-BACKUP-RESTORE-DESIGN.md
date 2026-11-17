@@ -87,6 +87,7 @@ The payload digest must be checked before the restore is published. The manifest
 - Reject mount points or filesystem boundaries beneath the prefix by default; do not accidentally include separately mounted host data.
 - Reject files that change while being read (size, inode, mtime/ctime checks where available); abort and discard the incomplete archive.
 - Normalize archive member paths to POSIX relative paths. Reject absolute paths, empty path components where ambiguous, `.`, `..`, backslashes used as separators, NUL, and duplicate normalized paths.
+- Exclude `.winux-prefix.json` from the tar payload. Validate and capture its supported fields into the backup manifest; restore always writes fresh destination metadata. This prevents archive metadata from being treated as trusted executable state or duplicated as ordinary payload.
 - Do not follow directory symlinks, even when their target remains inside the prefix.
 
 ### 4.3 Wine drive symlinks
