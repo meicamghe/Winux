@@ -12,12 +12,12 @@ def header(name,size,kind=b"0",mode=0o644):
     b[124:136]=f"{size:011o}\0".encode(); b[136:148]=b"00000000000\0"; b[148:156]=b"        "; b[156:157]=kind
     b[257:263]=b"ustar\0"; b[263:265]=b"00"; checksum=sum(b); b[148:156]=f"{checksum:06o}\0 ".encode(); return bytes(b)
 def payload_ok():
-    data=b"hello"; return header("drive_c/a.txt",len(data))+data+bytes(512-len(data))+bytes(1024)
+    data=b"hello"; return header("drive_c",0,b"5")+header("dosdevices",0,b"5")+header("drive_c/a.txt",len(data))+data+bytes(512-len(data))+bytes(1024)
 
 class InspectorTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup); self.path=Path(self.tmp.name)/"backup.wux"; p=payload_ok()
-        self.manifest={"format":"winux-prefix-backup","format_version":1,"architecture":"win64","runtime":"wine-stable-11","files":1,"directories":0,"total_bytes":5,"drive_mappings":{"c":"drive_c","z":None,"serial":None},"payload":{"name":"payload.tar","size":len(p),"sha256":hashlib.sha256(p).hexdigest()},"entries":[{"path":"drive_c/a.txt","type":"file","mode":0o644,"size":5,"device":1,"inode":2,"mtime_ns":1,"ctime_ns":1,"nlink":1}]}
+        self.manifest={"format":"winux-prefix-backup","format_version":1,"architecture":"win64","runtime":"wine-stable-11","files":1,"directories":2,"total_bytes":5,"drive_mappings":{"c":"drive_c","z":None,"serial":None},"payload":{"name":"payload.tar","size":len(p),"sha256":hashlib.sha256(p).hexdigest()},"entries":[{"path":"drive_c","type":"directory","mode":0o755,"size":0,"device":1,"inode":2,"mtime_ns":1,"ctime_ns":1,"nlink":1},{"path":"dosdevices","type":"directory","mode":0o755,"size":0,"device":1,"inode":3,"mtime_ns":1,"ctime_ns":1,"nlink":1},{"path":"drive_c/a.txt","type":"file","mode":0o644,"size":5,"device":1,"inode":4,"mtime_ns":1,"ctime_ns":1,"nlink":1}]}
         make_container(p,self.manifest,self.path)
     def test_valid_inspection_has_no_extraction_side_effect(self):
         self.assertEqual(inspect_prefix_backup(self.path)["total_bytes"],5); self.assertEqual(list(Path(self.tmp.name).iterdir()),[self.path])
