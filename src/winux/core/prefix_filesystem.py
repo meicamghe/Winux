@@ -56,7 +56,7 @@ def _open_absolute_directory(path):
 def _validate_member_path(value):
     if not isinstance(value, str) or not value or "\\x00" in value:
         raise PrefixScanError("Invalid archive path")
-    if value.startswith("/") or "\\\\" in value:
+    if value.startswith("/") or chr(92) in value:
         raise PrefixScanError("Absolute and backslash paths are forbidden")
     encoded = value.encode("utf-8", errors="strict")
     if len(encoded) > MAX_PATH_BYTES:
@@ -196,6 +196,8 @@ def scan_prefix_tree(prefix_path):
                         drive_mappings = _scan_drive_links(child_fd)
                         add_record(child_relative, "directory", opened)
                         directory_count += 1
+                        if directory_count > MAX_DIRECTORIES:
+                            raise PrefixScanError("Prefix directory limit exceeded")
                     finally:
                         os.close(child_fd)
                     continue
@@ -205,6 +207,10 @@ def scan_prefix_tree(prefix_path):
                 )
                 if before.st_dev != root_device:
                     raise PrefixScanError("Mounted filesystem inside prefix")
+                if before.st_mode & (stat.S_ISUID | stat.S_ISGID):
+                    raise PrefixScanError(
+                        f"Setuid/setgid filesystem object: {child_relative}"
+                    )
 
                 if stat.S_ISLNK(before.st_mode):
                     raise PrefixScanError(
