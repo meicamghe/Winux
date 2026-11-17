@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Disposable real-prefix restore fixture; never relax production process checks.
 # Create the Wine prefix as the runner user. Ubuntu's Wine 9 package crashes
 # during wineboot when launched under the dedicated nobody account, while the
 # later backup/restore process inspection must run under that isolated UID.
