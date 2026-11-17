@@ -50,6 +50,7 @@ timeout --signal=TERM --kill-after=5s 30s env WINEPREFIX="$source_prefix" winese
 
 echo "Backing up and restoring the real Wine prefix"
 python3 - <<'PY'
+import os
 from pathlib import Path
 from winux.core.wine_processes import inspect_prefix_processes
 
