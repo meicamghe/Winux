@@ -128,6 +128,20 @@ print(f"BACKUP: {backup['files']} files, {backup['total_bytes']} bytes")
 print(f"RESTORED: {restored['path']} ({restored['architecture']}, {restored['runtime']})")
 PY
 
+# Control: prove this Wine build can launch both architectures in the
+# original prefix before attributing any failure to the restore output.
+for architecture in x86 x64; do
+  executable="$work_dir/smoke-$architecture.exe"
+  echo "CONTROL RUN IN SOURCE PREFIX: $architecture Windows executable"
+  if (cd "$source_prefix/drive_c" && env -u LD_LIBRARY_PATH WINEPREFIX="$source_prefix" WINEDEBUG=-all timeout --signal=TERM --kill-after=5s 45s wine "$executable"); then
+    echo "PASS: source prefix launched $architecture executable"
+  else
+    status=$?
+    echo "FAIL: source prefix $architecture executable returned status $status" >&2
+    exit "$status"
+  fi
+done
+
 for architecture in x86 x64; do
   executable="$work_dir/smoke-$architecture.exe"
   echo "RUN AFTER RESTORE: $architecture Windows executable"
