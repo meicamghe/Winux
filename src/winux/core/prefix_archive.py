@@ -91,7 +91,7 @@ def inspect_prefix_backup(path=None, *, _fd=None):
     if _fd is None:
         if path is None:
             raise TypeError("A backup path is required")
-        flags = os.O_RDONLY | getattr(os,"O_CLOEXEC",0) | getattr(os,"O_NOFOLLOW",0)
+        flags = os.O_RDONLY | getattr(os,"O_CLOEXEC",0) | getattr(os,"O_NOFOLLOW",0) | getattr(os,"O_NONBLOCK",0)
         fd = os.open(path, flags)
     else:
         fd = os.dup(_fd)
