@@ -88,6 +88,13 @@ class PrefixFilesystemScannerTests(unittest.TestCase):
         with self.assertRaises(OSError):
             scan_prefix_tree(link)
 
+    def test_rejects_backslash_path_component(self):
+        (self.root / "drive_c" / "bad\\\\name.txt").write_text(
+            "unsafe", encoding="utf-8"
+        )
+        with self.assertRaisesRegex(PrefixScanError, "backslash"):
+            scan_prefix_tree(self.root)
+
     def test_rejects_unicode_normalization_collisions(self):
         (self.root / "drive_c" / "café.txt").write_text("one", encoding="utf-8")
         (self.root / "drive_c" / "cafe\u0301.txt").write_text("two", encoding="utf-8")
