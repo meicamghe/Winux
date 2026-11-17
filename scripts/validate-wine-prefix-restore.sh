@@ -49,6 +49,28 @@ WINEPREFIX="$source_prefix" wineserver -k >/dev/null 2>&1 || true
 timeout --signal=TERM --kill-after=5s 30s env WINEPREFIX="$source_prefix" wineserver -w >/dev/null 2>&1 || true
 
 echo "Backing up and restoring the real Wine prefix"
+python3 - <<'PY'
+from pathlib import Path
+from winux.core.wine_processes import inspect_prefix_processes
+
+prefix = Path.home() / ".local/share/winux/prefixes/source"
+state = inspect_prefix_processes(prefix)
+print(f"WINE PROCESS PREFLIGHT: {state}")
+for pid in state["pids"]:
+    process = Path("/proc") / pid
+    try:
+        comm = (process / "comm").read_text().strip()
+        executable = (process / "exe").resolve()
+        raw = (process / "environ").read_bytes()
+        wineprefix = next(
+            (item.split(b"=", 1)[1].decode(errors="replace")
+             for item in raw.split(b"\\0") if item.startswith(b"WINEPREFIX=")),
+            None,
+        )
+        print(f"BLOCKER pid={pid} comm={comm!r} exe={str(executable)!r} WINEPREFIX={wineprefix!r}")
+    except OSError as error:
+        print(f"BLOCKER pid={pid} diagnostic={type(error).__name__}: {error}")
+PY
 python3 - "$archive" <<'PY'
 import sys
 from pathlib import Path
