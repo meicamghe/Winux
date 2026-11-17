@@ -132,7 +132,15 @@ def _write_payload(prefix, inventory, payload_path):
     size = os.path.getsize(payload_path)
     if size > MAX_ARCHIVE:
         raise PrefixBackupError("Archive size limit exceeded")
-    return size, digest.hexdigest()
+    # Authenticate the complete tar stream, including headers and padding.
+    archive_digest = hashlib.sha256()
+    with open(payload_path, "rb", buffering=0) as payload_file:
+        while True:
+            chunk = payload_file.read(CHUNK)
+            if not chunk:
+                break
+            archive_digest.update(chunk)
+    return size, archive_digest.hexdigest()
 
 
 def backup_prefix(prefix_name, destination, *, confirm_all_wine_apps_closed=False, prefix_manager=None):
