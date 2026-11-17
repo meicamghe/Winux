@@ -24,7 +24,8 @@ if [[ "${WINUX_RESTORE_TEST_ISOLATED:-0}" != "1" ]]; then
     python3 - <<'PYCREATE'
 from winux.core.prefix import PrefixManager
 manager = PrefixManager()
-print(f"CREATED: {manager.create("source", architecture="x64")}")
+created = manager.create("source", architecture="x64")
+print(f"CREATED: {created}")
 PYCREATE
     source_prefix="$HOME/.local/share/winux/prefixes/source"
     WINEPREFIX="$source_prefix" wineserver -k >/dev/null 2>&1 || true
