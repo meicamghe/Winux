@@ -60,16 +60,22 @@ for pid in state["pids"]:
     process = Path("/proc") / pid
     try:
         comm = (process / "comm").read_text().strip()
-        executable = (process / "exe").resolve()
+    except OSError as error:
+        comm = f"<unreadable:{type(error).__name__}>"
+    try:
+        executable = os.readlink(process / "exe")
+    except OSError as error:
+        executable = f"<unreadable:{type(error).__name__}>"
+    try:
         raw = (process / "environ").read_bytes()
         wineprefix = next(
             (item.split(b"=", 1)[1].decode(errors="replace")
-             for item in raw.split(b"\\0") if item.startswith(b"WINEPREFIX=")),
+             for item in raw.split(bytes([0])) if item.startswith(b"WINEPREFIX=")),
             None,
         )
-        print(f"BLOCKER pid={pid} comm={comm!r} exe={str(executable)!r} WINEPREFIX={wineprefix!r}")
     except OSError as error:
-        print(f"BLOCKER pid={pid} diagnostic={type(error).__name__}: {error}")
+        wineprefix = f"<unreadable:{type(error).__name__}>"
+    print(f"BLOCKER pid={pid} comm={comm!r} exe={executable!r} WINEPREFIX={wineprefix!r}")
 PY
 python3 - "$archive" <<'PY'
 import sys
