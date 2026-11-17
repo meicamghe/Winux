@@ -15,8 +15,6 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
         self.manager.get.return_value = self.runtime
         self.manager.plugin_errors.return_value = []
 
-    @patch("winux.platform.runtime.platform.machine", return_value="x86_64")
-    @patch("winux.platform.runtime._command_status", return_value="/usr/bin/tool")
     def test_distribution_and_host_metadata_are_reported(self):
         host = {
             "distribution": {
@@ -40,6 +38,8 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
         self.assertIn("Init system: systemd", rendered)
         self.assertIn("Package manager(s): apt", rendered)
 
+    @patch("winux.platform.runtime.platform.machine", return_value="x86_64")
+    @patch("winux.platform.runtime._command_status", return_value="/usr/bin/tool")
     def test_all_core_tools_available(self, _commands, _machine):
         with patch("builtins.print"):
             self.assertTrue(check_runtime(self.manager))
