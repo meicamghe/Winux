@@ -21,7 +21,7 @@ def make_backup(path, *, corrupt_digest=False):
             item.mode = 0o755
             archive.addfile(item)
         for name, data in (
-            ("system.reg", b"WINE REGISTRY\\n"),
+            ("system.reg", b"WINE REGISTRY\n"),
             ("drive_c/marker.txt", b"restore-test"),
         ):
             item = tarfile.TarInfo(name)
