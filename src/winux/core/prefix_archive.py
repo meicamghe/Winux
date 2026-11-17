@@ -56,6 +56,11 @@ def _read_ustar(payload):
         else: raise PrefixArchiveError("Tar links, PAX, sparse, and special entries are forbidden")
         name, prefix = _tar_string(header[:100]), _tar_string(header[345:500])
         path = prefix + "/" + name if prefix else name
+        if kind == "directory":
+            if not path.endswith("/") or path.endswith("//"): raise PrefixArchiveError("Non-canonical USTAR directory name")
+            path = path[:-1]
+        elif path.endswith("/"):
+            raise PrefixArchiveError("Regular file path has a trailing slash")
         try: normalized = _validate_member_path(path)
         except (ValueError, UnicodeError) as error: raise PrefixArchiveError("Unsafe tar member path") from error
         if normalized != path or path in seen: raise PrefixArchiveError("Duplicate or non-canonical tar path")
