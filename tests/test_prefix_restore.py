@@ -64,7 +64,16 @@ class _Runtime:
     def is_available(self):
         return True
 
-    def validate_prefix(self, path):,        path = Path(path),        return (,            path.is_dir(),            and not path.is_symlink(),            and (path / "drive_c").is_dir(),            and (path / "system.reg").is_file(),        ),,
+    def validate_prefix(self, path):
+        path = Path(path)
+        return (
+            path.is_dir()
+            and not path.is_symlink()
+            and (path / "drive_c").is_dir()
+            and (path / "system.reg").is_file()
+        )
+
+
 class _RuntimeManager:
     def __init__(self):
         self.runtime = _Runtime()
@@ -124,6 +133,7 @@ class PrefixRestoreTests(unittest.TestCase):
         metadata = json.loads((path / ".winux-prefix.json").read_text())
         self.assertEqual(metadata["runtime"], "local-wine")
         self.assertEqual(metadata["architecture"], "win64")
+        self.assertEqual((path / "system.reg").read_bytes(), b"WINE REGISTRY\n")
         self.assertEqual((path / "drive_c/marker.txt").read_bytes(), b"restore-test")
         self.assertEqual(os.readlink(path / "dosdevices/c:"), "../drive_c")
         self.assertFalse((path / "dosdevices/z:").exists())
@@ -157,6 +167,12 @@ class PrefixRestoreTests(unittest.TestCase):
         self.manager.runtime_manager.runtime.is_available = lambda: False
         with self.assertRaises(PrefixRestoreError):
             restore_prefix(self.archive, "no-runtime", prefix_manager=self.manager)
+        self.assertEqual(list(self.base.iterdir()), [])
+
+    def test_runtime_validation_failure_cleans_staging(self):
+        self.manager.runtime_manager.runtime.validate_prefix = lambda path: False
+        with self.assertRaises(PrefixRestoreError):
+            restore_prefix(self.archive, "invalid-runtime-prefix", prefix_manager=self.manager)
         self.assertEqual(list(self.base.iterdir()), [])
 
 
