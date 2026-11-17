@@ -56,7 +56,9 @@ def _read_ustar(payload):
         else: raise PrefixArchiveError("Tar links, PAX, sparse, and special entries are forbidden")
         name, prefix = _tar_string(header[:100]), _tar_string(header[345:500])
         path = prefix + "/" + name if prefix else name
-        if _validate_member_path(path) != path or path in seen: raise PrefixArchiveError("Duplicate or non-canonical tar path")
+        try: normalized = _validate_member_path(path)
+        except (ValueError, UnicodeError) as error: raise PrefixArchiveError("Unsafe tar member path") from error
+        if normalized != path or path in seen: raise PrefixArchiveError("Duplicate or non-canonical tar path")
         seen.add(path); mode = _octal(header[100:108], "mode"); size = _octal(header[124:136], "size")
         if mode & ~0o777: raise PrefixArchiveError("Unsafe tar mode bits")
         if kind == "directory" and size: raise PrefixArchiveError("Directory entries cannot contain data")
@@ -118,6 +120,20 @@ def inspect_prefix_backup(path):
             if not isinstance(entry,dict) or not {"path","type","mode","size"} <= set(entry): raise PrefixArchiveError("Invalid inventory entry")
             expected.append({k:entry[k] for k in ("path","type","mode","size")})
         if expected != records: raise PrefixArchiveError("Manifest and tar inventory differ")
+        by_path = {item["path"]: item for item in records}
+        if by_path.get("drive_c", {}).get("type") != "directory" or by_path.get("dosdevices", {}).get("type") != "directory":
+            raise PrefixArchiveError("Required Wine prefix directories are missing")
+        if any(path.startswith("dosdevices/") for path in by_path):
+            raise PrefixArchiveError("Drive mapping directory must not contain archived links")
+        for item in records:
+            parent = item["path"].rpartition("/")[0]
+            if parent and by_path.get(parent, {}).get("type") != "directory":
+                raise PrefixArchiveError("Archive member has no explicit directory parent")
+        mappings = manifest["drive_mappings"]
+        if not isinstance(mappings, dict) or set(mappings) != {"c", "z", "serial"}:
+            raise PrefixArchiveError("Invalid logical drive mappings")
+        if mappings["c"] != "drive_c" or mappings["z"] not in (None, "/") or mappings["serial"] not in (None, "wine-default"):
+            raise PrefixArchiveError("Unsupported logical drive mapping")
         after = os.fstat(fd)
         if (before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns,before.st_ctime_ns) != (after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns,after.st_ctime_ns): raise PrefixArchiveError("Backup changed during inspection")
         return {"format_version":1,"architecture":manifest["architecture"],"runtime":manifest["runtime"],"files":manifest["files"],"directories":manifest["directories"],"total_bytes":total,"payload_sha256":digest,"drive_mappings":manifest["drive_mappings"],"entries":records}
