@@ -81,7 +81,7 @@ def make_invalid_archive(path, entries, *, truncate=False):
             archive.addfile(item)
     payload = payload_buffer.getvalue()
     if truncate:
-        payload = payload[:-1024]
+        payload = payload[:2048]
     Path(path).write_bytes(MAGIC + len(payload).to_bytes(8, "big") + payload)
 
 
