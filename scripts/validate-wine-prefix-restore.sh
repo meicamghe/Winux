@@ -16,14 +16,17 @@ if [[ "${WINUX_RESTORE_TEST_ISOLATED:-0}" != "1" ]]; then
   nobody_uid="$(id -u nobody)"
   if [[ "$(id -u)" != "$nobody_uid" ]]; then
     isolated_home="$(mktemp -d "${TMPDIR:-/tmp}/winux-restore-user.XXXXXX")"
-    sudo chown nobody:"$(id -gn nobody)" "$isolated_home"
+    mkdir -p "$isolated_home/scripts"
+    cp "$script_path" "$isolated_home/scripts/validate-wine-prefix-restore.sh"
+    cp -a "$(cd "$(dirname "$script_path")/.." && pwd)/src" "$isolated_home/src"
+    sudo chown -R nobody:"$(id -gn nobody)" "$isolated_home"
     sudo chmod 700 "$isolated_home"
     trap 'sudo rm -rf -- "$isolated_home"' EXIT
     set +e
     sudo -u nobody -- env \
       WINUX_RESTORE_TEST_ISOLATED=1 \
-      HOME="$isolated_home" TMPDIR=/tmp \
-      bash "$script_path"
+      HOME="$isolated_home/home" TMPDIR=/tmp \
+      bash "$isolated_home/scripts/validate-wine-prefix-restore.sh"
     status=$?
     set -e
     exit "$status"
