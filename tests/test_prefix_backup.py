@@ -65,8 +65,8 @@ class BackupWriterPrimitiveTests(unittest.TestCase):
         with patch("winux.core.prefix_backup.inspect_prefix_processes", return_value={"state":"clear"}):
             backup_prefix("test-prefix",destination,confirm_all_wine_apps_closed=True,prefix_manager=manager)
         result=inspect_prefix_backup(destination)
-        self.assertEqual(result["files"],1)
-        self.assertEqual(result["total_bytes"],11)
+        self.assertEqual(result["files"],2)
+        self.assertEqual(result["total_bytes"],16)
         self.assertEqual(result["architecture"],"win64")
 
 if __name__ == "__main__":
