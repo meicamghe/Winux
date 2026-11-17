@@ -1,6 +1,6 @@
 # Prefix Restore Implementation and Validation
 
-The internal restore implementation is in `src/winux/core/prefix_restore.py`. It consumes only output from the strict non-extracting archive inspector and does not call tarfile extraction. The steps below describe implemented safeguards; the real-Wine validation gates at the end remain open.
+The internal restore implementation is in `src/winux/core/prefix_restore.py`. It consumes only output from the strict non-extracting archive inspector and does not call tarfile extraction. The safeguards below are implemented; synthetic adversarial tests and real Wine 10/11 x86/x64 restore validation have passed.
 
 1. Validate the target prefix name, destination absence, installed runtime availability and archive inspection before creating the destination.
 2. Acquire the target shared prefix lock non-blocking and hold it through staging and publication.
@@ -19,9 +19,9 @@ The internal restore implementation is in `src/winux/core/prefix_restore.py`. It
 
 - [x] Synthetic success, existing-destination protection, digest failure, symlink archive rejection, unavailable local runtime, and runtime-validation cleanup tests.
 - [x] Synthetic restore tests added to the `test-runtime` CI workflow.
-- [ ] Expand adversarial restore coverage for traversal, links/special entries, malformed/truncated containers, duplicate entries, and failure cleanup at each extraction/publication boundary.
-- [ ] Pass real WineHQ Stable 10.0 backup/restore followed by x86 and x64 execution. CI pins the exact WineHQ 10.0 package set and verifies the installed version before testing.
-- [ ] Pass real WineHQ Stable 11 backup/restore followed by x86 and x64 execution. The first run exposed a real COM1–COM4 layout that the original scanner rejected; scanner acceptance was corrected to contiguous COM1..N and needs fresh validation.
-- [ ] Pass all EXE/MSI integration workflows on the same final PR head.
+- [x] Adversarial restore coverage rejects traversal, symlinks, hardlinks, special entries, duplicate members, and truncated tar payloads before staging; injected extraction and publication failures verify staging cleanup.
+- [x] Pass real WineHQ Stable 10.0 backup/restore followed by x86 and x64 execution. CI pins the exact WineHQ 10.0 package set and verifies the installed version.
+- [x] Pass real WineHQ Stable 11.0 backup/restore followed by x86 and x64 execution. CI pins the exact WineHQ 11.0 package set and verifies the installed version.
+- [x] Pass all EXE/MSI integration workflows on the validated PR head.
 
-No public restore CLI is enabled yet. Do not merge until the synthetic suite and both Wine 10 and Wine 11 real-Wine restore integrations pass, including post-restore x86/x64 execution.
+No public restore CLI is enabled yet. The current validation gates are green, but keep restore internal until the public API contract and operational safety requirements are explicitly reviewed.
