@@ -47,6 +47,27 @@ class BackupWriterPrimitiveTests(unittest.TestCase):
         finally:
             os.close(root)
 
+    def test_writer_output_passes_strict_inspector(self):
+        from unittest.mock import patch
+        from winux.core.prefix_backup import backup_prefix
+        from winux.core.prefix_archive import inspect_prefix_backup
+        class Runtime:
+            def is_available(self): return True
+        class Manager:
+            def validate_name(self, name): self.asserted_name = name
+            def get_path(self, name): return self.root
+            def _read_metadata(self, path): return {"architecture":"win64","runtime":"test-runtime"}
+            def get_runtime(self, name): return Runtime()
+        manager=Manager(); manager.root=self.root
+        (self.root / "drive_c" / "nested").mkdir()
+        (self.root / "drive_c" / "nested" / "document.bin").write_bytes(b"prefix-data")
+        destination=Path(self.temp.name)/"roundtrip.wux"
+        with patch("winux.core.prefix_backup.inspect_prefix_processes", return_value={"state":"clear"}):
+            backup_prefix("test-prefix",destination,confirm_all_wine_apps_closed=True,prefix_manager=manager)
+        result=inspect_prefix_backup(destination)
+        self.assertEqual(result["files"],1)
+        self.assertEqual(result["total_bytes"],11)
+        self.assertEqual(result["architecture"],"win64")
 
 if __name__ == "__main__":
     unittest.main()
