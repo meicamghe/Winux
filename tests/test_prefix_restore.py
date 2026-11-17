@@ -58,6 +58,33 @@ def make_backup(path, *, corrupt_digest=False):
     )
 
 
+
+def make_invalid_archive(path, entries, *, truncate=False):
+    payload_buffer = io.BytesIO()
+    with tarfile.open(fileobj=payload_buffer, mode="w", format=tarfile.USTAR_FORMAT) as archive:
+        for name, kind, data in entries:
+            item = tarfile.TarInfo(name)
+            if kind == "directory":
+                item.type = tarfile.DIRTYPE
+            elif kind == "symlink":
+                item.type = tarfile.SYMTYPE
+                item.linkname = "target"
+            elif kind == "hardlink":
+                item.type = tarfile.LNKTYPE
+                item.linkname = "target"
+            elif kind == "fifo":
+                item.type = tarfile.FIFOTYPE
+            else:
+                item.size = len(data)
+                archive.addfile(item, io.BytesIO(data))
+                continue
+            archive.addfile(item)
+    payload = payload_buffer.getvalue()
+    if truncate:
+        payload = payload[:-1024]
+    Path(path).write_bytes(MAGIC + len(payload).to_bytes(8, "big") + payload)
+
+
 class _Runtime:
     name = "local-wine"
 
@@ -165,6 +192,48 @@ class PrefixRestoreTests(unittest.TestCase):
         link.symlink_to(self.archive)
         with self.assertRaises(OSError):
             restore_prefix(link, "linked", prefix_manager=self.manager)
+        self.assertEqual(list(self.base.iterdir()), [])
+
+    def test_rejects_adversarial_tar_members_before_staging(self):
+        cases = (
+            ([("../escape", "file", b"x")], "traversal"),
+            ([("dosdevices/", "directory", b""), ("drive_c/", "directory", b""),
+              ("system.reg", "file", b"x"), ("drive_c/link", "symlink", b"")], "symlink"),
+            ([("dosdevices/", "directory", b""), ("drive_c/", "directory", b""),
+              ("system.reg", "file", b"x"), ("drive_c/link", "hardlink", b"")], "hardlink"),
+            ([("dosdevices/", "directory", b""), ("drive_c/", "directory", b""),
+              ("system.reg", "file", b"x"), ("drive_c/pipe", "fifo", b"")], "special"),
+            ([("dosdevices/", "directory", b""), ("drive_c/", "directory", b""),
+              ("system.reg", "file", b"x"), ("system.reg", "file", b"y")], "duplicate"),
+        )
+        for entries, label in cases:
+            with self.subTest(member=label):
+                make_invalid_archive(self.archive, entries)
+                with self.assertRaises(ValueError):
+                    restore_prefix(self.archive, "hostile", prefix_manager=self.manager)
+                self.assertEqual(list(self.base.iterdir()), [])
+
+    def test_truncated_tar_is_rejected_before_staging(self):
+        entries = [
+            ("dosdevices/", "directory", b""),
+            ("drive_c/", "directory", b""),
+            ("system.reg", "file", b"WINE"),
+        ]
+        make_invalid_archive(self.archive, entries, truncate=True)
+        with self.assertRaises(ValueError):
+            restore_prefix(self.archive, "truncated", prefix_manager=self.manager)
+        self.assertEqual(list(self.base.iterdir()), [])
+
+    def test_extraction_failure_removes_private_staging(self):
+        with patch("winux.core.prefix_restore._extract_payload", side_effect=OSError("injected extraction failure")):
+            with self.assertRaisesRegex(OSError, "injected extraction failure"):
+                restore_prefix(self.archive, "extract-failure", prefix_manager=self.manager)
+        self.assertEqual(list(self.base.iterdir()), [])
+
+    def test_publication_failure_removes_private_staging(self):
+        with patch("winux.core.prefix_restore._rename_noreplace", side_effect=OSError("injected publish failure")):
+            with self.assertRaisesRegex(OSError, "injected publish failure"):
+                restore_prefix(self.archive, "publish-failure", prefix_manager=self.manager)
         self.assertEqual(list(self.base.iterdir()), [])
 
     def test_unavailable_local_runtime_is_rejected(self):
