@@ -127,12 +127,20 @@ print(f"BACKUP: {backup['files']} files, {backup['total_bytes']} bytes")
 print(f"RESTORED: {restored['path']} ({restored['architecture']}, {restored['runtime']})")
 PY
 
+# Place smoke executables inside each prefix and launch through C:.
+# The restored prefix intentionally omits the host-root Z: mapping, so using
+# absolute host paths here would test host-path translation rather than restore.
+for architecture in x86 x64; do
+  cp "$work_dir/smoke-$architecture.exe" "$source_prefix/drive_c/winux-smoke-$architecture.exe"
+  cp "$work_dir/smoke-$architecture.exe" "$restored_prefix/drive_c/winux-smoke-$architecture.exe"
+done
+
 # Control: prove this Wine build can launch both architectures in the
 # original prefix before attributing any failure to the restore output.
 for architecture in x86 x64; do
-  executable="$work_dir/smoke-$architecture.exe"
+  windows_executable="C:\\winux-smoke-$architecture.exe"
   echo "CONTROL RUN IN SOURCE PREFIX: $architecture Windows executable"
-  if (cd "$source_prefix/drive_c" && env -u LD_LIBRARY_PATH WINEPREFIX="$source_prefix" WINEDEBUG=-all timeout --signal=TERM --kill-after=5s 45s wine "$executable"); then
+  if (cd "$source_prefix/drive_c" && env -u LD_LIBRARY_PATH WINEPREFIX="$source_prefix" WINEDEBUG=-all timeout --signal=TERM --kill-after=5s 45s wine "$windows_executable"); then
     echo "PASS: source prefix launched $architecture executable"
   else
     status=$?
@@ -142,9 +150,9 @@ for architecture in x86 x64; do
 done
 
 for architecture in x86 x64; do
-  executable="$work_dir/smoke-$architecture.exe"
+  windows_executable="C:\\winux-smoke-$architecture.exe"
   echo "RUN AFTER RESTORE: $architecture Windows executable"
-  if (cd "$restored_prefix/drive_c" && env -u LD_LIBRARY_PATH WINEPREFIX="$restored_prefix" WINEDEBUG=-all timeout --signal=TERM --kill-after=5s 45s wine "$executable"); then
+  if (cd "$restored_prefix/drive_c" && env -u LD_LIBRARY_PATH WINEPREFIX="$restored_prefix" WINEDEBUG=-all timeout --signal=TERM --kill-after=5s 45s wine "$windows_executable"); then
     echo "PASS: restored prefix launched $architecture executable"
   else
     status=$?
