@@ -35,4 +35,19 @@ class InspectorTests(unittest.TestCase):
         p=header("../escape",0)+bytes(1024); self.manifest["payload"].update(size=len(p),sha256=hashlib.sha256(p).hexdigest()); self.manifest.update(files=1,total_bytes=0,entries=[{"path":"../escape","type":"file","mode":0o644,"size":0,"device":1,"inode":2,"mtime_ns":1,"ctime_ns":1,"nlink":1}]); make_container(p,self.manifest,self.path)
         with self.assertRaises(PrefixArchiveError): inspect_prefix_backup(self.path)
 
+    def test_link_and_special_tar_entries_rejected(self):
+        p=header("drive_c/link",0,b"2")+bytes(1024); self.manifest["payload"].update(size=len(p),sha256=hashlib.sha256(p).hexdigest()); make_container(p,self.manifest,self.path)
+        with self.assertRaises(PrefixArchiveError): inspect_prefix_backup(self.path)
+    def test_bad_tar_checksum_rejected(self):
+        p=bytearray(payload_ok()); p[0] ^= 1; p=bytes(p); self.manifest["payload"].update(size=len(p),sha256=hashlib.sha256(p).hexdigest()); make_container(p,self.manifest,self.path)
+        with self.assertRaises(PrefixArchiveError): inspect_prefix_backup(self.path)
+    def test_truncated_container_rejected(self):
+        p=payload_ok(); encoded=json.dumps(self.manifest,separators=(",",":")).encode(); self.path.write_bytes(MAGIC+len(p).to_bytes(8,"big")+p[:-20]+len(encoded).to_bytes(8,"big")+encoded)
+        with self.assertRaises(PrefixArchiveError): inspect_prefix_backup(self.path)
+    def test_trailing_bytes_rejected(self):
+        self.path.write_bytes(self.path.read_bytes()+b"junk")
+        with self.assertRaises(PrefixArchiveError): inspect_prefix_backup(self.path)
+    def test_backslash_path_rejected(self):
+        p=header("drive_c\\\\escape",0)+bytes(1024); self.manifest["payload"].update(size=len(p),sha256=hashlib.sha256(p).hexdigest()); make_container(p,self.manifest,self.path)
+        with self.assertRaises(PrefixArchiveError): inspect_prefix_backup(self.path)
 if __name__=="__main__": unittest.main()
