@@ -73,7 +73,10 @@ The payload digest must be checked before the restore is published. The manifest
 ### 4.1 Prefix selection and quiescence
 
 - Resolve the requested prefix through PrefixManager's normal validation path; do not accept arbitrary user-supplied directory paths as managed prefixes.
-- Acquire the same per-prefix operation lock used by other prefix lifecycle operations, or introduce one shared lock contract before implementing backup.
+- Current-code audit (2026-11-17): `Installer` uses an exclusive per-prefix lock under `~/.local/share/winux/locks/<name>.lock`; `PrefixManager.create/delete` do not currently acquire it. Process and service managers have separate locks for their JSON state files, not for prefix contents. Therefore there is not yet a shared prefix-operation lock.
+- Before backup/restore is implemented, introduce one reusable per-prefix lock helper at the existing lock path and make every operation that mutates prefix contents participate in it (at minimum installer, application uninstall, prefix create/delete, backup, and restore). Keep process/service state-file locks distinct; do not mistake them for prefix locks.
+- Backup must acquire the prefix lock exclusively and non-blocking, then independently verify that no Wine processes are using the prefix. A lock alone cannot detect unmanaged Wine processes. Never kill Wine processes to make backup possible.
+- Prefix restore must reserve the destination name with the same lock and hold it through staging publication. Prefix create/delete must use the same helper so they cannot race with backup/restore.
 - Refuse backup when Winux can positively determine that the prefix is in use by a managed process or Wine process. Do not kill processes automatically.
 - If reliable process detection is unavailable, report that the snapshot cannot be proven quiescent and require an explicit, documented unsafe-snapshot override only if a later product decision approves it. The safe default is refusal.
 - Never run Wine or backup commands as root.
