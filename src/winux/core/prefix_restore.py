@@ -176,7 +176,7 @@ def _extract_payload(archive_fd, payload_size, root_fd, inspection):
                         remaining -= len(chunk)
                         _write_all(file_fd, chunk)
                         left -= len(chunk)
-                    safe_mode = (record["mode"] & 0o700) | 0o400
+                    safe_mode = (record["mode"] & 0o100) | 0o600
                     os.fchmod(file_fd, safe_mode)
                     os.fsync(file_fd)
                 finally:

@@ -134,6 +134,10 @@ class PrefixRestoreTests(unittest.TestCase):
         self.assertEqual(metadata["runtime"], "local-wine")
         self.assertEqual(metadata["architecture"], "win64")
         self.assertEqual((path / "system.reg").read_bytes(), b"WINE REGISTRY\n")
+        self.assertEqual((path / "system.reg").stat().st_mode & 0o777, 0o600)
+        self.assertEqual((path / "drive_c/marker.txt").stat().st_mode & 0o777, 0o700)
+        with (path / "system.reg").open("ab") as registry:
+            registry.write(b"# writable after restore\n")
         self.assertEqual((path / "drive_c/marker.txt").read_bytes(), b"restore-test")
         self.assertEqual(os.readlink(path / "dosdevices/c:"), "../drive_c")
         self.assertFalse((path / "dosdevices/z:").exists())
