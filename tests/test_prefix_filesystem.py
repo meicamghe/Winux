@@ -54,9 +54,15 @@ class PrefixFilesystemScannerTests(unittest.TestCase):
         with self.assertRaisesRegex(PrefixScanError, "Unexpected symlink"):
             scan_prefix_tree(self.root)
 
-    def test_rejects_partial_com_mapping(self):
-        (self.root / "dosdevices" / "com32").unlink()
-        with self.assertRaisesRegex(PrefixScanError, "Partial Wine COM"):
+    def test_accepts_contiguous_wine_com1_through_com4_mapping(self):
+        for number in range(5, 33):
+            (self.root / "dosdevices" / f"com{number}").unlink()
+        result = scan_prefix_tree(self.root)
+        self.assertEqual(result["drive_mappings"]["serial"], "wine-default")
+
+    def test_rejects_non_contiguous_com_mapping(self):
+        (self.root / "dosdevices" / "com2").unlink()
+        with self.assertRaisesRegex(PrefixScanError, "Non-contiguous Wine COM"):
             scan_prefix_tree(self.root)
 
     def test_rejects_wrong_c_drive_target(self):
