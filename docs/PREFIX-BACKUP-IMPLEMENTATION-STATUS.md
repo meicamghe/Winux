@@ -2,7 +2,9 @@
 
 **Status date:** 2026-11-17  
 **Canonical security contract:** [PREFIX-BACKUP-RESTORE-DESIGN.md](PREFIX-BACKUP-RESTORE-DESIGN.md)  
-**Purpose:** This file records implemented facts and supersedes any earlier status statements in the design document that say the shared lock or filesystem scanner is still missing.
+**Restore plan:** [PREFIX-RESTORE-IMPLEMENTATION-PLAN.md](PREFIX-RESTORE-IMPLEMENTATION-PLAN.md)
+
+This document distinguishes implemented backup foundations from the still-unimplemented restore path. Passing CI validates the tested code paths and fixtures; it does not establish compatibility with arbitrary Windows applications or end-user workflows.
 
 ## Implemented foundations
 
@@ -11,63 +13,96 @@
 Implemented in `src/winux/core/prefix_lock.py`.
 
 - Canonical lock directory: `~/.local/share/winux/locks/`.
-- One advisory exclusive lock per validated prefix name.
-- Supports non-blocking acquisition for operations such as backup.
-- Lock directory and files use private permissions; symlink lock files are rejected.
-- Prefix creation and deletion, installer operations, and application uninstall participate in the shared lock.
+- One advisory exclusive lock per validated prefix name, including non-blocking acquisition.
+- Private directory/file permissions; symlink lock files are rejected.
+- Prefix creation/deletion, installer operations, application uninstall, and backup participate in the shared lock.
 - Dedicated tests cover contention, permissions, invalid names, and symlink lock files.
 
-The lock coordinates Winux-managed operations only. It does **not** prove that an unmanaged Wine process is not using the prefix. A backup implementation must separately establish quiescence and must never kill Wine processes automatically.
+The lock coordinates Winux-managed operations only. It does not exclude unmanaged Wine processes.
 
 ### Read-only prefix filesystem scanner
 
 Implemented in `src/winux/core/prefix_filesystem.py` as `scan_prefix_tree()`.
 
-- Opens the absolute prefix path component-by-component with no-follow semantics and pins the root descriptor.
-- Uses descriptor-relative traversal, `O_NOFOLLOW`, `fstat`, inode/device/type comparisons, and Linux mount IDs.
-- Rejects unexpected symlinks, hard-linked files, special files, setuid/setgid objects, nested mount boundaries, path traversal/drive-prefixed/backslash paths, Unicode-normalization collisions, and mutations detected during inventory.
-- Recognizes only the observed Wine `dosdevices` layout: `c: -> ../drive_c`, optional `z: -> /`, and either all or none of `com1`–`com32 -> /dev/ttyS0`–`/dev/ttyS31`.
-- Does not resolve or traverse the Z: or COM targets. It records logical mappings only.
-- Excludes the root `.winux-prefix.json` from the inventory after validating that it is a single-link regular file.
-- Current scanner ceilings: 250,000 files, 100,000 directories, 20 GiB per file, 100 GiB aggregate regular-file bytes, 4,096 UTF-8 bytes per path, and 255 bytes per component.
+- Descriptor-relative traversal, no-follow path opening, pinned root descriptor, inode/device/type checks, and Linux mount-ID checks.
+- Rejects unexpected symlinks, hardlinks, special files, setuid/setgid objects, nested mount boundaries, unsafe paths, Unicode-normalization collisions, and mutations detected during inventory.
+- Recognizes the observed Wine device layout: `c: -> ../drive_c`, optional `z: -> /`, and all-or-none `com1`–`com32` mappings.
+- Does not resolve or traverse Z: or COM targets; records logical mappings only.
+- Excludes root `.winux-prefix.json` after validating it as a single-link regular file.
+- Limits: 250,000 files, 100,000 directories, 20 GiB per file, 100 GiB aggregate regular-file bytes, 4,096 UTF-8 bytes per path, and 255 bytes per component.
 
-The scanner is an inventory/validation primitive only. It does **not** stream or copy file contents, calculate payload hashes, create archives, or restore prefixes. Its inventory metadata is not a substitute for re-opening each file and revalidating the pinned identity while a future writer streams bytes.
+The scanner is an inventory/validation primitive, not a copy or restore mechanism. Mount-boundary checks depend on Linux `/proc/self/fdinfo` mount IDs and fail closed when unavailable; do not claim non-Linux portability.
 
-The scanner's mount-boundary check currently depends on Linux `/proc/self/fdinfo/<fd>` mount IDs and fails closed when the mount ID cannot be read. Do not claim portability to non-Linux platforms.
+### Conservative Wine process inspection
 
-## CI evidence for PR #49
+Implemented in `src/winux/core/wine_processes.py`.
 
-All four workflows for head commit `173b21bd56489cdf68624e2ec7809674b0722097` completed successfully before merge:
+- Reads Linux `/proc` and returns `busy`, `clear`, or `unknown`.
+- A matching same-UID process with `WINEPREFIX` is busy.
+- Ambiguous Wine processes or unreadable candidate environments are handled conservatively.
+- Does not kill or signal processes.
+
+**Important limitation:** this is an advisory snapshot, not race-free proof of quiescence. A process can change its environment or start after inspection; processes under other UIDs are outside its scope. A `clear` result means only that no blocker was observed in that snapshot.
+
+### Internal streaming backup writer
+
+Implemented in `src/winux/core/prefix_backup.py`.
+
+- Acquires the shared prefix lock non-blocking.
+- Rejects `busy` and `unknown` process snapshots and requires explicit operator confirmation that Wine applications are closed.
+- Uses the scanner's inventory, then opens files relative to pinned directory descriptors with no-follow semantics.
+- Revalidates file identity and relevant metadata (device, inode, type, link count, size, and timestamps) while streaming; aborts on detected changes.
+- Produces a versioned bounded manifest and USTAR payload; SHA-256 covers the complete tar payload.
+- Uses private temporary output, fsync, and atomic no-overwrite publication.
+- No process is terminated. The source prefix is not intentionally modified.
+
+The process snapshot plus operator confirmation is still not a kernel-enforced exclusion against unmanaged Wine launches. The writer is an internal API; no public backup CLI is enabled.
+
+### Strict archive inspector
+
+Implemented in `src/winux/core/prefix_archive.py`.
+
+- Non-extracting USTAR inspection; it does not run Wine or materialize archive contents.
+- Validates tar checksums, allowed entry types, canonical paths, inventory correspondence, manifest schema/duplicate JSON keys, complete payload digest, size/resource ceilings, and exact archive termination.
+- Rejects traversal, backslash paths, symlinks/hardlinks, special or unsupported entries, malformed/truncated data, digest mismatch, duplicate keys/entries, and trailing bytes.
+- The writer-to-inspector integration test uses a disposable synthetic prefix.
+
+## CI evidence for PR #52
+
+PR #52 was squash-merged to `main` as `688861212d465ec255fb5e1b5de4e3e9919d5550`. All four required workflows completed successfully on head `dea077cbe0ea2015c3db3a3ad0f80a9fc752d6cb` before merge:
 
 | Workflow | Run ID | Result |
 |---|---:|---|
-| Winux CI | 44027903563 | success |
-| Real Windows Installer Integration | 44027903658 | success |
-| WineHQ Stable 11 Integration | 44027903578 | success |
-| Real Windows MSI Installer Integration | 44027903592 | success |
+| Winux CI | 44039314463 | success |
+| Real Windows Installer Integration | 44039314480 | success |
+| Real Windows MSI Installer Integration | 44039314434 | success |
+| WineHQ Stable 11 Integration | 44039314637 | success |
 
-The Winux CI run executed the shared-lock and filesystem-scanner test steps, the x86/x64 WoW64 matrix, real Wine x86/x64 execution, services tests, and packaging smoke test. The real-installer workflows exercised their defined synthetic x86/x64 EXE/MSI fixtures. These results validate those CI fixtures and code paths; they do not prove arbitrary Windows application compatibility or any end-user workflow.
+The Winux CI run included the writer/inspector integration and hostile archive tests, x86/x64 matrix, real Wine execution, services tests, and packaging. The real-installer and WineHQ workflows exercised their defined x86/x64 EXE/MSI and PE fixtures. These results validate those fixtures and code paths only; they do not prove arbitrary Windows application compatibility or the EMWAT/Office workflow.
 
-PR #49 was squash-merged to `main` as `cd0898711ae9557ffb39f3a057548bf11d4c44bb`.
+## Remaining work
 
-## Remaining backup/restore gates
+### Restore — not implemented
 
-Backup and restore remain **unimplemented and unavailable**. Do not add user-facing CLI commands until the relevant stages are complete.
+There is no restore API or CLI yet. The implementation must follow `PREFIX-RESTORE-IMPLEMENTATION-PLAN.md` and the canonical security design. Required gates include:
 
-1. **Quiescence detection:** after acquiring the non-blocking shared lock, independently detect managed and unmanaged Wine processes using the target prefix. Fail closed if the process state cannot be established. Never terminate processes.
-2. **Streaming backup writer:** traverse from pinned descriptors; reopen every file relative to its pinned parent with no-follow flags; compare device, inode, type, link count, size, and relevant timestamps; enforce byte/file/path limits while reading; abort and discard output if any object changes.
-3. **Archive construction:** write to a private temporary file; use a versioned manifest and exact outer-member allow-list; reject duplicate members and unsupported tar types/PAX/sparse metadata; hash the compressed payload; fsync and atomically publish without overwriting an existing output.
-4. **Archive inspector:** validate bounded manifest parsing, exact members, payload digest, tar headers, duplicate normalized paths, codec errors, and observed resource ceilings without extracting or running Wine.
-5. **Adversarial tests:** include races, path replacement, malformed/truncated archives, digest mismatch, archive bombs, duplicate paths/keys, sparse and special entries, and output-path attacks.
-6. **Restore (separate milestone):** strict staging under the managed root, exclusive no-follow file creation, fresh metadata, fixed-policy drive-link reconstruction, runtime validation, fsync, and atomic publication. Destination must not exist.
-7. **Process and Wine integration:** run disposable-prefix integration on supported Wine versions and report it separately from unit/fixture tests.
+1. Open and inspect the same archive file descriptor with no-follow semantics; do not trust a pathname between validation and use.
+2. Hold the destination prefix's shared lock from staging through publication; reject an existing destination.
+3. Stage privately under the managed prefix root on the same filesystem.
+4. Recreate files and directories manually with descriptor-relative, exclusive, no-follow operations; never use generic unsafe archive extraction.
+5. Apply safe modes and current-user ownership; ignore archive ownership and permissions.
+6. Recreate only the validated C: mapping by default. Do not restore Z: or COM aliases by default; Z: can expose the host root.
+7. Generate fresh `.winux-prefix.json` metadata; never restore archived metadata as authoritative.
+8. Select and validate an installed local runtime rather than trusting archive runtime metadata.
+9. Run the prefix scanner against the staged tree, fsync files/directories, then publish atomically without replacement. Fail closed if safe no-replace publication is unavailable.
+10. Clean up staging safely on every failure and guarantee no partial destination publication.
 
-## Required semantics
+Adversarial restore tests must cover traversal, links/special entries, malformed/truncated archives, digest/checksum failures, duplicate entries, existing destinations, symlink/race attacks, fresh metadata, drive mappings, and x86/x64 prefixes. Do not expose Restore in the CLI until these gates pass.
 
-- Backup must be read-only with respect to the source prefix.
-- Backup obtains the shared prefix lock non-blocking and separately proves quiescence.
-- Z: and COM aliases are omitted from archive payloads; Z: restoration is opt-in because it exposes the destination host root. COM restoration is opt-in.
-- Unknown symlinks and unsupported filesystem objects fail the backup; they are never silently skipped.
-- Restore never overwrites an existing prefix and never trusts archive ownership, permissions, links, or source metadata.
-- Migration is backup plus restore. Keep the source untouched until the destination's application workflows have been independently verified.
-- Report archive integrity, prefix structure, runtime availability, application execution, and workflow compatibility as separate evidence states.
+### Public backup CLI — not enabled
+
+Keep backup internal until the process/quiescence limitation is addressed to an explicitly accepted safety level, the API contract is stable, and end-to-end disposable-prefix testing is complete. Never describe a `clear` process snapshot as proof that a prefix is idle.
+
+### Migration and compatibility
+
+Migration remains backup plus restore. Keep the source untouched until the destination's application workflows are independently verified. Report archive integrity, prefix structure, runtime availability, application execution, and workflow compatibility as separate evidence states.
