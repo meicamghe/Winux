@@ -12,7 +12,7 @@ def header(name,size,kind=b"0",mode=0o644):
     b[124:136]=f"{size:011o}\0".encode(); b[136:148]=b"00000000000\0"; b[148:156]=b"        "; b[156:157]=kind
     b[257:263]=b"ustar\0"; b[263:265]=b"00"; checksum=sum(b); b[148:156]=f"{checksum:06o}\0 ".encode(); return bytes(b)
 def payload_ok():
-    data=b"hello"; return header("drive_c",0,b"5")+header("dosdevices",0,b"5")+header("drive_c/a.txt",len(data))+data+bytes(512-len(data))+bytes(1024)
+    data=b"hello"; return header("drive_c",0,b"5",0o755)+header("dosdevices",0,b"5",0o755)+header("drive_c/a.txt",len(data))+data+bytes(512-len(data))+bytes(1024)
 
 class InspectorTests(unittest.TestCase):
     def setUp(self):
