@@ -57,10 +57,13 @@ def _open_entry(root_fd, entry):
         if (stat.S_IMODE(info.st_mode) & 0o755) != entry["mode"] or info.st_nlink != entry.get("nlink", 1):
             os.close(fd)
             raise PrefixBackupError("Prefix entry metadata changed: " + entry["path"])
-        if not is_dir and (
-            info.st_size != entry["size"] or info.st_mtime_ns != entry["mtime_ns"]
-            or info.st_ctime_ns != entry["ctime_ns"] or info.st_nlink != 1
+        if (
+            info.st_mtime_ns != entry["mtime_ns"]
+            or info.st_ctime_ns != entry["ctime_ns"]
         ):
+            os.close(fd)
+            raise PrefixBackupError("Prefix entry timestamps changed since scan: " + entry["path"])
+        if not is_dir and (info.st_size != entry["size"] or info.st_nlink != 1):
             os.close(fd)
             raise PrefixBackupError("Prefix file changed since scan: " + entry["path"])
         return fd, info
@@ -158,6 +161,9 @@ def backup_prefix(prefix_name, destination, *, confirm_all_wine_apps_closed=Fals
             fd, payload_path = tempfile.mkstemp(prefix=".winux-payload-", dir=destination.parent)
             os.close(fd)
             payload_size, payload_hash = _write_payload(prefix, inventory, payload_path)
+            # Re-scan to detect tree/drive-map changes during the stream.
+            if scan_prefix_tree(prefix) != inventory:
+                raise PrefixBackupError("Prefix tree changed during backup")
             manifest = {
                 "format": "winux-prefix-backup", "format_version": 1,
                 "architecture": metadata["architecture"], "runtime": metadata["runtime"],
