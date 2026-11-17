@@ -64,21 +64,7 @@ class _Runtime:
     def is_available(self):
         return True
 
-    def validate_prefix(self, path):
-        path = Path(path)
-        return (
-            path.is_dir()
-            and not path.is_symlink()
-            and (path / "drive_c").is_dir()
-            and (path / "system.reg").is_file()
-            or (
-                path.is_dir()
-                and (path / "drive_c").is_dir()
-
-            )
-        )
-
-
+    def validate_prefix(self, path):,        path = Path(path),        return (,            path.is_dir(),            and not path.is_symlink(),            and (path / "drive_c").is_dir(),            and (path / "system.reg").is_file(),        ),,
 class _RuntimeManager:
     def __init__(self):
         self.runtime = _Runtime()
