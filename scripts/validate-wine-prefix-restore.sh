@@ -22,7 +22,7 @@ if [[ "${WINUX_RESTORE_TEST_ISOLATED:-0}" != "1" ]]; then
     export PYTHONPATH="$repo_root/src${PYTHONPATH:+:$PYTHONPATH}"
     echo "Wine: $(wine --version)"
     echo "Creating a real Wine-managed WoW64 source prefix as the runner user"
-    python3 - <<'PYCREATE'
+    env -u LD_LIBRARY_PATH python3 - <<'PYCREATE'
 from winux.core.prefix import PrefixManager
 manager = PrefixManager()
 created = manager.create("source", architecture="x64")
@@ -86,7 +86,7 @@ fi
 echo "Using runner-created prefix owned by isolated test user: $source_prefix"
 
 echo "Backing up and restoring the real Wine prefix"
-python3 - <<'PY'
+env -u LD_LIBRARY_PATH python3 - <<'PY'
 import os
 from pathlib import Path
 from winux.core.wine_processes import inspect_prefix_processes
@@ -131,7 +131,7 @@ PY
 for architecture in x86 x64; do
   executable="$work_dir/smoke-$architecture.exe"
   echo "RUN AFTER RESTORE: $architecture Windows executable"
-  if WINEPREFIX="$restored_prefix" WINEDEBUG=-all timeout --signal=TERM --kill-after=5s 45s wine "$executable"; then
+  if (cd "$restored_prefix/drive_c" && env -u LD_LIBRARY_PATH WINEPREFIX="$restored_prefix" WINEDEBUG=-all timeout --signal=TERM --kill-after=5s 45s wine "$executable"); then
     echo "PASS: restored prefix launched $architecture executable"
   else
     status=$?
