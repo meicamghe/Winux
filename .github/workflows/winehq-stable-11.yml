@@ -55,3 +55,5 @@ jobs:
         run: timeout --signal=TERM --kill-after=15s 20m bash scripts/validate-real-msi-installers.sh
       - name: Validate x86/x64 PE execution on WineHQ stable
         run: timeout --signal=TERM --kill-after=15s 12m bash scripts/validate-wine-wow64.sh
+      - name: Validate managed prefix backup and restore on WineHQ stable
+        run: timeout --signal=TERM --kill-after=15s 12m bash scripts/validate-wine-prefix-restore.sh

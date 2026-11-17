@@ -139,6 +139,8 @@ jobs:
             gcc-mingw-w64-i686 gcc-mingw-w64-x86-64
       - name: Run real x86/x64 executables in one WoW64 prefix
         run: timeout --signal=TERM --kill-after=15s 12m bash scripts/validate-wine-wow64.sh
+      - name: Validate managed prefix backup and restore on Wine
+        run: timeout --signal=TERM --kill-after=15s 12m bash scripts/validate-wine-prefix-restore.sh
 
   package:
     runs-on: ubuntu-24.04
