@@ -62,6 +62,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=15s 4m python -c 'import faulthandler, unittest; faulthandler.dump_traceback_later(60, repeat=True); suite=unittest.defaultTestLoader.discover("tests", pattern="test_prefix_lock.py"); result=unittest.TextTestRunner(verbosity=2).run(suite); raise SystemExit(not result.wasSuccessful())'
       - name: Test prefix filesystem scanner
         run: timeout --signal=TERM --kill-after=15s 4m python -c 'import faulthandler, unittest; faulthandler.dump_traceback_later(60, repeat=True); suite=unittest.defaultTestLoader.discover("tests", pattern="test_prefix_filesystem.py"); result=unittest.TextTestRunner(verbosity=2).run(suite); raise SystemExit(not result.wasSuccessful())'
+      - name: Test Wine prefix process inspection
+        run: timeout --signal=TERM --kill-after=15s 4m python -m unittest discover -s tests -p test_wine_processes.py -v
       - name: Test processes
         run: timeout --signal=TERM --kill-after=15s 4m python -c 'import faulthandler, unittest; faulthandler.dump_traceback_later(60, repeat=True); suite=unittest.defaultTestLoader.discover("tests", pattern="test_processes.py"); result=unittest.TextTestRunner(verbosity=2).run(suite); raise SystemExit(not result.wasSuccessful())'
       - name: Test runner
