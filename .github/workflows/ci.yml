@@ -68,6 +68,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=15s 4m python -m unittest discover -s tests -p test_prefix_backup.py -v
       - name: Test prefix archive inspector
         run: timeout --signal=TERM --kill-after=15s 4m python -m unittest discover -s tests -p test_prefix_archive.py -v
+      - name: Test secure prefix restore
+        run: timeout --signal=TERM --kill-after=15s 4m python -m unittest discover -s tests -p test_prefix_restore.py -v
       - name: Test processes
         run: timeout --signal=TERM --kill-after=15s 4m python -c 'import faulthandler, unittest; faulthandler.dump_traceback_later(60, repeat=True); suite=unittest.defaultTestLoader.discover("tests", pattern="test_processes.py"); result=unittest.TextTestRunner(verbosity=2).run(suite); raise SystemExit(not result.wasSuccessful())'
       - name: Test runner
