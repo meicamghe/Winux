@@ -82,10 +82,20 @@ def _read_ustar(payload):
     if not ended: raise PrefixArchiveError("Tar end marker is missing")
     return records, total
 
-def inspect_prefix_backup(path):
-    """Validate without extracting files, creating a prefix, or invoking Wine."""
-    flags = os.O_RDONLY | getattr(os,"O_CLOEXEC",0) | getattr(os,"O_NOFOLLOW",0)
-    fd = os.open(path, flags)
+def inspect_prefix_backup(path=None, *, _fd=None):
+    """Validate without extracting files, creating a prefix, or invoking Wine.
+
+    Internal callers may supply an already-open descriptor so validation and
+    subsequent streaming operate on the same pinned file object.
+    """
+    if _fd is None:
+        if path is None:
+            raise TypeError("A backup path is required")
+        flags = os.O_RDONLY | getattr(os,"O_CLOEXEC",0) | getattr(os,"O_NOFOLLOW",0)
+        fd = os.open(path, flags)
+    else:
+        fd = os.dup(_fd)
+        os.lseek(fd, 0, os.SEEK_SET)
     try:
         before = os.fstat(fd)
         if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1: raise PrefixArchiveError("Backup must be a single-link regular file")
