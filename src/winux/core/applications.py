@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path, PureWindowsPath
 
 from winux.core.prefix import PrefixManager
+from winux.core.prefix_lock import prefix_operation_lock
 from winux.core.desktop import DesktopManager
 from winux.runtime.manager import RuntimeManager
 
@@ -641,28 +642,29 @@ class ApplicationManager:
                     args[index] = "/X"
                     break
 
-        prefix_path = self.prefix_manager.get_path(prefix_name)
-        runtime = self.prefix_manager.get_runtime(prefix_name)
-
-        if not runtime.is_available():
-            raise RuntimeError(f"Runtime is not available: {runtime.name}")
-
-        result = runtime.uninstall(
-            prefix_path,
-            args,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-
-        if result.returncode != 0:
-            raise RuntimeError(
-                f"Uninstaller exited with code {result.returncode}"
+        with prefix_operation_lock(prefix_name):
+            prefix_path = self.prefix_manager.get_path(prefix_name)
+            runtime = self.prefix_manager.get_runtime(prefix_name)
+    
+            if not runtime.is_available():
+                raise RuntimeError(f"Runtime is not available: {runtime.name}")
+    
+            result = runtime.uninstall(
+                prefix_path,
+                args,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
             )
-
-        return {
-            "success": True,
-            "application": application.get("DisplayName", application_id),
-            "prefix": prefix_name,
-            "returncode": result.returncode,
-        }
+    
+            if result.returncode != 0:
+                raise RuntimeError(
+                    f"Uninstaller exited with code {result.returncode}"
+                )
+    
+            return {
+                "success": True,
+                "application": application.get("DisplayName", application_id),
+                "prefix": prefix_name,
+                "returncode": result.returncode,
+            }
