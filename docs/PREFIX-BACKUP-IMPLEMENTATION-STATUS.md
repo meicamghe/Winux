@@ -4,7 +4,7 @@
 **Canonical security contract:** [PREFIX-BACKUP-RESTORE-DESIGN.md](PREFIX-BACKUP-RESTORE-DESIGN.md)  
 **Restore plan:** [PREFIX-RESTORE-IMPLEMENTATION-PLAN.md](PREFIX-RESTORE-IMPLEMENTATION-PLAN.md)
 
-This document distinguishes implemented backup/restore code from validation still in progress. Passing CI validates only the tested code paths and fixtures; it does not establish compatibility with arbitrary Windows applications or end-user workflows.
+This document distinguishes implemented backup/restore code from application-level compatibility, which still requires independent validation. Passing CI validates only the tested code paths and fixtures; it does not establish compatibility with arbitrary Windows applications or end-user workflows.
 
 ## Implemented foundations
 
@@ -82,7 +82,7 @@ The Winux CI run included the writer/inspector integration and hostile archive t
 
 ## Remaining work
 
-### Internal secure restore — implemented; real-Wine validation pending
+### Internal secure restore — implemented; Wine 10/11 real-runtime gates passed
 
 Implemented in `src/winux/core/prefix_restore.py` on PR #55.
 
@@ -97,17 +97,22 @@ Implemented in `src/winux/core/prefix_restore.py` on PR #55.
 - Cleans up its private staging tree on failure and never replaces an existing destination.
 - Synthetic tests are now wired into the `test-runtime` CI job.
 
-**Validation status on 2026-11-17:** The required real-runtime targets are Wine 10.0 and WineHQ Stable 11.0. The Ubuntu distro Wine package is intentionally not used because it supplies an older major version. WineHQ 11's first restore run exposed an actual COM1–COM4 device layout that the earlier all-or-none COM1–COM32 scanner rule rejected. The scanner now accepts contiguous COM1..N layouts while rejecting gaps, and the integration script runs x86/x64 control executables in the source prefix before testing the restored prefix. Both Wine 10 and Wine 11 must pass real backup/restore followed by x86/x64 execution before merge.
+**Validation status on 2026-11-17:** Both required real-runtime targets passed on the final validation head `d349474ed2c16b1481ee01efbcc40ff4c3024972` before the additional adversarial-test hardening commit:
+- WineHQ Stable 10.0: real prefix creation, backup, restore, source-prefix x86/x64 controls, and restored-prefix x86/x64 execution all passed.
+- WineHQ Stable 11.0: the same real backup/restore and x86/x64 post-restore execution all passed.
+- The Wine 11 package set was observed as `11.0.0.0~noble-1`; CI is now pinned to that exact package version and verifies exactly Wine 11.0.
+- Wine 10 CI is pinned to `10.0.0.0~noble-1` and verifies exactly Wine 10.0.
+- The four validation workflows on that head all passed: Winux CI, WineHQ 11 integration, real EXE installer integration, and real MSI installer integration.
+- The first restore failure was traced to the integration script launching host temporary paths through the intentionally omitted Z: mapping. The test now copies smoke executables into each prefix and launches them via C:; the final real-prefix runs passed.
 
-PR #55's first validation results:
 | Workflow | Run ID | Result |
 |---|---:|---|
-| WineHQ Stable 11 | 44061905473 | failure: old COM mapping validation |
-| Wine 10 | Fresh run required after switching CI to the pinned WineHQ 10.0 package | pending |
-| Real Windows Installer Integration | 44061905574 | success |
-| Real Windows MSI Installer Integration | 44061905563 | success |
+| Winux CI (Wine 10 real backup/restore) | 44076105477 | success |
+| WineHQ Stable 11 real backup/restore | 44076105403 | success |
+| Real Windows Installer Integration | 44076105379 | success |
+| Real Windows MSI Installer Integration | 44076105378 | success |
 
-The EXE/MSI workflows exercised disposable x86/x64 fixtures. They do not prove arbitrary Windows application compatibility.
+The EXE/MSI workflows exercised disposable x86/x64 fixtures. They do not prove arbitrary Windows application compatibility or the EMWAT/Office workflow. The restored-prefix smoke tests establish real Wine prefix backup/restore and x86/x64 PE launchability on these two runtime versions, not general compatibility with every Windows application.
 
 ### Public backup CLI — not enabled
 
