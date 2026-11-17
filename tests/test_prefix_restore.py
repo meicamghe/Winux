@@ -171,6 +171,28 @@ class PrefixRestoreTests(unittest.TestCase):
         self.assertEqual((path / "dosdevices").stat().st_mode & 0o777, 0o700)
         self.assertEqual((path / ".winux-prefix.json").stat().st_mode & 0o777, 0o600)
 
+    def test_destination_root_symlink_swap_after_validation_is_rejected(self):
+        outside = Path(self.tmp.name) / "outside"
+        outside.mkdir()
+        sentinel = outside / "keep.txt"
+        sentinel.write_text("outside data")
+        real_base = self.base.with_name("prefixes-real")
+        original_ensure = self.manager._ensure_base_dir
+
+        def replace_base_after_validation():
+            original_ensure()
+            self.base.rename(real_base)
+            self.base.symlink_to(outside, target_is_directory=True)
+
+        self.manager._ensure_base_dir = replace_base_after_validation
+        with self.assertRaises(OSError):
+            restore_prefix(self.archive, "escaped", prefix_manager=self.manager)
+
+        self.assertTrue(self.base.is_symlink())
+        self.assertEqual(sentinel.read_text(), "outside data")
+        self.assertFalse((outside / "escaped").exists())
+        self.assertFalse((real_base / "escaped").exists())
+
     def test_existing_destination_is_never_overwritten(self):
         existing = self.base / "existing"
         existing.mkdir()
