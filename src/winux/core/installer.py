@@ -412,6 +412,20 @@ class Installer:
 
             try:
                 with prefix_operation_lock(prefix_name, blocking=False):
+                    # Re-resolve the prefix only after acquiring the shared
+                    # lock so a concurrent delete cannot invalidate this path.
+                    prefix_path = self.prefix_manager.get_path(prefix_name)
+                    runtime = self.prefix_manager.get_runtime(prefix_name)
+                    if not runtime.is_available():
+                        raise RuntimeError(
+                            f"Runtime is not available: {runtime.name}"
+                        )
+                    prefix_architecture = self.prefix_manager.get_architecture(
+                        prefix_name
+                    )
+                    self._validate_architecture_compatibility(
+                        installer_architecture, prefix_architecture
+                    )
                     log.write("Status: RUNNING\\n")
                     log.flush()
 
