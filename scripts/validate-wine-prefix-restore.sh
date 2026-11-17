@@ -106,7 +106,7 @@ for pid in state["pids"]:
     except OSError as error: wineprefix = f"<unreadable:{type(error).__name__}>"
     print(f"BLOCKER pid={pid} comm={comm!r} exe={executable!r} WINEPREFIX={wineprefix!r}")
 PY
-python3 - "$archive" <<'PY'
+env -u LD_LIBRARY_PATH python3 - "$archive" <<'PY'
 import sys
 from pathlib import Path
 from winux.core.prefix import PrefixManager
