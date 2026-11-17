@@ -95,6 +95,11 @@ class PrefixFilesystemScannerTests(unittest.TestCase):
         with self.assertRaisesRegex(PrefixScanError, "backslash"):
             scan_prefix_tree(self.root)
 
+    def test_rejects_windows_drive_prefixed_path(self):
+        (self.root / "C:escape.txt").write_text("unsafe", encoding="utf-8")
+        with self.assertRaisesRegex(PrefixScanError, "drive-prefixed"):
+            scan_prefix_tree(self.root)
+
     def test_rejects_unicode_normalization_collisions(self):
         (self.root / "drive_c" / "café.txt").write_text("one", encoding="utf-8")
         (self.root / "drive_c" / "cafe\u0301.txt").write_text("two", encoding="utf-8")
