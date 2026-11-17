@@ -36,7 +36,7 @@ A usable prefix has a real, non-symlink `drive_c/`, a runtime-valid Wine registr
 
 Winux accepts both x86 and x64 application workflows through its current `win64` WoW64 prefix model. A backup must record the prefix architecture as `win64`; the architecture of an individual installed application is not a substitute for prefix architecture.
 
-Wine prefixes commonly contain symlinks under `dosdevices/`. A real Wine 11.0 WoW64 prefix created by the hosted Ubuntu 24.04 CI runner was inspected on 2026-11-17. It contained `c: -> ../drive_c`, `z: -> /`, and `com1` through `com32` mapped in order to `/dev/ttyS0` through `/dev/ttyS31`. These links are not ordinary portable application data. Blindly following or restoring them can archive host files or expose host devices after migration. This observation is evidence for that Wine build and runner; other supported Wine builds and platforms must be checked before the allow-list is finalized.
+Wine prefixes commonly contain symlinks under `dosdevices/`. Real WoW64 prefixes created by the hosted Ubuntu 24.04 CI runner were inspected on 2026-11-17 with both Wine 9.0 (Ubuntu `9.0~repack-4build3`) and Wine 11.0. Both contained the same observed layout: `c: -> ../drive_c`, `z: -> /`, and `com1` through `com32` mapped in order to `/dev/ttyS0` through `/dev/ttyS31`. These links are not ordinary portable application data. Blindly following or restoring them can archive host files or expose host devices after migration. This observation is evidence for that Wine build and runner; other supported Wine builds and platforms must be checked before the allow-list is finalized.
 
 ## 3. Archive format
 
@@ -100,7 +100,7 @@ The first implementation must not serialize arbitrary symlinks or follow any sym
 - Recognize serial aliases only when the complete set and exact link texts match the tested Wine default: `com1 -> /dev/ttyS0` through `com32 -> /dev/ttyS31`. Treat these as logical Wine defaults, not portable data. Never resolve or traverse them during backup and never archive their link text as a general-purpose path. Restore must offer an explicit serial-device policy: recreate only this exact conventional mapping when requested, or omit all COM aliases. The default must be conservative (omit COM aliases) and the report must explain that serial-port integration may need reconfiguration.
 - Unknown symlinks, partial or unexpected COM mappings, other device targets (including `/dev/ttyUSB*`), unexpected C:/Z: targets, symlinked `dosdevices`, or ambiguous layouts cause backup refusal in version 1. Do not silently drop unknown links.
 - Restore creates only the logical aliases approved by the selected policy; it never trusts symlink targets from archive entries. Any reconstructed symlink is created by Winux after extraction using a fixed allow-listed target.
-- The 2026-11-17 Wine 11.0 CI observation is not sufficient to claim all Wine builds share this layout. Before enabling backup, collect fixtures for each supported Wine packaging family/version and relevant platform. Do not weaken validation to make an unknown link pass.
+- The 2026-11-17 Wine 9.0 and Wine 11.0 CI observations are not sufficient to claim all Wine builds or non-Linux platforms share this layout. Before enabling backup, collect fixtures for each supported Wine packaging family/version and relevant platform. Do not weaken validation to make an unknown link pass.
 
 ## 5. Resource and archive limits
 
@@ -227,7 +227,7 @@ winux prefix inspect-backup <archive>
 
 ## 10. Implementation sequence
 
-1. Add this design and review the actual symlink layout from disposable prefixes on supported Wine versions. Initial evidence: Wine 11.0 on Ubuntu 24.04 creates `c:`, `z:`, and `com1`–`com32` links; see the CI log for PR #45.
+1. Add this design and review the actual symlink layout from disposable prefixes on supported Wine versions. Initial evidence: Wine 9.0 and Wine 11.0 on Ubuntu 24.04 both create `c:`, `z:`, and `com1`–`com32` links; see the CI logs for PR #45.
 2. Introduce a shared prefix-operation lock and safe filesystem traversal helpers, with focused unit tests.
 3. Implement read-only backup writer and archive inspector; do not add restore in the same change.
 4. Add backup round-trip and adversarial archive tests.
