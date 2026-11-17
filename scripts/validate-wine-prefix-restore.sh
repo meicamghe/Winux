@@ -2,9 +2,8 @@
 set -Eeuo pipefail
 
 # Disposable real-prefix restore fixture; never relax production process checks.
-# Create the Wine prefix as the runner user. Ubuntu's Wine 9 package crashes
-# during wineboot when launched under the dedicated nobody account, while the
-# later backup/restore process inspection must run under that isolated UID.
+# Create the Wine prefix as the runner user, then transfer it to a dedicated
+# isolated UID so backup/restore process inspection runs as the prefix owner.
 if [[ "${WINUX_RESTORE_TEST_ISOLATED:-0}" != "1" ]]; then
   script_path="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
   repo_root="$(cd "$(dirname "$script_path")/.." && pwd)"

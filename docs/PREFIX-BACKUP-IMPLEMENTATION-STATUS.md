@@ -97,13 +97,13 @@ Implemented in `src/winux/core/prefix_restore.py` on PR #55.
 - Cleans up its private staging tree on failure and never replaces an existing destination.
 - Synthetic tests are now wired into the `test-runtime` CI job.
 
-**Validation status on 2026-11-17:** PR #55's first real integration run confirmed Wine 9 could create, back up, inspect, and restore a real 1.3 GB WoW64 prefix, but launching the restored x86 smoke executable aborted with `free(): invalid pointer`. WineHQ 11 reached backup but its actual COM1–COM4 device layout was rejected by the earlier all-or-none COM1–COM32 scanner rule. The scanner was updated to accept contiguous COM1..N layouts while rejecting gaps, and the integration script now runs x86/x64 controls in the original source prefix before testing the restored prefix. Those fixes require a fresh CI run; do not mark real-Wine restore as passing yet.
+**Validation status on 2026-11-17:** The required real-runtime targets are Wine 10.0 and WineHQ Stable 11.0. The Ubuntu distro Wine package is intentionally not used because it supplies an older major version. WineHQ 11's first restore run exposed an actual COM1–COM4 device layout that the earlier all-or-none COM1–COM32 scanner rule rejected. The scanner now accepts contiguous COM1..N layouts while rejecting gaps, and the integration script runs x86/x64 control executables in the source prefix before testing the restored prefix. Both Wine 10 and Wine 11 must pass real backup/restore followed by x86/x64 execution before merge.
 
 PR #55's first validation results:
 | Workflow | Run ID | Result |
 |---|---:|---|
-| Winux CI | 44061905578 | failure: Wine 9 post-restore x86 launch |
 | WineHQ Stable 11 | 44061905473 | failure: old COM mapping validation |
+| Wine 10 | Fresh run required after switching CI to the pinned WineHQ 10.0 package | pending |
 | Real Windows Installer Integration | 44061905574 | success |
 | Real Windows MSI Installer Integration | 44061905563 | success |
 

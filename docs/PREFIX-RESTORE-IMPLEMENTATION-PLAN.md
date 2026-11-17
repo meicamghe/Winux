@@ -20,8 +20,8 @@ The internal restore implementation is in `src/winux/core/prefix_restore.py`. It
 - [x] Synthetic success, existing-destination protection, digest failure, symlink archive rejection, unavailable local runtime, and runtime-validation cleanup tests.
 - [x] Synthetic restore tests added to the `test-runtime` CI workflow.
 - [ ] Expand adversarial restore coverage for traversal, links/special entries, malformed/truncated containers, duplicate entries, and failure cleanup at each extraction/publication boundary.
-- [ ] Pass real Wine 9 backup/restore followed by x86 and x64 execution from the restored prefix. The first run restored successfully but Wine 9 aborted on the x86 launch with `free(): invalid pointer`; a source-prefix control run has been added to isolate the cause.
+- [ ] Pass real WineHQ Stable 10.0 backup/restore followed by x86 and x64 execution. CI pins the exact WineHQ 10.0 package set and verifies the installed version before testing.
 - [ ] Pass real WineHQ Stable 11 backup/restore followed by x86 and x64 execution. The first run exposed a real COM1–COM4 layout that the original scanner rejected; scanner acceptance was corrected to contiguous COM1..N and needs fresh validation.
 - [ ] Pass all EXE/MSI integration workflows on the same final PR head.
 
-No public restore CLI is enabled yet. Do not merge until the synthetic suite and both real-Wine restore integrations pass, including post-restore x86/x64 execution.
+No public restore CLI is enabled yet. Do not merge until the synthetic suite and both Wine 10 and Wine 11 real-Wine restore integrations pass, including post-restore x86/x64 execution.
