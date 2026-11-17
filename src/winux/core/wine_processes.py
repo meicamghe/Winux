@@ -23,7 +23,7 @@ def _normalise_prefix(path):
 def _read_environment(path):
     raw = path.read_bytes()
     values = {}
-    for item in raw.split(b"\\0"):
+    for item in raw.split(b"\0"):
         if not item or b"=" not in item:
             continue
         key, value = item.split(b"=", 1)
