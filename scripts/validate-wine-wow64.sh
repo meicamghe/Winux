@@ -29,6 +29,26 @@ echo "Wine: $(wine --version)"
 echo "Prefix: $prefix (win64 WoW64)"
 WINEPREFIX="$prefix" WINEARCH=win64 WINEDEBUG=-all timeout --signal=TERM --kill-after=5s 90s wineboot --init
 
+# Record the real Wine-created drive-link layout for the prefix backup design.
+# This is diagnostic evidence only: never follow or archive these links here.
+echo "Wine prefix dosdevices layout:"
+dosdevices="$prefix/dosdevices"
+if [[ -d "$dosdevices" && ! -L "$dosdevices" ]]; then
+  while IFS= read -r -d '' link; do
+    printf '  %s -> %s\n' "${link#"$dosdevices"/}" "$(readlink -- "$link")"
+  done < <(find "$dosdevices" -mindepth 1 -maxdepth 1 -type l -print0 | sort -z)
+  for drive in 'c:' 'z:'; do
+    if [[ -L "$dosdevices/$drive" ]]; then
+      printf '  expected-drive %s: symlink target=%s resolved=%s\n' \
+        "$drive" "$(readlink -- "$dosdevices/$drive")" "$(readlink -f -- "$dosdevices/$drive")"
+    else
+      printf '  expected-drive %s: not a symlink\n' "$drive"
+    fi
+  done
+else
+  echo "  dosdevices directory missing or is a symlink"
+fi
+
 for architecture in x86 x64; do
   executable="$work_dir/smoke-$architecture.exe"
   echo "RUN: $architecture Windows executable"
