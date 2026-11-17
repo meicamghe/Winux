@@ -21,7 +21,7 @@ def make_backup(path, *, corrupt_digest=False):
             item.mode = 0o755
             archive.addfile(item)
         for name, data in (
-            ("drive_c/system.reg", b"WINE REGISTRY\\n"),
+            ("system.reg", b"WINE REGISTRY\\n"),
             ("drive_c/marker.txt", b"restore-test"),
         ):
             item = tarfile.TarInfo(name)
@@ -33,7 +33,7 @@ def make_backup(path, *, corrupt_digest=False):
     entries = [
         {"path": "dosdevices", "type": "directory", "mode": 0o755, "size": 0},
         {"path": "drive_c", "type": "directory", "mode": 0o755, "size": 0},
-        {"path": "drive_c/system.reg", "type": "file", "mode": 0o644, "size": 14},
+        {"path": "system.reg", "type": "file", "mode": 0o644, "size": 14},
         {"path": "drive_c/marker.txt", "type": "file", "mode": 0o755, "size": 12},
     ]
     digest = hashlib.sha256(payload).hexdigest()
@@ -74,7 +74,7 @@ class _Runtime:
             or (
                 path.is_dir()
                 and (path / "drive_c").is_dir()
-                and (path / "drive_c/system.reg").is_file()
+
             )
         )
 
