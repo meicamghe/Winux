@@ -233,7 +233,12 @@ def restore_prefix(archive_path, prefix_name, *, prefix_manager=None):
     if not runtime.is_available():
         raise PrefixRestoreError("The selected local runtime is unavailable")
 
-    archive_flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    archive_flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
     archive_fd = os.open(archive_path, archive_flags)
     archive_before = os.fstat(archive_fd)
     if not stat.S_ISREG(archive_before.st_mode) or archive_before.st_nlink != 1:
