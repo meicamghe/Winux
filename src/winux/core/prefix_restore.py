@@ -240,7 +240,11 @@ def restore_prefix(archive_path, prefix_name, *, prefix_manager=None):
         os.close(archive_fd)
         raise PrefixArchiveError("Backup must be a single-link regular file")
 
-    base_fd = _open_directory(manager.base_dir)
+    try:
+        base_fd = _open_directory(manager.base_dir)
+    except Exception:
+        os.close(archive_fd)
+        raise
     stage_name = None
     published = False
     try:
@@ -316,6 +320,14 @@ def restore_prefix(archive_path, prefix_name, *, prefix_manager=None):
 
                 _fsync_directories(stage_fd)
                 os.fsync(stage_fd)
+                staged_name_info = os.stat(stage_name, dir_fd=base_fd, follow_symlinks=False)
+                staged_fd_info = os.fstat(stage_fd)
+                if (
+                    not stat.S_ISDIR(staged_name_info.st_mode)
+                    or staged_name_info.st_dev != staged_fd_info.st_dev
+                    or staged_name_info.st_ino != staged_fd_info.st_ino
+                ):
+                    raise PrefixRestoreError("Staging directory identity changed before publication")
                 _rename_noreplace(base_fd, stage_name, base_fd, prefix_name)
                 os.fsync(base_fd)
                 published = True
