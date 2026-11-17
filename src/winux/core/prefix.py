@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 
 from winux.runtime.manager import RuntimeManager
+from winux.core.prefix_lock import prefix_operation_lock
 
 
 class PrefixManager:
@@ -259,46 +260,47 @@ class PrefixManager:
                 f"Runtime is not available: {selected_runtime}"
             )
 
-        path = self.base_dir / name
-
-        if path.exists() or path.is_symlink():
-            raise FileExistsError(f"Prefix already exists: {name}")
-
-        path.mkdir(mode=0o700)
-
-        try:
-            result = runtime.create_prefix(path, architecture)
-
-            if result.returncode != 0:
-                raise RuntimeError(
-                    result.stderr.strip() or "Runtime prefix initialization failed"
+        with prefix_operation_lock(name):
+            path = self.base_dir / name
+    
+            if path.exists() or path.is_symlink():
+                raise FileExistsError(f"Prefix already exists: {name}")
+    
+            path.mkdir(mode=0o700)
+    
+            try:
+                result = runtime.create_prefix(path, architecture)
+    
+                if result.returncode != 0:
+                    raise RuntimeError(
+                        result.stderr.strip() or "Runtime prefix initialization failed"
+                    )
+    
+                if not runtime.validate_prefix(path):
+                    raise RuntimeError("Runtime created an invalid prefix")
+    
+                self._validate_drive_c(path)
+    
+                metadata = {
+                    "name": name,
+                    "architecture": architecture,
+                    "runtime": runtime.name,
+                    "format_version": 1
+                }
+    
+                self._write_metadata(path, metadata)
+    
+                self.logger.info(
+                    "Created prefix: %s (%s)", name, architecture
                 )
-
-            if not runtime.validate_prefix(path):
-                raise RuntimeError("Runtime created an invalid prefix")
-
-            self._validate_drive_c(path)
-
-            metadata = {
-                "name": name,
-                "architecture": architecture,
-                "runtime": runtime.name,
-                "format_version": 1
-            }
-
-            self._write_metadata(path, metadata)
-
-            self.logger.info(
-                "Created prefix: %s (%s)", name, architecture
-            )
-            return path
-
-        except Exception:
-            self.logger.exception("Prefix creation failed: %s", name)
-            if path.is_dir() and not path.is_symlink():
-                shutil.rmtree(path)
-            raise
-
+                return path
+    
+            except Exception:
+                self.logger.exception("Prefix creation failed: %s", name)
+                if path.is_dir() and not path.is_symlink():
+                    shutil.rmtree(path)
+                raise
+    
     def list(self):
         self._ensure_base_dir()
         prefixes = []
@@ -332,13 +334,14 @@ class PrefixManager:
         return self._get_valid_path(name)
 
     def delete(self, name, confirm=False):
-        path = self._get_valid_path(name)
-
+        self.validate_name(name)
         if confirm is not True:
             raise PermissionError(
                 "Deletion requires explicit confirmation"
             )
 
-        shutil.rmtree(path)
-        self.logger.info("Deleted prefix: %s", name)
-        return True
+        with prefix_operation_lock(name):
+            path = self._get_valid_path(name)
+            shutil.rmtree(path)
+            self.logger.info("Deleted prefix: %s", name)
+            return True
