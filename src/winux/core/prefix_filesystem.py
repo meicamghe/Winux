@@ -62,6 +62,8 @@ def _validate_member_path(value):
     if len(encoded) > MAX_PATH_BYTES:
         raise PrefixScanError("Archive path is too long")
     parts = value.split("/")
+    if parts and len(parts[0]) >= 2 and parts[0][0].isalpha() and parts[0][1] == ":":
+        raise PrefixScanError("Windows drive-prefixed paths are forbidden")
     if any(part in ("", ".", "..") for part in parts):
         raise PrefixScanError("Archive path contains an unsafe component")
     for part in parts:
