@@ -124,8 +124,13 @@ def _scan_drive_links(directory_fd):
     if links.get("c:") != "../drive_c":
         raise PrefixScanError("Wine dosdevices/c: mapping is missing")
     present_com = set(links).intersection(_COM_LINKS)
-    if present_com and present_com != set(_COM_LINKS):
-        raise PrefixScanError("Partial Wine COM1-COM32 mapping set")
+    if present_com:
+        # Wine builds differ: observed defaults include COM1-COM4 and
+        # COM1-COM32. Accept only a contiguous prefix beginning at COM1;
+        # gaps, reordered aliases, and unexpected targets remain rejected.
+        numbers = sorted(int(name[3:]) for name in present_com)
+        if numbers != list(range(1, numbers[-1] + 1)):
+            raise PrefixScanError("Non-contiguous Wine COM mapping set")
     return {
         "c": "drive_c",
         "z": "/" if "z:" in links else None,
