@@ -1,6 +1,35 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# GitHub-hosted runners expose same-UID user-session processes (systemd and
+# sd-pam) whose /proc/<pid>/exe links are intentionally unreadable. The
+# production inspector correctly fails closed on those ambiguous entries.
+# Run this disposable integration fixture under a dedicated unprivileged UID
+# so its /proc view contains only the fixture's own processes, without
+# weakening production process inspection or ignoring unknown processes.
+if [[ "${WINUX_RESTORE_TEST_ISOLATED:-0}" != "1" ]]; then
+  script_path="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+  command -v sudo >/dev/null 2>&1 || {
+    echo "MISSING: sudo is required to isolate the Wine restore integration user" >&2
+    exit 2
+  }
+  nobody_uid="$(id -u nobody)"
+  if [[ "$(id -u)" != "$nobody_uid" ]]; then
+    isolated_home="$(mktemp -d "${TMPDIR:-/tmp}/winux-restore-user.XXXXXX")"
+    chown nobody:"$(id -gn nobody)" "$isolated_home"
+    chmod 700 "$isolated_home"
+    trap 'rm -rf -- "$isolated_home"' EXIT
+    set +e
+    sudo -u nobody -- env \
+      WINUX_RESTORE_TEST_ISOLATED=1 \
+      HOME="$isolated_home" TMPDIR=/tmp \
+      bash "$script_path"
+    status=$?
+    set -e
+    exit "$status"
+  fi
+fi
+
 for tool in wine wineboot wineserver timeout python3 i686-w64-mingw32-gcc x86_64-w64-mingw32-gcc; do
   command -v "$tool" >/dev/null 2>&1 || {
     echo "MISSING: required tool '$tool' is not installed" >&2
