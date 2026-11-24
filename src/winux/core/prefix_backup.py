@@ -148,7 +148,7 @@ def _write_payload(prefix, inventory, payload_fd):
 
 def _create_temporary_at(parent_fd, prefix):
     """Create a private temporary regular file relative to a pinned directory fd."""
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    flags = os.O_RDWR | os.O_CREAT | os.O_EXCL
     flags |= getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
     for _ in range(128):
         name = f"{prefix}{secrets.token_hex(16)}.tmp"

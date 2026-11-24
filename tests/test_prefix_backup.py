@@ -69,8 +69,6 @@ class BackupWriterPrimitiveTests(unittest.TestCase):
         self.assertEqual(result["total_bytes"],16)
         self.assertEqual(result["architecture"],"win64")
 
-if __name__ == "__main__":
-    unittest.main()
 
     def test_destination_parent_symlink_swap_is_rejected_before_temp_creation(self):
         from unittest.mock import patch
@@ -125,3 +123,6 @@ if __name__ == "__main__":
         self.assertEqual(sentinel.read_text(), "outside data")
         self.assertEqual(list(outside.iterdir()), [sentinel])
         self.assertEqual(list(moved_parent.iterdir()), [])
+
+if __name__ == "__main__":
+    unittest.main()
