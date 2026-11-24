@@ -31,6 +31,9 @@ class InspectorTests(unittest.TestCase):
     def test_symlink_archive_rejected(self):
         link=Path(self.tmp.name)/"link"; link.symlink_to(self.path)
         with self.assertRaises(OSError): inspect_prefix_backup(link)
+    def test_fifo_archive_is_rejected_without_waiting_for_a_writer(self):
+        fifo=Path(self.tmp.name)/"archive.fifo"; os.mkfifo(fifo)
+        with self.assertRaises(PrefixArchiveError): inspect_prefix_backup(fifo)
     def test_traversal_path_rejected(self):
         p=header("../escape",0)+bytes(1024); self.manifest["payload"].update(size=len(p),sha256=hashlib.sha256(p).hexdigest()); self.manifest.update(files=1,total_bytes=0,entries=[{"path":"../escape","type":"file","mode":0o644,"size":0,"device":1,"inode":2,"mtime_ns":1,"ctime_ns":1,"nlink":1}]); make_container(p,self.manifest,self.path)
         with self.assertRaises(PrefixArchiveError): inspect_prefix_backup(self.path)

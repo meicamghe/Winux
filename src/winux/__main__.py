@@ -50,6 +50,25 @@ def main():
     info_parser = prefix_commands.add_parser("info")
     info_parser.add_argument("name")
 
+    backup_parser = prefix_commands.add_parser(
+        "backup",
+        help="Inspect and manage prefix backups",
+    )
+    backup_commands = backup_parser.add_subparsers(
+        dest="backup_command",
+        required=True,
+    )
+    backup_inspect_parser = backup_commands.add_parser(
+        "inspect",
+        help="Verify a backup archive without extracting or restoring it",
+    )
+    backup_inspect_parser.add_argument("archive")
+    backup_inspect_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print the inspection report as JSON",
+    )
+
     install_parser = commands.add_parser(
         "install",
         help="Install a Windows application"
@@ -291,6 +310,31 @@ def main():
                 print(f"Architecture: {manager.get_architecture(args.name)}")
                 print(f"Runtime: {manager.get_runtime(args.name).name}")
                 print(f"Path: {path}")
+
+            elif args.prefix_command == "backup":
+                if args.backup_command == "inspect":
+                    from winux.core.prefix_archive import inspect_prefix_backup
+
+                    report = inspect_prefix_backup(args.archive)
+                    if args.json:
+                        print(json.dumps(report, ensure_ascii=False, indent=2))
+                    else:
+                        print("Winux Prefix Backup Inspection")
+                        print("-" * 36)
+                        print("[OK] Archive integrity: verified")
+                        print(f"Format version: {report['format_version']}")
+                        print(f"Architecture: {report['architecture']}")
+                        print(f"Recorded runtime: {report['runtime']}")
+                        print(f"Files: {report['files']}")
+                        print(f"Directories: {report['directories']}")
+                        print(f"Total file bytes: {report['total_bytes']}")
+                        print(f"Payload SHA-256: {report['payload_sha256']}")
+                        print("Extraction: not performed")
+                        print("Restore: not performed")
+                        print(
+                            "Note: archive integrity does not verify runtime "
+                            "availability or application compatibility."
+                        )
 
         elif args.command == "app":
             from winux.core.applications import ApplicationManager

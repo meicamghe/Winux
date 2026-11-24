@@ -84,7 +84,15 @@ def _read_ustar(payload):
 
 def inspect_prefix_backup(path):
     """Validate without extracting files, creating a prefix, or invoking Wine."""
-    flags = os.O_RDONLY | getattr(os,"O_CLOEXEC",0) | getattr(os,"O_NOFOLLOW",0)
+    # O_NONBLOCK prevents a FIFO supplied as the archive path from hanging
+    # before fstat() can reject the non-regular file. It has no effect on
+    # ordinary regular-file reads.
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
     fd = os.open(path, flags)
     try:
         before = os.fstat(fd)
