@@ -4,7 +4,7 @@ import json
 import os
 import stat
 import tarfile
-import tempfile
+import secrets
 from pathlib import Path
 
 from winux.core.prefix import PrefixManager
@@ -89,12 +89,14 @@ class _Reader:
         return data
 
 
-def _write_payload(prefix, inventory, payload_path):
+def _write_payload(prefix, inventory, payload_fd):
+    """Stream a prefix into an already-open temporary file pinned to its parent."""
     root_fd = _open_absolute_directory(prefix)
     digest = hashlib.sha256()
     read_total = 0
     try:
-        with open(payload_path, "wb", buffering=0) as output:
+        os.ftruncate(payload_fd, 0)
+        with os.fdopen(os.dup(payload_fd), "wb", buffering=0) as output:
             with tarfile.open(fileobj=output, mode="w|", format=tarfile.USTAR_FORMAT) as tar:
                 for entry in inventory["entries"]:
                     if entry["path"] == "dosdevices":
@@ -129,22 +131,50 @@ def _write_payload(prefix, inventory, payload_path):
         os.close(root_fd)
     if read_total != inventory["total_bytes"]:
         raise PrefixBackupError("Streamed byte count mismatch")
-    size = os.path.getsize(payload_path)
+    size = os.fstat(payload_fd).st_size
     if size > MAX_ARCHIVE:
         raise PrefixBackupError("Archive size limit exceeded")
     # Authenticate the complete tar stream, including headers and padding.
     archive_digest = hashlib.sha256()
-    with open(payload_path, "rb", buffering=0) as payload_file:
-        while True:
-            chunk = payload_file.read(CHUNK)
-            if not chunk:
-                break
-            archive_digest.update(chunk)
+    offset = 0
+    while offset < size:
+        chunk = os.pread(payload_fd, min(CHUNK, size - offset), offset)
+        if not chunk:
+            raise PrefixBackupError("Temporary payload was truncated")
+        archive_digest.update(chunk)
+        offset += len(chunk)
     return size, archive_digest.hexdigest()
 
 
+def _create_temporary_at(parent_fd, prefix):
+    """Create a private temporary regular file relative to a pinned directory fd."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    flags |= getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
+    for _ in range(128):
+        name = f"{prefix}{secrets.token_hex(16)}.tmp"
+        try:
+            return name, os.open(name, flags, 0o600, dir_fd=parent_fd)
+        except FileExistsError:
+            continue
+    raise PrefixBackupError("Unable to allocate a unique temporary backup file")
+
+
+def _verify_parent_path(path, parent_fd):
+    """Ensure the user-visible parent path still names the pinned directory."""
+    try:
+        current = os.stat(path, follow_symlinks=False)
+    except OSError as error:
+        raise PrefixBackupError("Backup destination parent changed during operation") from error
+    pinned = os.fstat(parent_fd)
+    if (
+        not stat.S_ISDIR(current.st_mode)
+        or (current.st_dev, current.st_ino) != (pinned.st_dev, pinned.st_ino)
+    ):
+        raise PrefixBackupError("Backup destination parent changed during operation")
+
+
 def backup_prefix(prefix_name, destination, *, confirm_all_wine_apps_closed=False, prefix_manager=None):
-    """Create an internal backup. Confirmation is not a race-free quiescence guarantee."""
+    """Create an internal backup using only files beneath a pinned destination directory."""
     if confirm_all_wine_apps_closed is not True:
         raise PrefixBackupError("Explicit offline confirmation is required")
     manager = prefix_manager or PrefixManager()
@@ -155,9 +185,12 @@ def backup_prefix(prefix_name, destination, *, confirm_all_wine_apps_closed=Fals
         raise FileExistsError(destination)
     if os.path.commonpath((str(prefix.resolve()), str(destination))) == str(prefix.resolve()):
         raise PrefixBackupError("Destination must be outside the source prefix")
+
     parent_fd = _open_directory(destination.parent)
-    payload_path = archive_path = None
+    payload_name = archive_name = None
+    payload_fd = archive_fd = -1
     try:
+        _verify_parent_path(destination.parent, parent_fd)
         with prefix_operation_lock(prefix_name, blocking=False):
             state = inspect_prefix_processes(prefix)
             if state["state"] != "clear":
@@ -166,9 +199,10 @@ def backup_prefix(prefix_name, destination, *, confirm_all_wine_apps_closed=Fals
             metadata = manager._read_metadata(prefix)
             if not manager.get_runtime(prefix_name).is_available():
                 raise PrefixBackupError("Prefix runtime is unavailable")
-            fd, payload_path = tempfile.mkstemp(prefix=".winux-payload-", dir=destination.parent)
-            os.close(fd)
-            payload_size, payload_hash = _write_payload(prefix, inventory, payload_path)
+
+            payload_name, payload_fd = _create_temporary_at(parent_fd, ".winux-payload-")
+            payload_size, payload_hash = _write_payload(prefix, inventory, payload_fd)
+
             # Re-scan to detect tree/drive-map changes during the stream.
             if scan_prefix_tree(prefix) != inventory:
                 raise PrefixBackupError("Prefix tree changed during backup")
@@ -180,41 +214,60 @@ def backup_prefix(prefix_name, destination, *, confirm_all_wine_apps_closed=Fals
                 "payload": {"name": "payload.tar", "size": payload_size, "sha256": payload_hash},
                 "entries": inventory["entries"],
             }
-            encoded = json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+            encoded = json.dumps(
+                manifest, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":"), allow_nan=False,
+            ).encode()
             if len(encoded) > MAX_MANIFEST:
                 raise PrefixBackupError("Manifest size limit exceeded")
-            fd, archive_path = tempfile.mkstemp(prefix=".winux-backup-", dir=destination.parent)
-            with os.fdopen(fd, "wb", buffering=0) as output:
+
+            archive_name, archive_fd = _create_temporary_at(parent_fd, ".winux-backup-")
+            with os.fdopen(archive_fd, "wb", buffering=0) as output:
+                archive_fd = -1
                 output.write(MAGIC)
                 output.write(payload_size.to_bytes(8, "big"))
-                with open(payload_path, "rb", buffering=0) as source:
-                    copied = 0
-                    while True:
-                        chunk = source.read(CHUNK)
-                        if not chunk:
-                            break
-                        copied += len(chunk)
-                        if copied > payload_size:
-                            raise PrefixBackupError("Payload changed during publication")
-                        output.write(chunk)
-                if copied != payload_size:
-                    raise PrefixBackupError("Payload truncated during publication")
+                copied = 0
+                while copied < payload_size:
+                    chunk = os.pread(payload_fd, min(CHUNK, payload_size - copied), copied)
+                    if not chunk:
+                        raise PrefixBackupError("Payload truncated during publication")
+                    copied += len(chunk)
+                    output.write(chunk)
                 output.write(len(encoded).to_bytes(8, "big"))
                 output.write(encoded)
                 output.flush()
                 os.fsync(output.fileno())
-            os.link(os.path.basename(archive_path), destination.name, src_dir_fd=parent_fd, dst_dir_fd=parent_fd, follow_symlinks=False)
+
+            _verify_parent_path(destination.parent, parent_fd)
+            # linkat is atomic and fails if the destination name already exists.
+            os.link(
+                archive_name, destination.name,
+                src_dir_fd=parent_fd, dst_dir_fd=parent_fd,
+                follow_symlinks=False,
+            )
+            try:
+                _verify_parent_path(destination.parent, parent_fd)
+            except Exception:
+                os.unlink(destination.name, dir_fd=parent_fd)
+                os.fsync(parent_fd)
+                raise
             os.fsync(parent_fd)
-            os.unlink(archive_path)
-            archive_path = None
-            return {"path": str(destination), "files": inventory["files"], "directories": inventory["directories"],
-                    "total_bytes": inventory["total_bytes"], "payload_sha256": payload_hash,
-                    "quiescence": "advisory-clear-plus-user-confirmation"}
+            os.unlink(archive_name, dir_fd=parent_fd)
+            archive_name = None
+            return {
+                "path": str(destination), "files": inventory["files"],
+                "directories": inventory["directories"], "total_bytes": inventory["total_bytes"],
+                "payload_sha256": payload_hash,
+                "quiescence": "advisory-clear-plus-user-confirmation",
+            }
     finally:
-        os.close(parent_fd)
-        for path in (payload_path, archive_path):
-            if path:
+        for descriptor in (payload_fd, archive_fd):
+            if descriptor >= 0:
+                os.close(descriptor)
+        for name in (payload_name, archive_name):
+            if name:
                 try:
-                    os.unlink(path)
+                    os.unlink(name, dir_fd=parent_fd)
                 except FileNotFoundError:
                     pass
+        os.close(parent_fd)
