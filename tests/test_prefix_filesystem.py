@@ -5,6 +5,7 @@ from pathlib import Path
 
 from winux.core.prefix_filesystem import (
     PrefixScanError,
+    _validate_member_path,
     scan_prefix_tree,
 )
 
@@ -54,9 +55,15 @@ class PrefixFilesystemScannerTests(unittest.TestCase):
         with self.assertRaisesRegex(PrefixScanError, "Unexpected symlink"):
             scan_prefix_tree(self.root)
 
-    def test_rejects_partial_com_mapping(self):
-        (self.root / "dosdevices" / "com32").unlink()
-        with self.assertRaisesRegex(PrefixScanError, "Partial Wine COM"):
+    def test_accepts_contiguous_wine_com1_through_com4_mapping(self):
+        for number in range(5, 33):
+            (self.root / "dosdevices" / f"com{number}").unlink()
+        result = scan_prefix_tree(self.root)
+        self.assertEqual(result["drive_mappings"]["serial"], "wine-default")
+
+    def test_rejects_non_contiguous_com_mapping(self):
+        (self.root / "dosdevices" / "com2").unlink()
+        with self.assertRaisesRegex(PrefixScanError, "Non-contiguous Wine COM"):
             scan_prefix_tree(self.root)
 
     def test_rejects_wrong_c_drive_target(self):
@@ -99,6 +106,10 @@ class PrefixFilesystemScannerTests(unittest.TestCase):
         (self.root / "C:escape.txt").write_text("unsafe", encoding="utf-8")
         with self.assertRaisesRegex(PrefixScanError, "drive-prefixed"):
             scan_prefix_tree(self.root)
+
+    def test_rejects_nul_in_archive_member_path(self):
+        with self.assertRaisesRegex(PrefixScanError, "Invalid archive path"):
+            _validate_member_path("drive_c/unsafe\x00suffix.txt")
 
     def test_rejects_unicode_normalization_collisions(self):
         (self.root / "drive_c" / "café.txt").write_text("one", encoding="utf-8")

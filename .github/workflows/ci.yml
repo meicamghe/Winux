@@ -68,6 +68,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=15s 4m python -m unittest discover -s tests -p test_prefix_backup.py -v
       - name: Test prefix archive inspector
         run: timeout --signal=TERM --kill-after=15s 4m python -m unittest discover -s tests -p test_prefix_archive.py -v
+      - name: Test prefix restore
+        run: timeout --signal=TERM --kill-after=15s 4m python -m unittest discover -s tests -p test_prefix_restore.py -v
       - name: Test processes
         run: timeout --signal=TERM --kill-after=15s 4m python -c 'import faulthandler, unittest; faulthandler.dump_traceback_later(60, repeat=True); suite=unittest.defaultTestLoader.discover("tests", pattern="test_processes.py"); result=unittest.TextTestRunner(verbosity=2).run(suite); raise SystemExit(not result.wasSuccessful())'
       - name: Test runner
@@ -128,15 +130,44 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-      - name: Install Wine and Windows cross-compilers
+      - name: Install WineHQ Stable 11.0 and Windows cross-compilers
         run: |
           sudo dpkg --add-architecture i386
+          sudo mkdir -pm755 /etc/apt/keyrings
+          sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
+          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            wine wine64 wine32:i386 \
+          WINE_VERSION="11.0.0.0~noble-1"
+          sudo apt-get install --install-recommends -y \
+            "winehq-stable=${WINE_VERSION}" \
+            "wine-stable=${WINE_VERSION}" \
+            "wine-stable-amd64=${WINE_VERSION}" \
+            "wine-stable-i386:i386=${WINE_VERSION}" \
             gcc-mingw-w64-i686 gcc-mingw-w64-x86-64
+      - name: Verify exact Wine 11.0
+        run: |
+          wine --version
+          expected_version="11.0.0.0~noble-1"
+          for package in winehq-stable wine-stable wine-stable-amd64 wine-stable-i386:i386; do
+            installed_version="$(dpkg-query -W -f='${Version}' "$package")"
+            if [ "$installed_version" != "$expected_version" ]; then
+              echo "Expected $package=$expected_version, got $installed_version" >&2
+              exit 1
+            fi
+          done
+          python3 - <<'PY'
+          import re
+          import subprocess
+          version = subprocess.check_output(["wine", "--version"], text=True).strip()
+          match = re.search(r"wine[- ]?(\d+)\.(\d+)", version, re.I)
+          if not match or tuple(map(int, match.groups())) != (11, 0):
+              raise SystemExit(f"Expected Wine 11.0, got: {version}")
+          print(f"PASS: {version}")
+          PY
       - name: Run real x86/x64 executables in one WoW64 prefix
         run: timeout --signal=TERM --kill-after=15s 12m bash scripts/validate-wine-wow64.sh
+      - name: Validate real Wine prefix backup and restore
+        run: timeout --signal=TERM --kill-after=15s 15m bash scripts/validate-wine-prefix-restore.sh
 
   package:
     runs-on: ubuntu-24.04

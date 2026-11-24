@@ -43,7 +43,7 @@ pure 32-bit prefixes (`WINEARCH=win32`) are deprecated and are not supported
 by the new WoW64 mode. Winux's 64-bit-prefix strategy is therefore aligned
 with the upstream direction.
 
-Wine 10 and older builds may expose different WoW64 behavior, including
+Builds without the new WoW64 mode may expose different behavior, including
 experimental-mode messages. Winux must report the installed Wine version and
 validate actual runtime behavior rather than assuming that every distribution
 package has identical capabilities.

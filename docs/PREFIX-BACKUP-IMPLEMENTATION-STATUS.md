@@ -4,7 +4,7 @@
 **Canonical security contract:** [PREFIX-BACKUP-RESTORE-DESIGN.md](PREFIX-BACKUP-RESTORE-DESIGN.md)  
 **Restore plan:** [PREFIX-RESTORE-IMPLEMENTATION-PLAN.md](PREFIX-RESTORE-IMPLEMENTATION-PLAN.md)
 
-This document distinguishes implemented backup foundations from the still-unimplemented restore path. Passing CI validates the tested code paths and fixtures; it does not establish compatibility with arbitrary Windows applications or end-user workflows.
+This document distinguishes implemented backup/restore code from application-level compatibility, which still requires independent validation. Passing CI validates only the tested code paths and fixtures; it does not establish compatibility with arbitrary Windows applications or end-user workflows.
 
 ## Implemented foundations
 
@@ -26,7 +26,7 @@ Implemented in `src/winux/core/prefix_filesystem.py` as `scan_prefix_tree()`.
 
 - Descriptor-relative traversal, no-follow path opening, pinned root descriptor, inode/device/type checks, and Linux mount-ID checks.
 - Rejects unexpected symlinks, hardlinks, special files, setuid/setgid objects, nested mount boundaries, unsafe paths, Unicode-normalization collisions, and mutations detected during inventory.
-- Recognizes the observed Wine device layout: `c: -> ../drive_c`, optional `z: -> /`, and all-or-none `com1`–`com32` mappings.
+- Recognizes observed Wine device layouts: `c: -> ../drive_c`, optional `z: -> /`, and a contiguous serial mapping beginning at `com1` (observed variants include `com1`–`com4` and `com1`–`com32`). Gaps and unexpected targets remain rejected.
 - Does not resolve or traverse Z: or COM targets; records logical mappings only.
 - Excludes root `.winux-prefix.json` after validating it as a single-link regular file.
 - Limits: 250,000 files, 100,000 directories, 20 GiB per file, 100 GiB aggregate regular-file bytes, 4,096 UTF-8 bytes per path, and 255 bytes per component.
@@ -82,22 +82,35 @@ The Winux CI run included the writer/inspector integration and hostile archive t
 
 ## Remaining work
 
-### Restore — not implemented
+### Internal secure restore — implemented; WineHQ Stable 11.0 real-runtime gates passed
 
-There is no restore API or CLI yet. The implementation must follow `PREFIX-RESTORE-IMPLEMENTATION-PLAN.md` and the canonical security design. Required gates include:
+Implemented in `src/winux/core/prefix_restore.py` on PR #55.
 
-1. Open and inspect the same archive file descriptor with no-follow semantics; do not trust a pathname between validation and use.
-2. Hold the destination prefix's shared lock from staging through publication; reject an existing destination.
-3. Stage privately under the managed prefix root on the same filesystem.
-4. Recreate files and directories manually with descriptor-relative, exclusive, no-follow operations; never use generic unsafe archive extraction.
-5. Apply safe modes and current-user ownership; ignore archive ownership and permissions.
-6. Recreate only the validated C: mapping by default. Do not restore Z: or COM aliases by default; Z: can expose the host root.
-7. Generate fresh `.winux-prefix.json` metadata; never restore archived metadata as authoritative.
-8. Select and validate an installed local runtime rather than trusting archive runtime metadata.
-9. Run the prefix scanner against the staged tree, fsync files/directories, then publish atomically without replacement. Fail closed if safe no-replace publication is unavailable.
-10. Clean up staging safely on every failure and guarantee no partial destination publication.
+- Opens the backup with no-follow, nonblocking semantics and pins its file identity.
+- Validates the archive through a duplicate of that already-open file descriptor, then rewinds and consumes the same open file description; it rechecks file identity and hashes the payload again while extracting.
+- Holds the destination's shared prefix lock from staging through publication and rejects any existing destination.
+- Creates a private staging directory under the managed prefix base on the same filesystem.
+- Extracts USTAR entries manually with descriptor-relative, no-follow, exclusive file creation; does not use generic tar extraction.
+- Enforces inventory correspondence, payload digest, exact termination, and file/directory type constraints during extraction.
+- Sanitizes permissions, writes fresh metadata, selects the currently installed local runtime, recreates only `dosdevices/c: -> ../drive_c`, and omits Z: and COM aliases by default.
+- Validates the staged prefix with the local runtime and filesystem scanner, fsyncs it, and publishes atomically with Linux `renameat2(RENAME_NOREPLACE)`; fails closed if unavailable.
+- Cleans up its private staging tree on failure and never replaces an existing destination.
+- Synthetic tests are now wired into the `test-runtime` CI job.
 
-Adversarial restore tests must cover traversal, links/special entries, malformed/truncated archives, digest/checksum failures, duplicate entries, existing destinations, symlink/race attacks, fresh metadata, drive mappings, and x86/x64 prefixes. Do not expose Restore in the CLI until these gates pass.
+**Validation status on 2026-11-24:** The active runtime target is WineHQ Stable 11.0 only. The Wine 11 package set is pinned to `11.0.0.0~noble-1`, and CI verifies the exact Wine 11.0 version.
+
+- WineHQ Stable 11.0 real prefix creation, backup, restore, and restored-prefix x86/x64 execution passed on the validated PR head.
+- The restore integration test creates a disposable real Wine prefix, copies smoke executables into the prefix, and launches them through C:; it does not depend on the intentionally omitted Z: mapping.
+- The four required workflows passed on the validated head: Winux CI, WineHQ Stable 11 integration, real EXE installer integration, and real MSI installer integration.
+
+| Workflow | Result |
+|---|---|
+| Winux CI | success |
+| WineHQ Stable 11 real backup/restore | success |
+| Real Windows Installer Integration | success |
+| Real Windows MSI Installer Integration | success |
+
+These fixtures establish real Wine 11 prefix backup/restore and x86/x64 PE launchability for the tested environment. They do not prove arbitrary Windows application compatibility or the EMWAT/Office workflow.
 
 ### Public backup CLI — not enabled
 
