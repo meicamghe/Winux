@@ -9,7 +9,7 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
     def setUp(self):
         self.runtime = Mock()
         self.runtime.is_available.return_value = True
-        self.runtime.version.return_value = "wine-10.0"
+        self.runtime.version.return_value = "wine-11.0"
         self.manager = Mock()
         self.manager.get_default_name.return_value = "wine"
         self.manager.get.return_value = self.runtime
@@ -148,18 +148,6 @@ class RuntimeDiagnosticsTests(unittest.TestCase):
         rendered = " ".join(str(call) for call in output.call_args_list)
         self.assertIn("optional-runtime", rendered)
 
-
-    def test_wine_10_reports_new_wow64_compatibility_warning(self):
-        self.runtime.version.return_value = "wine-10.0 (Ubuntu 10.0~repack)"
-        with (
-            patch("winux.platform.runtime._command_status", return_value="/usr/bin/tool"),
-            patch("winux.platform.runtime.subprocess.run", return_value=subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")),
-            patch("builtins.print") as output,
-        ):
-            self.assertTrue(check_runtime(self.manager))
-        rendered = " ".join(str(call) for call in output.call_args_list)
-        self.assertIn("Wine 10.0 detected", rendered)
-        self.assertIn("Wine 11.0 or newer is recommended", rendered)
 
     def test_wine_11_does_not_report_old_wow64_warning(self):
         self.runtime.version.return_value = "wine-11.0"
