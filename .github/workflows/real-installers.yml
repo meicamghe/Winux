@@ -21,13 +21,32 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-      - name: Install Wine, NSIS and Windows cross-compilers
+      - name: Install WineHQ Stable 11, NSIS and Windows cross-compilers
         run: |
           sudo dpkg --add-architecture i386
+          sudo mkdir -pm755 /etc/apt/keyrings
+          sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
+          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            wine wine64 wine32:i386 nsis p7zip-full \
-            gcc-mingw-w64-i686 gcc-mingw-w64-x86-64
+          WINE_VERSION="11.0.0.0~noble-1"
+          sudo apt-get install --install-recommends -y \
+            "winehq-stable=${WINE_VERSION}" \
+            "wine-stable=${WINE_VERSION}" \
+            "wine-stable-amd64=${WINE_VERSION}" \
+            "wine-stable-i386:i386=${WINE_VERSION}" \
+            nsis p7zip-full gcc-mingw-w64-i686 gcc-mingw-w64-x86-64
+      - name: Verify Wine 11
+        run: |
+          wine --version
+          python3 - <<'PY'
+          import re
+          import subprocess
+          version = subprocess.check_output(["wine", "--version"], text=True).strip()
+          match = re.search(r"wine[- ]?(\d+)\.(\d+)", version, re.I)
+          if not match or tuple(map(int, match.groups())) != (11, 0):
+              raise SystemExit(f"Expected Wine 11.0, got: {version}")
+          print(f"PASS: {version}")
+          PY
       - name: Set up Python
         uses: actions/setup-python@v5
         with:

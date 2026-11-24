@@ -76,6 +76,8 @@ jobs:
         run: timeout --signal=TERM --kill-after=15s 4m python -c 'import faulthandler, unittest; faulthandler.dump_traceback_later(60, repeat=True); suite=unittest.defaultTestLoader.discover("tests", pattern="test_runtime.py"); result=unittest.TextTestRunner(verbosity=2).run(suite); raise SystemExit(not result.wasSuccessful())'
       - name: Test runtime diagnostics
         run: timeout --signal=TERM --kill-after=15s 4m python -c 'import faulthandler, unittest; faulthandler.dump_traceback_later(60, repeat=True); suite=unittest.defaultTestLoader.discover("tests", pattern="test_runtime_diagnostics.py"); result=unittest.TextTestRunner(verbosity=2).run(suite); raise SystemExit(not result.wasSuccessful())'
+      - name: Test distribution detection
+        run: timeout --signal=TERM --kill-after=15s 4m python -m unittest discover -s tests -p test_distribution.py -v
 
   test-services:
     runs-on: ubuntu-24.04

@@ -4,6 +4,7 @@ import shutil
 import subprocess
 
 from winux.runtime.manager import RuntimeManager
+from winux.platform.distribution import detect_host_environment
 
 
 def _command_status(name):
@@ -83,6 +84,13 @@ def check_runtime(runtime_manager=None):
                 print(f"[FAIL] Runtime version check failed: {error}")
                 failed = True
 
+        host = detect_host_environment()
+        distro = host["distribution"]
+        version = f" {distro['version_id']}" if distro["version_id"] else ""
+        print(f"[INFO] Linux distribution: {distro['name']}{version} ({distro['id']})")
+        print(f"[INFO] Init system: {host['init_system']}")
+        managers = ", ".join(host["package_managers"]) or "unknown"
+        print(f"[INFO] Package manager(s): {managers}")
         print(f"[INFO] Host architecture: {platform.machine() or 'unknown'}")
 
         required_commands = {
