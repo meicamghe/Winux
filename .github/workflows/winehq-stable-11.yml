@@ -41,6 +41,14 @@ jobs:
       - name: Verify exact Wine 11.0
         run: |
           wine --version
+          expected_version="11.0.0.0~noble-1"
+          for package in winehq-stable wine-stable wine-stable-amd64 wine-stable-i386:i386; do
+            installed_version="$(dpkg-query -W -f='${Version}' "$package")"
+            if [ "$installed_version" != "$expected_version" ]; then
+              echo "Expected $package=$expected_version, got $installed_version" >&2
+              exit 1
+            fi
+          done
           python3 - <<'PY'
           import re
           import subprocess
