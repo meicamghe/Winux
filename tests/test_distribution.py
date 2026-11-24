@@ -41,6 +41,17 @@ class DistributionDetectionTests(unittest.TestCase):
         )
         self.assertEqual(result, ["apt"])
 
+    def test_extended_package_managers_are_detected(self):
+        available = {"microdnf", "yum", "urpmi", "eopkg", "guix"}
+        result = detect_package_managers(
+            command_lookup=lambda command: "/usr/bin/" + command
+            if command in available else None
+        )
+        self.assertEqual(
+            result,
+            ["microdnf", "yum", "urpmi", "eopkg", "guix"],
+        )
+
     def test_package_manager_lookup_errors_are_ignored(self):
         result = detect_package_managers(
             command_lookup=lambda _command: (_ for _ in ()).throw(OSError("PATH unavailable"))

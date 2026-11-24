@@ -12,6 +12,8 @@ from pathlib import Path
 _PACKAGE_MANAGER_COMMANDS = (
     ("apt", "apt-get"),
     ("dnf", "dnf"),
+    ("microdnf", "microdnf"),
+    ("yum", "yum"),
     ("pacman", "pacman"),
     ("zypper", "zypper"),
     ("apk", "apk"),
@@ -19,6 +21,9 @@ _PACKAGE_MANAGER_COMMANDS = (
     ("emerge", "emerge"),
     ("nix", "nix"),
     ("rpm-ostree", "rpm-ostree"),
+    ("urpmi", "urpmi"),
+    ("eopkg", "eopkg"),
+    ("guix", "guix"),
 )
 
 
