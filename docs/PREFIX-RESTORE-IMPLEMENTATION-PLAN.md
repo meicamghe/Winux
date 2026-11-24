@@ -1,6 +1,6 @@
 # Prefix Restore Implementation and Validation
 
-The internal restore implementation is in `src/winux/core/prefix_restore.py`. It consumes only output from the strict non-extracting archive inspector and does not call tarfile extraction. The safeguards below are implemented; synthetic adversarial tests and real Wine 10/11 x86/x64 restore validation have passed.
+The internal restore implementation is in `src/winux/core/prefix_restore.py`. It consumes only output from the strict non-extracting archive inspector and does not call tarfile extraction. The safeguards below are implemented; synthetic adversarial tests and real WineHQ Stable 11.0 x86/x64 restore validation have passed.
 
 1. Validate the target prefix name, destination absence, installed runtime availability and archive inspection before creating the destination.
 2. Acquire the target shared prefix lock non-blocking and hold it through staging and publication.
@@ -20,8 +20,7 @@ The internal restore implementation is in `src/winux/core/prefix_restore.py`. It
 - [x] Synthetic success, existing-destination protection, digest failure, symlink archive rejection, unavailable local runtime, and runtime-validation cleanup tests.
 - [x] Synthetic restore tests added to the `test-runtime` CI workflow.
 - [x] Adversarial restore coverage rejects traversal, symlinks, hardlinks, special entries, duplicate members, and truncated tar payloads before staging; injected extraction and publication failures verify staging cleanup.
-- [x] Pass real WineHQ Stable 10.0 backup/restore followed by x86 and x64 execution. CI pins the exact WineHQ 10.0 package set and verifies the installed version.
-- [x] Pass real WineHQ Stable 11.0 backup/restore followed by x86 and x64 execution. CI pins the exact WineHQ 11.0 package set and verifies the installed version.
+- [x] Pass real WineHQ Stable 11.0 backup/restore followed by x86 and x64 execution. CI pins the exact WineHQ 11.0 package set and verifies the installed version. Wine 11.0 is the sole supported CI validation target.
 - [x] Pass all EXE/MSI integration workflows on the validated PR head.
 
 No public restore CLI is enabled yet. The current validation gates are green, but keep restore internal until the public API contract and operational safety requirements are explicitly reviewed.
