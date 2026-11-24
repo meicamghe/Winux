@@ -806,3 +806,50 @@ class ApplicationRegistryViewCliTests(unittest.TestCase):
         self.assertIn("wow-id", rendered)
         self.assertIn("wow-key", rendered)
         self.assertIn("msiexec /x {ABC} /qn", rendered)
+
+
+class PrefixBackupInspectCliTests(unittest.TestCase):
+    def test_inspect_reports_verified_archive_without_restore(self):
+        report = {
+            "format_version": 1,
+            "architecture": "win64",
+            "runtime": "wine-stable-11",
+            "files": 12,
+            "directories": 4,
+            "total_bytes": 4096,
+            "payload_sha256": "a" * 64,
+        }
+        with (
+            patch.object(sys, "argv", ["winux", "prefix", "backup", "inspect", "backup.wux"]),
+            patch("winux.core.prefix_archive.inspect_prefix_backup", return_value=report) as inspect,
+            patch("builtins.print") as output,
+        ):
+            main()
+
+        inspect.assert_called_once_with("backup.wux")
+        rendered = "\\n".join(str(call.args[0]) for call in output.call_args_list)
+        self.assertIn("Archive integrity: verified", rendered)
+        self.assertIn("Extraction: not performed", rendered)
+        self.assertIn("Restore: not performed", rendered)
+        self.assertIn("does not verify runtime availability", rendered)
+
+    def test_inspect_supports_machine_readable_json(self):
+        report = {"format_version": 1, "files": 1}
+        with (
+            patch.object(sys, "argv", ["winux", "prefix", "backup", "inspect", "backup.wux", "--json"]),
+            patch("winux.core.prefix_archive.inspect_prefix_backup", return_value=report),
+            patch("builtins.print") as output,
+        ):
+            main()
+
+        self.assertEqual(output.call_args.args[0], json.dumps(report, ensure_ascii=False, indent=2))
+
+    def test_inspect_rejects_invalid_archive(self):
+        with (
+            patch.object(sys, "argv", ["winux", "prefix", "backup", "inspect", "bad.wux"]),
+            patch("winux.core.prefix_archive.inspect_prefix_backup", side_effect=ValueError("invalid archive")),
+            patch("builtins.print"),
+        ):
+            with self.assertRaises(SystemExit) as raised:
+                main()
+        self.assertEqual(raised.exception.code, 1)
