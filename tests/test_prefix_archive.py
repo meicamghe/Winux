@@ -50,4 +50,12 @@ class InspectorTests(unittest.TestCase):
     def test_backslash_path_rejected(self):
         p=header("drive_c\\\\escape",0)+bytes(1024); self.manifest["payload"].update(size=len(p),sha256=hashlib.sha256(p).hexdigest()); make_container(p,self.manifest,self.path)
         with self.assertRaises(PrefixArchiveError): inspect_prefix_backup(self.path)
+
+    def test_nonzero_bytes_after_tar_name_terminator_rejected(self):
+        data=b"hello"
+        p=header("drive_c/a.txt\x00hidden",len(data))+data+bytes(512-len(data))+bytes(1024)
+        self.manifest["payload"].update(size=len(p),sha256=hashlib.sha256(p).hexdigest())
+        make_container(p,self.manifest,self.path)
+        with self.assertRaisesRegex(PrefixArchiveError,"after tar string terminator"):
+            inspect_prefix_backup(self.path)
 if __name__=="__main__": unittest.main()

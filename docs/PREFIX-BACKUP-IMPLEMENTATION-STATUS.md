@@ -82,7 +82,7 @@ The Winux CI run included the writer/inspector integration and hostile archive t
 
 ## Remaining work
 
-### Internal secure restore — implemented; Wine 10/11 real-runtime gates passed
+### Internal secure restore — implemented; WineHQ Stable 11.0 real-runtime gates passed
 
 Implemented in `src/winux/core/prefix_restore.py` on PR #55.
 

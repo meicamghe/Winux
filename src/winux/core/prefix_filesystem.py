@@ -54,7 +54,7 @@ def _open_absolute_directory(path):
 
 
 def _validate_member_path(value):
-    if not isinstance(value, str) or not value or "\\x00" in value:
+    if not isinstance(value, str) or not value or "\x00" in value:
         raise PrefixScanError("Invalid archive path")
     if value.startswith("/") or chr(92) in value:
         raise PrefixScanError("Absolute and backslash paths are forbidden")

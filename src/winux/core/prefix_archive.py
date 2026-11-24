@@ -37,7 +37,11 @@ def _octal(field, label):
     if not raw: return 0
     if any(byte < 48 or byte > 55 for byte in raw): raise PrefixArchiveError("Invalid tar " + label)
     return int(raw, 8)
-def _tar_string(field): return field.split(b"\0", 1)[0].decode("utf-8", errors="strict")
+def _tar_string(field):
+    value, separator, padding = field.partition(b"\0")
+    if separator and any(padding):
+        raise PrefixArchiveError("Non-zero bytes after tar string terminator")
+    return value.decode("utf-8", errors="strict")
 
 def _read_ustar(payload):
     records, seen = [], set(); files = directories = total = 0; ended = False

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from winux.core.prefix_filesystem import (
     PrefixScanError,
+    _validate_member_path,
     scan_prefix_tree,
 )
 
@@ -105,6 +106,10 @@ class PrefixFilesystemScannerTests(unittest.TestCase):
         (self.root / "C:escape.txt").write_text("unsafe", encoding="utf-8")
         with self.assertRaisesRegex(PrefixScanError, "drive-prefixed"):
             scan_prefix_tree(self.root)
+
+    def test_rejects_nul_in_archive_member_path(self):
+        with self.assertRaisesRegex(PrefixScanError, "Invalid archive path"):
+            _validate_member_path("drive_c/unsafe\x00suffix.txt")
 
     def test_rejects_unicode_normalization_collisions(self):
         (self.root / "drive_c" / "café.txt").write_text("one", encoding="utf-8")
