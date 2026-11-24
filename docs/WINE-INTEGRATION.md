@@ -43,17 +43,17 @@ pure 32-bit prefixes (`WINEARCH=win32`) are deprecated and are not supported
 by the new WoW64 mode. Winux's 64-bit-prefix strategy is therefore aligned
 with the upstream direction.
 
-Wine 10 and older builds may expose different WoW64 behavior, including
+Builds without the new WoW64 mode may expose different behavior, including
 experimental-mode messages. Winux must report the installed Wine version and
 validate actual runtime behavior rather than assuming that every distribution
 package has identical capabilities.
 
 Policy:
 
-1. Do not hard-fail solely because Wine is older than 11.0; report the version
-   and the relevant compatibility caveat.
-2. Prefer Wine 11.0 or newer for new deployments where the distribution offers
-   it.
+1. Do not hard-fail solely because a runtime differs from the validated
+   baseline; report the version and the relevant compatibility caveat.
+2. Use WineHQ Stable 11.0, package version `11.0.0.0~noble-1`, as the only
+   CI and integration validation baseline.
 3. Keep x86 and x64 executable smoke tests in real-Wine CI.
 4. Test installer formats and application workflows separately from PE loader
    smoke tests.
@@ -98,8 +98,9 @@ The repository now has dedicated CI coverage for:
 
 - The distribution-provided Wine runtime, including x86 and x64 PE execution
   smoke tests in 64-bit WoW64 prefixes.
-- Official WineHQ stable packages on Ubuntu 24.04, with an explicit Wine 11.0+
-  version assertion and real x86/x64 EXE and MSI installer fixtures.
+- Official WineHQ Stable packages on Ubuntu 24.04, pinned and checked against
+  exact package version `11.0.0.0~noble-1`, with real x86/x64 EXE and MSI
+  installer fixtures.
 - EXE and MSI installation and launch workflows, with uninstall lifecycle
   checks being validated separately from basic install success.
 - Application inventory status, including explicit detection of registered
