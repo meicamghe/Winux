@@ -97,22 +97,20 @@ Implemented in `src/winux/core/prefix_restore.py` on PR #55.
 - Cleans up its private staging tree on failure and never replaces an existing destination.
 - Synthetic tests are now wired into the `test-runtime` CI job.
 
-**Validation status on 2026-11-17:** Both required real-runtime targets passed on the final validation head `d349474ed2c16b1481ee01efbcc40ff4c3024972` before the additional adversarial-test hardening commit:
-- WineHQ Stable 10.0: real prefix creation, backup, restore, source-prefix x86/x64 controls, and restored-prefix x86/x64 execution all passed.
-- WineHQ Stable 11.0: the same real backup/restore and x86/x64 post-restore execution all passed.
-- The Wine 11 package set was observed as `11.0.0.0~noble-1`; CI is now pinned to that exact package version and verifies exactly Wine 11.0.
-- Wine 10 CI is pinned to `10.0.0.0~noble-1` and verifies exactly Wine 10.0.
-- The four validation workflows on that head all passed: Winux CI, WineHQ 11 integration, real EXE installer integration, and real MSI installer integration.
-- The first restore failure was traced to the integration script launching host temporary paths through the intentionally omitted Z: mapping. The test now copies smoke executables into each prefix and launches them via C:; the final real-prefix runs passed.
+**Validation status on 2026-11-24:** The active runtime target is WineHQ Stable 11.0 only. The Wine 11 package set is pinned to `11.0.0.0~noble-1`, and CI verifies the exact Wine 11.0 version.
 
-| Workflow | Run ID | Result |
-|---|---:|---|
-| Winux CI (Wine 10 real backup/restore) | 44076105477 | success |
-| WineHQ Stable 11 real backup/restore | 44076105403 | success |
-| Real Windows Installer Integration | 44076105379 | success |
-| Real Windows MSI Installer Integration | 44076105378 | success |
+- WineHQ Stable 11.0 real prefix creation, backup, restore, and restored-prefix x86/x64 execution passed on the validated PR head.
+- The restore integration test creates a disposable real Wine prefix, copies smoke executables into the prefix, and launches them through C:; it does not depend on the intentionally omitted Z: mapping.
+- The four required workflows passed on the validated head: Winux CI, WineHQ Stable 11 integration, real EXE installer integration, and real MSI installer integration.
 
-The EXE/MSI workflows exercised disposable x86/x64 fixtures. They do not prove arbitrary Windows application compatibility or the EMWAT/Office workflow. The restored-prefix smoke tests establish real Wine prefix backup/restore and x86/x64 PE launchability on these two runtime versions, not general compatibility with every Windows application.
+| Workflow | Result |
+|---|---|
+| Winux CI | success |
+| WineHQ Stable 11 real backup/restore | success |
+| Real Windows Installer Integration | success |
+| Real Windows MSI Installer Integration | success |
+
+These fixtures establish real Wine 11 prefix backup/restore and x86/x64 PE launchability for the tested environment. They do not prove arbitrary Windows application compatibility or the EMWAT/Office workflow.
 
 ### Public backup CLI — not enabled
 
