@@ -124,5 +124,63 @@ class BackupWriterPrimitiveTests(unittest.TestCase):
         self.assertEqual(list(outside.iterdir()), [sentinel])
         self.assertEqual(list(moved_parent.iterdir()), [])
 
+
+    def test_destination_parent_swap_after_temp_creation_is_rejected_and_cleaned(self):
+        from unittest.mock import patch
+        import winux.core.prefix_backup as backup_module
+
+        destination_parent = Path(self.temp.name) / "destination-after-temp"
+        destination_parent.mkdir()
+        outside = Path(self.temp.name) / "outside-after-temp"
+        outside.mkdir()
+        sentinel = outside / "keep.txt"
+        sentinel.write_text("outside data")
+        moved_parent = destination_parent.with_name("destination-after-temp-pinned")
+        original_create = backup_module._create_temporary_at
+        calls = {"count": 0}
+
+        class Runtime:
+            def is_available(self):
+                return True
+
+        class Manager:
+            def validate_name(self, name):
+                self.asserted_name = name
+            def get_path(self, name):
+                return self.root
+            def _read_metadata(self, path):
+                return {"architecture": "win64", "runtime": "test-runtime"}
+            def get_runtime(self, name):
+                return Runtime()
+
+        manager = Manager()
+        manager.root = self.root
+
+        def create_then_swap(parent_fd, prefix):
+            name, descriptor = original_create(parent_fd, prefix)
+            calls["count"] += 1
+            if calls["count"] == 2:
+                destination_parent.rename(moved_parent)
+                destination_parent.symlink_to(outside, target_is_directory=True)
+            return name, descriptor
+
+        with (
+            patch("winux.core.prefix_backup._create_temporary_at", side_effect=create_then_swap),
+            patch("winux.core.prefix_backup.inspect_prefix_processes", return_value={"state": "clear"}),
+        ):
+            with self.assertRaisesRegex(PrefixBackupError, "parent changed"):
+                backup_module.backup_prefix(
+                    "test-prefix",
+                    destination_parent / "backup.wux",
+                    confirm_all_wine_apps_closed=True,
+                    prefix_manager=manager,
+                )
+
+        self.assertEqual(calls["count"], 2)
+        self.assertTrue(destination_parent.is_symlink())
+        self.assertEqual(sentinel.read_text(), "outside data")
+        self.assertEqual(list(outside.iterdir()), [sentinel])
+        self.assertEqual(list(moved_parent.iterdir()), [])
+
 if __name__ == "__main__":
     unittest.main()
